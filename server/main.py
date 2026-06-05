@@ -840,6 +840,27 @@ async def send_daily_schedule():
     return {"ok": True, "orders_sent": len(orders)}
 
 
+# ── WorkPlan persistence ─────────────────────────────────────────────────────
+
+WORKPLAN_FILE = os.path.join(os.path.dirname(__file__), "workplan_data.json")
+
+@app.get("/api/workplan")
+def get_workplan():
+    if not os.path.exists(WORKPLAN_FILE):
+        return JSONResponse(content=None)
+    with open(WORKPLAN_FILE, "r", encoding="utf-8") as f:
+        import json
+        return JSONResponse(content=json.load(f))
+
+@app.post("/api/workplan")
+async def save_workplan(request: Request):
+    import json
+    body = await request.json()
+    with open(WORKPLAN_FILE, "w", encoding="utf-8") as f:
+        json.dump(body, f, ensure_ascii=False, indent=2)
+    return {"ok": True}
+
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

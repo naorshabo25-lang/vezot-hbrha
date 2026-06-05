@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DEFAULT_WORKPLAN } from './defaultWorkPlan';
 import { useExpenses } from './hooks/useExpenses';
 import Sidebar from './components/Sidebar';
@@ -79,7 +79,30 @@ export default function App() {
 
   const saveToStorage = (data) => {
     try { localStorage.setItem('workPlanData', JSON.stringify(data)); } catch {}
+    fetch('/api/workplan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).catch(() => {});
   };
+
+  // טעינה מהשרת בעלייה — עדיפות על localStorage
+  useEffect(() => {
+    fetch('/api/workplan')
+      .then(r => r.json())
+      .then(data => {
+        if (!data) return;
+        const base = repairMonth(data, DEFAULT_WORKPLAN);
+        setWorkPlanData({
+          ...base,
+          obligo:            data.obligo            || {},
+          currentMonthId:    data.currentMonthId    || '2026-05',
+          currentMonthLabel: data.currentMonthLabel || 'מאי 2026',
+          monthHistory:      data.monthHistory      || {},
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   const handleWorkPlanUpload = (data, fileName) => {
     setWorkPlanData(data);

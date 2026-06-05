@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList,
+  ComposedChart, Area, Line, ReferenceLine,
 } from 'recharts';
 import { DEFAULT_WORKPLAN, DEFAULT_CLIENTS } from '../defaultWorkPlan';
 import MonthSelector from './MonthSelector';
@@ -164,7 +165,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
   const additiveDefs = DEFAULT_ADDITIVE_TYPES.map(name => ({ name }));
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/orders')
+    fetch('/api/orders')
       .then(r => r.json())
       .then(orders => {
         const map = {};
@@ -434,6 +435,76 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
           </ResponsiveContainer>
         </Card>
       </div>
+
+      {/* Margin Analysis Charts */}
+      {clients.some(c => c.salePrice > 0 && c.purchasePrice > 0) && (
+        <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 14 }}>
+          <Card>
+            <SectionTitle sub="קניה · מכירה · מרווח לליטר">ניתוח מרווח שיווקי לפי לקוח</SectionTitle>
+            <ResponsiveContainer width="100%" height={Math.max(200, clients.filter(c => c.salePrice > 0).length * 44)}>
+              <ComposedChart
+                layout="vertical"
+                data={clients
+                  .filter(c => c.salePrice > 0 && c.purchasePrice > 0)
+                  .map(c => ({
+                    name:    c.name,
+                    קניה:    +(c.purchasePrice || 0).toFixed(3),
+                    מכירה:   +(c.salePrice     || 0).toFixed(3),
+                    מרווח:   +((c.salePrice - c.purchasePrice) || 0).toFixed(3),
+                  }))
+                  .sort((a, b) => b.מרווח - a.מרווח)
+                }
+                margin={{ top: 4, right: 50, left: 8, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--surface-3)" />
+                <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickFormatter={v => `₪${v.toFixed(2)}`} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={260} orientation="right" tick={{ fontSize: 11, fill: 'var(--text-2)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  formatter={(v, name) => [`₪${Number(v).toFixed(3)}`, name]}
+                  contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, direction: 'rtl' }}
+                />
+                <Legend iconSize={9} formatter={v => <span style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600 }}>{v}</span>} />
+                <Bar dataKey="קניה"  fill="#fca5a5" radius={[0, 2, 2, 0]} maxBarSize={10} />
+                <Bar dataKey="מכירה" fill="#6ee7b7" radius={[0, 2, 2, 0]} maxBarSize={10} />
+                <Line dataKey="מרווח" stroke="#2563eb" strokeWidth={2} dot={{ r: 3, fill: '#2563eb' }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card>
+            <SectionTitle sub="לפי לקוח">מרווח ₪ לליטר</SectionTitle>
+            <ResponsiveContainer width="100%" height={Math.max(200, clients.filter(c => c.salePrice > 0 && c.purchasePrice > 0).length * 44)}>
+              <BarChart
+                layout="vertical"
+                data={clients
+                  .filter(c => c.salePrice > 0 && c.purchasePrice > 0)
+                  .map(c => ({
+                    name:   c.name.replace('הכנסות ', ''),
+                    מרווח: +((c.salePrice - c.purchasePrice)).toFixed(3),
+                  }))
+                  .sort((a, b) => b.מרווח - a.מרווח)
+                }
+                margin={{ top: 4, right: 50, left: 8, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--surface-3)" />
+                <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickFormatter={v => `₪${v.toFixed(2)}`} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={140} orientation="right" tick={{ fontSize: 11, fill: 'var(--text-2)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  formatter={v => [`₪${Number(v).toFixed(3)} לליטר`, 'מרווח']}
+                  contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, direction: 'rtl' }}
+                />
+                <ReferenceLine x={0} stroke="var(--border-2)" />
+                <Bar dataKey="מרווח" radius={[0, 5, 5, 0]} maxBarSize={18}>
+                  {clients.filter(c => c.salePrice > 0 && c.purchasePrice > 0).map((c, i) => (
+                    <Cell key={i} fill={(c.salePrice - c.purchasePrice) >= 0 ? COLORS[i % COLORS.length] : '#ef4444'} />
+                  ))}
+                  <LabelList dataKey="מרווח" position="right" style={{ fontSize: 10, fill: 'var(--text-2)', fontWeight: 700 }} formatter={v => `₪${Number(v).toFixed(3)}`} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+      )}
 
       {/* Fuel Card Revenue */}
       <Card>
