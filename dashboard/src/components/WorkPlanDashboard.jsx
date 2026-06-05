@@ -289,35 +289,96 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
       {/* KPI Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8 }}>
         {kpis.map((k, i) => (
           <div key={i} style={{
             background: k.bg,
             borderRadius: 'var(--r-lg)',
-            padding: '18px 20px 16px',
-            boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+            padding: '12px 14px 10px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             display: 'flex',
             flexDirection: 'column',
-            gap: 6,
+            gap: 3,
           }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.75)', letterSpacing: 0.3 }}>
+            <p style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3 }}>
               {k.label}
             </p>
             <p style={{
-              fontSize: 22,
-              fontWeight: 800,
+              fontSize: 16,
+              fontWeight: 700,
               color: '#ffffff',
-              letterSpacing: -0.5,
-              lineHeight: 1.1,
+              letterSpacing: -0.3,
+              lineHeight: 1.2,
               fontVariantNumeric: 'tabular-nums',
             }}>
               {k.value}
             </p>
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', lineHeight: 1.3 }}>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', lineHeight: 1.3 }}>
               {k.sub}
             </p>
           </div>
         ))}
+      </div>
+
+      {/* Quick Charts Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+
+        {/* הכנסות לפי מקור */}
+        <Card style={{ padding: '14px 16px' }}>
+          <p className="section-title" style={{ marginBottom: 10 }}>הכנסות לפי מקור</p>
+          <ResponsiveContainer width="100%" height={160}>
+            <PieChart>
+              <Pie
+                data={d.clients.map(c => ({ name: c.name.replace('הכנסות ', ''), value: clientProfit(c) })).filter(c => c.value > 0)}
+                cx="50%" cy="50%" innerRadius={40} outerRadius={65}
+                dataKey="value" paddingAngle={3} labelLine={false} label={pctLbl}
+              >
+                {d.clients.map((_, i) => <Cell key={i} fill={CLIENT_COLORS[i % CLIENT_COLORS.length]} />)}
+              </Pie>
+              <Tooltip formatter={v => fmt(v)} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid var(--border)' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
+
+        {/* הרכב הוצאות */}
+        <Card style={{ padding: '14px 16px' }}>
+          <p className="section-title" style={{ marginBottom: 10 }}>הרכב הוצאות</p>
+          <ResponsiveContainer width="100%" height={160}>
+            <PieChart>
+              <Pie
+                data={expTypePie} cx="50%" cy="50%" innerRadius={40} outerRadius={65}
+                dataKey="value" paddingAngle={3} labelLine={false} label={pctLbl}
+              >
+                {expTypePie.map((_, i) => <Cell key={i} fill={EXP_COLORS[i]} />)}
+              </Pie>
+              <Tooltip formatter={v => fmt(v)} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid var(--border)' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
+
+        {/* מדדים מהירים */}
+        <Card style={{ padding: '14px 16px' }}>
+          <p className="section-title" style={{ marginBottom: 10 }}>מדדים מהירים</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              { label: 'רווח גולמי', value: fmtPct(grossMargin), color: grossMargin >= 0 ? 'var(--green)' : 'var(--red)', pct: Math.abs(grossMargin) },
+              { label: 'שכר מהכנסות', value: fmtPct(salPct), color: 'var(--purple)', pct: salPct },
+              { label: 'עלות סחורה', value: fmtPct(fuelPct), color: 'var(--orange)', pct: fuelPct },
+              { label: 'תפעול', value: fmtPct(opPct), color: 'var(--red)', pct: opPct },
+              { label: 'מרווח נקי', value: fmtPct(Math.abs(margin)), color: margin >= 0 ? 'var(--green)' : 'var(--red)', pct: Math.abs(margin) },
+            ].map((r, i) => (
+              <div key={i}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{r.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: r.color }}>{r.value}</span>
+                </div>
+                <div className="progress-track" style={{ height: 4 }}>
+                  <div className="progress-fill" style={{ width: `${Math.min(r.pct, 100)}%`, background: r.color }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
       {/* P&L Statement */}

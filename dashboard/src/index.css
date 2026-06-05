@@ -40,10 +40,10 @@
   --sidebar-active-cl: #ff7171;
   --sidebar-divider:   rgba(255,255,255,0.06);
 
-  --r-sm:  8px;
-  --r-md:  12px;
-  --r-lg:  18px;
-  --r-xl:  26px;
+  --r-sm:  6px;
+  --r-md:  9px;
+  --r-lg:  13px;
+  --r-xl:  18px;
 
   --shadow-sm:  0 1px 3px rgba(13,21,38,0.07), 0 2px 8px rgba(13,21,38,0.04);
   --shadow-md:  0 4px 16px rgba(13,21,38,0.10), 0 1px 4px rgba(13,21,38,0.06);
@@ -52,7 +52,7 @@
 
 /* ─── Reset ─────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 14px; }
+html { font-size: 13px; }
 
 body {
   direction: rtl;
@@ -95,7 +95,7 @@ button:active { transform: scale(0.96); }
   transition: box-shadow 0.2s ease, transform 0.18s ease;
 }
 .card:hover { box-shadow: var(--shadow-md); }
-.card-pad { padding: 22px 24px; }
+.card-pad { padding: 16px 18px; }
 
 .section-title {
   font-size: 11px;
@@ -142,7 +142,7 @@ button:active { transform: scale(0.96); }
 }
 .kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 .kpi-label { font-size: 10.5px; font-weight: 600; color: var(--text-3); letter-spacing: 0.7px; text-transform: uppercase; margin-bottom: 7px; }
-.kpi-value { font-size: 24px; font-weight: 800; letter-spacing: -0.8px; line-height: 1.1; margin-bottom: 5px; }
+.kpi-value { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.15; margin-bottom: 3px; }
 .kpi-sub { font-size: 11px; color: var(--text-3); line-height: 1.4; }
 
 /* ─── Buttons ────────────────────────────────────────────────── */
