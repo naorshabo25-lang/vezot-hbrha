@@ -102,12 +102,15 @@ const GaugeBar = ({ value, max, color }) => (
 
 /* ── Computed helpers ───────────────────────────────────────── */
 const clientProfit = c => {
-  const sell1 = c.salePrice  || 0;
-  const sell2 = c.salePrice2 || 0;
+  const sell1 = c.salePrice    || 0;
+  const sell2 = c.salePrice2   || 0;
+  const buy   = c.purchasePrice || 0;
   if (sell1 > 0) {
-    const liters1 = (c.actualLiters != null ? c.actualLiters : c.liters) || 0;
-    const liters2 = (c.actualLiters2 != null ? c.actualLiters2 : (c.liters2 || 0));
-    return liters1 * sell1 + (sell2 > 0 ? liters2 * sell2 : 0);
+    const liters1  = (c.actualLiters  != null ? c.actualLiters  : c.liters)  || 0;
+    const liters2  = (c.actualLiters2 != null ? c.actualLiters2 : (c.liters2 || 0));
+    const margin1  = buy > 0 ? sell1 - buy : sell1;
+    const margin2  = sell2 > 0 ? (buy > 0 ? sell2 - buy : sell2) : 0;
+    return liters1 * margin1 + (sell2 > 0 && liters2 > 0 ? liters2 * margin2 : 0);
   }
   return c.profit || 0;
 };
@@ -402,12 +405,15 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
 
         <GroupLabel>הכנסות ממכירות</GroupLabel>
         {[...d.clients].sort((a, b) => clientProfit(b) - clientProfit(a)).flatMap((c, i) => {
-          const sell1   = c.salePrice  || 0;
-          const sell2   = c.salePrice2 || 0;
+          const sell1   = c.salePrice    || 0;
+          const sell2   = c.salePrice2   || 0;
+          const buy     = c.purchasePrice || 0;
           const liters1 = (c.actualLiters  != null ? c.actualLiters  : c.liters)  || 0;
           const liters2 = (c.actualLiters2 != null ? c.actualLiters2 : (c.liters2 || 0));
-          const profit1 = sell1 > 0 ? liters1 * sell1 : c.profit || 0;
-          const profit2 = sell2 > 0 && liters2 > 0 ? liters2 * sell2 : 0;
+          const margin1 = sell1 > 0 ? (buy > 0 ? sell1 - buy : sell1) : 0;
+          const margin2 = sell2 > 0 ? (buy > 0 ? sell2 - buy : sell2) : 0;
+          const profit1 = sell1 > 0 ? liters1 * margin1 : c.profit || 0;
+          const profit2 = sell2 > 0 && liters2 > 0 ? liters2 * margin2 : 0;
           const rows = [
             <PLRow
               key={`${i}-1`}
