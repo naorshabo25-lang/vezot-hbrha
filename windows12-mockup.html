@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מוקאפ ממשק Windows 12</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #1a1a2e;
+      user-select: none;
+    }
+
+    /* ── Desktop ─────────────────────────────────── */
+    #desktop {
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(ellipse at 20% 30%, rgba(138,43,226,.35) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 70%, rgba(0,100,200,.30) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 50%, rgba(20,20,60,1) 0%, #0d1117 100%);
+      position: relative;
+    }
+
+    /* animated aurora */
+    #desktop::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 60% 20%, rgba(100,200,255,.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 30% 80%, rgba(180,100,255,.10) 0%, transparent 50%);
+      animation: aurora 8s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    @keyframes aurora {
+      from { opacity: .6; transform: scale(1); }
+      to   { opacity: 1;  transform: scale(1.05); }
+    }
+
+    /* ── Clock / Date (top-left in RTL) ──────────── */
+    #clock-widget {
+      position: absolute;
+      top: 24px;
+      left: 32px;
+      text-align: left;
+      color: rgba(255,255,255,.92);
+      text-shadow: 0 1px 8px rgba(0,0,0,.6);
+      z-index: 10;
+    }
+    #clock-widget .time {
+      font-size: 52px;
+      font-weight: 200;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    #clock-widget .date {
+      font-size: 14px;
+      font-weight: 400;
+      color: rgba(255,255,255,.65);
+      margin-top: 4px;
+    }
+
+    /* ── Desktop icons ───────────────────────────── */
+    .desktop-icons {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .icon {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background .18s;
+      width: 80px;
+    }
+    .icon:hover { background: rgba(255,255,255,.12); }
+    .icon .icon-img {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+    }
+    .icon span {
+      font-size: 11px;
+      color: rgba(255,255,255,.88);
+      text-shadow: 0 1px 4px rgba(0,0,0,.8);
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    /* ── Floating Taskbar ────────────────────────── */
+    #taskbar {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: rgba(28,28,40,.72);
+      backdrop-filter: blur(32px) saturate(180%);
+      -webkit-backdrop-filter: blur(32px) saturate(180%);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 20px;
+      box-shadow:
+        0 8px 40px rgba(0,0,0,.55),
+        0 0 0 .5px rgba(255,255,255,.06) inset,
+        0 1px 0 rgba(255,255,255,.12) inset;
+      z-index: 100;
+    }
+
+    /* Start button */
+    #start-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background .18s, transform .12s;
+      background: rgba(255,255,255,.08);
+      border: none;
+      position: relative;
+    }
+    #start-btn:hover  { background: rgba(255,255,255,.16); }
+    #start-btn:active { transform: scale(.93); }
+    #start-btn svg { width: 22px; height: 22px; }
+
+    /* taskbar separator */
+    .tb-sep {
+      width: 1px;
+      height: 28px;
+      background: rgba(255,255,255,.12);
+      margin: 0 4px;
+    }
+
+    /* taskbar app buttons */
+    .tb-app {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 22px;
+      position: relative;
+      transition: background .18s, transform .12s;
+      border: none;
+      background: transparent;
+    }
+    .tb-app:hover  { background: rgba(255,255,255,.12); }
+    .tb-app:active { transform: scale(.9); }
+    .tb-app.active::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 4px;
+      background: #60cdff;
+      border-radius: 50%;
+    }
+
+    /* Copilot button */
+    #copilot-btn {
+      background: linear-gradient(135deg, rgba(99,102,241,.4), rgba(139,92,246,.4));
+      border: 1px solid rgba(139,92,246,.5);
+    }
+    #copilot-btn:hover {
+      background: linear-gradient(135deg, rgba(99,102,241,.6), rgba(139,92,246,.6));
+    }
+
+    /* System tray */
+    .tray {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 4px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .18s;
+    }
+    .tray:hover { background: rgba(255,255,255,.10); }
+    .tray-icon { font-size: 14px; }
+    .tray-time { font-size: 11px; color: rgba(255,255,255,.75); margin-right: 6px; line-height: 1.3; text-align: right; }
+
+    /* ── Start Menu ──────────────────────────────── */
+    #start-menu {
+      position: absolute;
+      bottom: 82px;
+      left: 50%;
+      transform: translateX(-50%) scale(.95);
+      width: 680px;
+      background: rgba(24,24,38,.85);
+      backdrop-filter: blur(48px) saturate(200%);
+      -webkit-backdrop-filter: blur(48px) saturate(200%);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 20px;
+      padding: 28px;
+      z-index: 200;
+      display: none;
+      opacity: 0;
+      box-shadow: 0 24px 80px rgba(0,0,0,.7), 0 0 0 .5px rgba(255,255,255,.05) inset;
+      transition: opacity .22s, transform .22s;
+    }
+    #start-menu.open {
+      display: block;
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+      animation: menuIn .22s ease;
+    }
+    @keyframes menuIn {
+      from { opacity: 0; transform: translateX(-50%) scale(.95) translateY(12px); }
+      to   { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+    }
+    .menu-search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      padding: 10px 16px;
+      margin-bottom: 24px;
+    }
+    .menu-search input {
+      background: none;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 14px;
+      flex: 1;
+      font-family: inherit;
+      direction: rtl;
+      text-align: right;
+    }
+    .menu-search input::placeholder { color: rgba(255,255,255,.4); }
+    .menu-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      color: rgba(255,255,255,.45);
+      margin-bottom: 12px;
+    }
+    .pinned-apps {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .pinned-app {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background .18s;
+    }
+    .pinned-app:hover { background: rgba(255,255,255,.10); }
+    .pinned-app .pa-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+    }
+    .pinned-app span { font-size: 11px; color: rgba(255,255,255,.8); text-align: center; }
+    .recent-apps {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .recent-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .18s;
+    }
+    .recent-item:hover { background: rgba(255,255,255,.08); }
+    .recent-item .ri-icon { font-size: 20px; width: 32px; text-align: center; }
+    .recent-item .ri-info { flex: 1; }
+    .recent-item .ri-name { font-size: 13px; color: rgba(255,255,255,.9); }
+    .recent-item .ri-path { font-size: 11px; color: rgba(255,255,255,.4); }
+    .menu-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .user-pill {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 10px; border-radius: 10px; cursor: pointer;
+      transition: background .18s;
+    }
+    .user-pill:hover { background: rgba(255,255,255,.08); }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 600; color: #fff;
+    }
+    .user-name { font-size: 13px; color: rgba(255,255,255,.85); }
+    .power-btn {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: rgba(255,255,255,.06); border: none;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 16px;
+      transition: background .18s;
+    }
+    .power-btn:hover { background: rgba(239,68,68,.25); }
+
+    /* ── App Window ──────────────────────────────── */
+    .win {
+      position: absolute;
+      background: rgba(20,20,35,.82);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 0 .5px rgba(255,255,255,.05) inset;
+      overflow: hidden;
+      min-width: 340px;
+      z-index: 50;
+    }
+    .win-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      cursor: move;
+    }
+    .win-controls { display: flex; gap: 7px; }
+    .wc { width: 13px; height: 13px; border-radius: 50%; cursor: pointer; border: none; }
+    .wc-close  { background: #ff5f57; }
+    .wc-min    { background: #febc2e; }
+    .wc-max    { background: #28c840; }
+    .win-title {
+      flex: 1;
+      text-align: center;
+      font-size: 13px;
+      color: rgba(255,255,255,.7);
+      margin-right: -52px;
+    }
+    .win-body { padding: 16px; }
+
+    /* File Explorer window */
+    #win-explorer { top: 60px; right: 60px; width: 560px; }
+    .explorer-toolbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 0 12px 0;
+    }
+    .exp-btn {
+      padding: 5px 12px; border-radius: 8px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.10);
+      color: rgba(255,255,255,.8); font-size: 12px; cursor: pointer;
+      transition: background .15s;
+    }
+    .exp-btn:hover { background: rgba(255,255,255,.14); }
+    .path-bar {
+      flex: 1; padding: 5px 12px; border-radius: 8px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      color: rgba(255,255,255,.7); font-size: 12px;
+      direction: ltr; text-align: left;
+    }
+    .explorer-content { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .file-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 5px; padding: 10px 6px; border-radius: 10px; cursor: pointer;
+      transition: background .15s;
+    }
+    .file-item:hover { background: rgba(255,255,255,.09); }
+    .file-item .fi-icon { font-size: 32px; }
+    .file-item span { font-size: 11px; color: rgba(255,255,255,.75); text-align: center; }
+
+    /* Copilot panel */
+    #win-copilot { top: 80px; left: 60px; width: 340px; }
+    .copilot-header {
+      display: flex; align-items: center; gap: 10px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      margin-bottom: 14px;
+    }
+    .copilot-logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .copilot-name { font-size: 15px; font-weight: 600; color: #fff; }
+    .copilot-sub  { font-size: 11px; color: rgba(255,255,255,.45); }
+    .chat-bubble {
+      padding: 10px 14px; border-radius: 12px; margin-bottom: 10px;
+      font-size: 13px; line-height: 1.6;
+    }
+    .bubble-ai {
+      background: rgba(99,102,241,.18);
+      border: 1px solid rgba(99,102,241,.25);
+      color: rgba(255,255,255,.9);
+      border-bottom-right-radius: 4px;
+    }
+    .bubble-user {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      color: rgba(255,255,255,.8);
+      margin-right: 24px;
+      border-bottom-left-radius: 4px;
+    }
+    .copilot-input {
+      display: flex; gap: 8px; margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,.07);
+    }
+    .copilot-input input {
+      flex: 1; padding: 9px 12px; border-radius: 10px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      color: #fff; font-size: 13px; font-family: inherit;
+      outline: none; direction: rtl; text-align: right;
+    }
+    .copilot-input input::placeholder { color: rgba(255,255,255,.35); }
+    .send-btn {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border: none; cursor: pointer; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity .15s;
+    }
+    .send-btn:hover { opacity: .85; }
+
+    /* Notification — slides from left in RTL */
+    #notif {
+      position: absolute;
+      top: 24px;
+      left: 32px;
+      width: 320px;
+      background: rgba(24,24,38,.88);
+      backdrop-filter: blur(32px);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      padding: 14px 16px;
+      z-index: 300;
+      box-shadow: 0 8px 32px rgba(0,0,0,.55);
+      animation: slideIn .3s ease;
+      display: none;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(-340px); opacity: 0; }
+      to   { transform: translateX(0);      opacity: 1; }
+    }
+    .notif-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .notif-app { font-size: 11px; color: rgba(255,255,255,.45); }
+    .notif-time { font-size: 11px; color: rgba(255,255,255,.35); margin-right: auto; }
+    .notif-title { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+    .notif-body  { font-size: 12px; color: rgba(255,255,255,.65); }
+    .notif-close {
+      position: absolute; top: 10px; left: 12px;
+      background: none; border: none; color: rgba(255,255,255,.45);
+      cursor: pointer; font-size: 16px;
+    }
+    .notif-close:hover { color: #fff; }
+
+    /* Tooltip */
+    .tb-app[data-tip]:hover::before {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%; transform: translateX(-50%);
+      background: rgba(20,20,35,.95);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      color: rgba(255,255,255,.9);
+      white-space: nowrap;
+      pointer-events: none;
+      backdrop-filter: blur(12px);
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<div id="desktop">
+
+  <!-- שעון -->
+  <div id="clock-widget">
+    <div class="time" id="clock-time">12:00</div>
+    <div class="date" id="clock-date">יום חמישי, 5 ביוני 2026</div>
+  </div>
+
+  <!-- אייקוני שולחן עבודה -->
+  <div class="desktop-icons">
+    <div class="icon"><div class="icon-img">🗂️</div><span>המחשב שלי</span></div>
+    <div class="icon"><div class="icon-img">🗑️</div><span>סל המחזור</span></div>
+    <div class="icon"><div class="icon-img">📁</div><span>מסמכים</span></div>
+  </div>
+
+  <!-- חלון סייר הקבצים -->
+  <div class="win" id="win-explorer">
+    <div class="win-titlebar">
+      <div class="win-controls">
+        <button class="wc wc-close" onclick="document.getElementById('win-explorer').style.display='none'"></button>
+        <button class="wc wc-min"></button>
+        <button class="wc wc-max"></button>
+      </div>
+      <span class="win-title">סייר הקבצים</span>
+    </div>
+    <div class="win-body">
+      <div class="explorer-toolbar">
+        <button class="exp-btn">→</button>
+        <button class="exp-btn">←</button>
+        <button class="exp-btn">↑</button>
+        <div class="path-bar">C:\Users\משתמש\מסמכים</div>
+        <button class="exp-btn">🔍</button>
+      </div>
+      <div class="explorer-content">
+        <div class="file-item"><div class="fi-icon">📁</div><span>שולחן עבודה</span></div>
+        <div class="file-item"><div class="fi-icon">📁</div><span>הורדות</span></div>
+        <div class="file-item"><div class="fi-icon">📁</div><span>תמונות</span></div>
+        <div class="file-item"><div class="fi-icon">📁</div><span>סרטונים</span></div>
+        <div class="file-item"><div class="fi-icon">📄</div><span>דוח.docx</span></div>
+        <div class="file-item"><div class="fi-icon">📊</div><span>תקציב.xlsx</span></div>
+        <div class="file-item"><div class="fi-icon">🖼️</div><span>תמונה.png</span></div>
+        <div class="file-item"><div class="fi-icon">🎵</div><span>מוזיקה.mp3</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- חלון קופיילוט -->
+  <div class="win" id="win-copilot">
+    <div class="win-titlebar">
+      <div class="win-controls">
+        <button class="wc wc-close" onclick="document.getElementById('win-copilot').style.display='none'"></button>
+        <button class="wc wc-min"></button>
+        <button class="wc wc-max"></button>
+      </div>
+      <span class="win-title">קופיילוט</span>
+    </div>
+    <div class="win-body">
+      <div class="copilot-header">
+        <div class="copilot-logo">✨</div>
+        <div>
+          <div class="copilot-name">Windows קופיילוט</div>
+          <div class="copilot-sub">עוזר מבוסס בינה מלאכותית</div>
+        </div>
+      </div>
+      <div class="chat-bubble bubble-ai">שלום! אני קופיילוט, העוזר החכם המובנה ב-Windows 12. במה אוכל לעזור לך היום?</div>
+      <div class="chat-bubble bubble-user">מה חדש ב-Windows 12?</div>
+      <div class="chat-bubble bubble-ai">Windows 12 מביאה שורת משימות צפה, שילוב בינה מלאכותית בכל מקום, תפריט התחל המחודש ותכונות קופיילוט עמוקות יותר בכל אפליקציה. 🚀</div>
+      <div class="copilot-input">
+        <input type="text" placeholder="שאל את קופיילוט הכל…" id="copilot-input-field" />
+        <button class="send-btn" onclick="sendCopilot()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- התראה -->
+  <div id="notif">
+    <button class="notif-close" onclick="document.getElementById('notif').style.display='none'">✕</button>
+    <div class="notif-header">
+      <span style="font-size:14px">📬</span>
+      <span class="notif-app">דואר</span>
+      <span class="notif-time">עכשיו</span>
+    </div>
+    <div class="notif-title">הודעה חדשה מאלכס</div>
+    <div class="notif-body">היי, תוכל לבדוק את קבצי העיצוב האחרונים?</div>
+  </div>
+
+  <!-- תפריט התחל -->
+  <div id="start-menu">
+    <div class="menu-search">
+      <span>🔍</span>
+      <input type="text" placeholder="חפש אפליקציות, קבצים, הגדרות…" />
+    </div>
+    <div class="menu-section-title">מוצמד</div>
+    <div class="pinned-apps">
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(0,120,215,.3)">🌐</div><span>Edge</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(0,180,0,.2)">📊</div><span>Excel</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(220,50,50,.2)">📝</div><span>Word</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(255,150,0,.2)">📧</div><span>דואר</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(100,100,220,.3)">📅</div><span>לוח שנה</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(0,200,200,.2)">🎵</div><span>Spotify</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(139,92,246,.3)">✨</div><span>קופיילוט</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(255,255,255,.08)">⚙️</div><span>הגדרות</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(255,255,255,.08)">📁</div><span>סייר</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(0,120,215,.2)">🗓️</div><span>Teams</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(255,255,255,.08)">🧮</div><span>מחשבון</span></div>
+      <div class="pinned-app"><div class="pa-icon" style="background:rgba(255,255,255,.08)">📷</div><span>מצלמה</span></div>
+    </div>
+    <div class="menu-section-title">מומלץ</div>
+    <div class="recent-apps">
+      <div class="recent-item"><div class="ri-icon">📄</div><div class="ri-info"><div class="ri-name">דוח_רבעון2_2026.docx</div><div class="ri-path">מסמכים • לפני שעתיים</div></div></div>
+      <div class="recent-item"><div class="ri-icon">🖼️</div><div class="ri-info"><div class="ri-name">עיצוב_v3.png</div><div class="ri-path">הורדות • אתמול</div></div></div>
+      <div class="recent-item"><div class="ri-icon">📊</div><div class="ri-info"><div class="ri-name">תקציב_2026.xlsx</div><div class="ri-path">מסמכים • לפני 3 ימים</div></div></div>
+    </div>
+    <div class="menu-footer">
+      <div class="user-pill">
+        <div class="avatar">מ</div>
+        <span class="user-name">משתמש</span>
+      </div>
+      <button class="power-btn" title="כיבוי">⏻</button>
+    </div>
+  </div>
+
+  <!-- שורת המשימות הצפה -->
+  <div id="taskbar">
+
+    <!-- התחל -->
+    <button id="start-btn" onclick="toggleStart()" title="התחל">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2"  y="2"  width="9" height="9" rx="1.5" fill="#60cdff"/>
+        <rect x="13" y="2"  width="9" height="9" rx="1.5" fill="#60cdff" opacity=".8"/>
+        <rect x="2"  y="13" width="9" height="9" rx="1.5" fill="#60cdff" opacity=".8"/>
+        <rect x="13" y="13" width="9" height="9" rx="1.5" fill="#60cdff" opacity=".6"/>
+      </svg>
+    </button>
+
+    <!-- חיפוש -->
+    <button class="tb-app" data-tip="חיפוש">🔍</button>
+
+    <div class="tb-sep"></div>
+
+    <!-- אפליקציות מוצמדות -->
+    <button class="tb-app active" data-tip="סייר הקבצים"
+      onclick="toggleWin('win-explorer')">📁</button>
+    <button class="tb-app" data-tip="Microsoft Edge">🌐</button>
+    <button class="tb-app" data-tip="דואר" onclick="showNotif()">📧</button>
+    <button class="tb-app" data-tip="הגדרות">⚙️</button>
+    <button class="tb-app" data-tip="Microsoft Store">🛍️</button>
+    <button class="tb-app" data-tip="תמונות">🖼️</button>
+
+    <div class="tb-sep"></div>
+
+    <!-- קופיילוט -->
+    <button class="tb-app" id="copilot-btn" data-tip="קופיילוט"
+      onclick="toggleWin('win-copilot')">✨</button>
+
+    <div class="tb-sep"></div>
+
+    <!-- מגש המערכת -->
+    <div class="tray">
+      <span class="tray-icon">🔊</span>
+      <span class="tray-icon">📶</span>
+      <span class="tray-icon">🔋</span>
+      <span class="tray-time" id="tray-time">12:00<br>5/6/2026</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── שעון ─────────────────────────────────────────────
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    const timeStr = `${h}:${m}`;
+    document.getElementById('clock-time').textContent = timeStr;
+    document.getElementById('tray-time').innerHTML =
+      `${timeStr}<br>${now.toLocaleDateString('he-IL')}`;
+    const dateStr = now.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('clock-date').textContent = dateStr;
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  // ── תפריט התחל ───────────────────────────────────────
+  let startOpen = false;
+  function toggleStart() {
+    const menu = document.getElementById('start-menu');
+    startOpen = !startOpen;
+    if (startOpen) {
+      menu.style.display = 'block';
+      requestAnimationFrame(() => menu.classList.add('open'));
+    } else {
+      menu.classList.remove('open');
+      setTimeout(() => { menu.style.display = 'none'; }, 220);
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    if (startOpen && !document.getElementById('start-menu').contains(e.target)
+        && e.target.id !== 'start-btn' && !document.getElementById('start-btn').contains(e.target)) {
+      toggleStart();
+    }
+  });
+
+  // ── הצג / הסתר חלון ──────────────────────────────────
+  function toggleWin(id) {
+    const win = document.getElementById(id);
+    win.style.display = (win.style.display === 'none') ? 'block' : 'none';
+  }
+
+  // ── התראה ────────────────────────────────────────────
+  function showNotif() {
+    const n = document.getElementById('notif');
+    n.style.display = 'block';
+    n.style.animation = 'none';
+    void n.offsetWidth;
+    n.style.animation = 'slideIn .3s ease';
+    setTimeout(() => { n.style.display = 'none'; }, 5000);
+  }
+
+  // ── צ'אט קופיילוט ────────────────────────────────────
+  function sendCopilot() {
+    const input = document.getElementById('copilot-input-field');
+    const val = input.value.trim();
+    if (!val) return;
+    const panel = document.querySelector('#win-copilot .win-body');
+    const userBubble = document.createElement('div');
+    userBubble.className = 'chat-bubble bubble-user';
+    userBubble.textContent = val;
+    panel.insertBefore(userBubble, document.querySelector('.copilot-input'));
+    input.value = '';
+    setTimeout(() => {
+      const aiBubble = document.createElement('div');
+      aiBubble.className = 'chat-bubble bubble-ai';
+      aiBubble.textContent = 'אני כאן לעזור! זו שאלה מצוינת. תן לי לבדוק את זה עבורך. ✨';
+      panel.insertBefore(aiBubble, document.querySelector('.copilot-input'));
+    }, 600);
+  }
+  document.getElementById('copilot-input-field').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendCopilot();
+  });
+
+  // ── גרירת חלונות ─────────────────────────────────────
+  document.querySelectorAll('.win').forEach(win => {
+    const bar = win.querySelector('.win-titlebar');
+    let dragging = false, ox = 0, oy = 0;
+    bar.addEventListener('mousedown', e => {
+      dragging = true;
+      ox = e.clientX - win.offsetLeft;
+      oy = e.clientY - win.offsetTop;
+      win.style.zIndex = 60;
+    });
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      win.style.left = (e.clientX - ox) + 'px';
+      win.style.top  = (e.clientY - oy) + 'px';
+      win.style.right = 'auto';
+    });
+    document.addEventListener('mouseup', () => { dragging = false; });
+  });
+
+  // הצג התראה אחרי 2 שניות
+  setTimeout(showNotif, 2000);
+</script>
+</body>
+</html>

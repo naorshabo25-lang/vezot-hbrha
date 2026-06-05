@@ -1,0 +1,11 @@
+﻿server/.env
+server/__pycache__/
+server/fuel_orders.db
+server/ngrok.exe
+server/server.log
+server/server.err
+dashboard/node_modules/
+firecrawl-mcp-server/
+playwright-mcp/
+.claude/
+.mcp.json

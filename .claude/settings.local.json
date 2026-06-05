@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Path \"c:\\\\מערכת ניהול וזאת הברכה\" -Force | Where-Object { -not $_.PSIsContainer -or $_.Name -ne 'node_modules' } | ForEach-Object { if \\($_.PSIsContainer\\) { \"📁 $\\($_.Name\\)/\" } else { \"📄 $\\($_.Name\\)\" } })",
+      "Bash(npx vite *)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(node -e ' *)",
+      "Bash(npm install *)",
+      "Bash(npx playwright *)"
+    ]
+  }
+}

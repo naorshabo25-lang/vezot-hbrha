@@ -1,0 +1,673 @@
+{
+  "operationalExpenses": [
+    {
+      "name": "אחזקת ציוד",
+      "amount": 9107.69,
+      "note": ""
+    },
+    {
+      "name": "אחזקה",
+      "amount": 53800.91,
+      "note": ""
+    },
+    {
+      "name": "ביגוד נהגים",
+      "amount": 4561.89,
+      "note": ""
+    },
+    {
+      "name": "ביטוחים",
+      "amount": 18664.73,
+      "note": ""
+    },
+    {
+      "name": "קצין בטיחות",
+      "amount": 13220.34,
+      "note": ""
+    },
+    {
+      "name": "הדפסות",
+      "amount": 12600.0,
+      "note": ""
+    },
+    {
+      "name": "הוצאות משפטיות",
+      "amount": 8305.08,
+      "note": ""
+    },
+    {
+      "name": "משרדיות",
+      "amount": 38573.1,
+      "note": ""
+    },
+    {
+      "name": "שירותי מידע",
+      "amount": 15000.0,
+      "note": ""
+    },
+    {
+      "name": "פרסום",
+      "amount": 211637.82,
+      "note": ""
+    },
+    {
+      "name": "אגרות",
+      "amount": 4573.78,
+      "note": ""
+    },
+    {
+      "name": "הובלות",
+      "amount": 200112.29,
+      "note": ""
+    },
+    {
+      "name": "הוצאות בר מים",
+      "amount": 3162.9,
+      "note": ""
+    },
+    {
+      "name": "שי ומתנה לחג לעובדים",
+      "amount": 30002.0,
+      "note": ""
+    },
+    {
+      "name": "שיווק",
+      "amount": 5771.18,
+      "note": ""
+    },
+    {
+      "name": "קורסים והשתלמות",
+      "amount": 6389.84,
+      "note": ""
+    },
+    {
+      "name": "אחזקת מחשבים",
+      "amount": 10187.04,
+      "note": ""
+    },
+    {
+      "name": "הוצ טלפון",
+      "amount": 9751.52,
+      "note": ""
+    },
+    {
+      "name": "כיבודים",
+      "amount": 14122.25,
+      "note": ""
+    },
+    {
+      "name": "קנסות",
+      "amount": 5475.0,
+      "note": ""
+    },
+    {
+      "name": "הנהלת חשבונות",
+      "amount": 16500.0,
+      "note": ""
+    },
+    {
+      "name": "עיבוד שכר חילן",
+      "amount": 13778.19,
+      "note": ""
+    },
+    {
+      "name": "שירות תוכנה הנהח",
+      "amount": 27277.13,
+      "note": ""
+    },
+    {
+      "name": "הוצאות תקשורת משאיות",
+      "amount": 3574.27,
+      "note": ""
+    },
+    {
+      "name": "הוצאות איתוראן",
+      "amount": 11863.89,
+      "note": ""
+    },
+    {
+      "name": "יעוץ עסקי",
+      "amount": 4957.62,
+      "note": ""
+    },
+    {
+      "name": "הובלות דלקים",
+      "amount": 209202.54,
+      "note": ""
+    },
+    {
+      "name": "אחזקת מגרש עטרות",
+      "amount": 65442.12,
+      "note": ""
+    },
+    {
+      "name": "בדיקת פוליגרף",
+      "amount": 11262.71,
+      "note": ""
+    },
+    {
+      "name": "השכרת סילברדו",
+      "amount": 42000.0,
+      "note": ""
+    },
+    {
+      "name": "שכירות מגרש עטרות",
+      "amount": 226500.0,
+      "note": ""
+    },
+    {
+      "name": "הוצאות משאיות",
+      "amount": 318066.27,
+      "note": ""
+    },
+    {
+      "name": "הוצאות מגרש לוגיסטי",
+      "amount": 88396.16,
+      "note": ""
+    },
+    {
+      "name": "הוצאות רכב",
+      "amount": 135651.41,
+      "note": ""
+    },
+    {
+      "name": "ביטוחי רכב ורישיונות",
+      "amount": 130923.53,
+      "note": ""
+    },
+    {
+      "name": "דמי ניהול בית יאיר",
+      "amount": 420000.0,
+      "note": ""
+    },
+    {
+      "name": "הוצאות מימון",
+      "amount": 210757.82,
+      "note": ""
+    },
+    {
+      "name": "הוצאות ביובית",
+      "amount": 191098.28,
+      "note": ""
+    }
+  ],
+  "salaries": [
+    {
+      "name": "משכורות",
+      "amount": 2264390.29,
+      "note": ""
+    },
+    {
+      "name": "הוצאות גמל",
+      "amount": 303920.48,
+      "note": ""
+    },
+    {
+      "name": "הוצאות ביטוח לאומי",
+      "amount": 146058.14,
+      "note": ""
+    },
+    {
+      "name": "ביטוח לאומי מילואים",
+      "amount": 722692.0,
+      "note": ""
+    },
+    {
+      "name": "משכורות ביובית",
+      "amount": 931074.69,
+      "note": ""
+    },
+    {
+      "name": "ביטוח לאומי ביובית",
+      "amount": 58985.8,
+      "note": ""
+    },
+    {
+      "name": "גמל ביובית",
+      "amount": 57666.77,
+      "note": ""
+    }
+  ],
+  "fuelPurchases": [
+    {
+      "name": "S0S אנרגיה אקספרס בע\"מ",
+      "amount": 1280764.9,
+      "liters": 0,
+      "pricePerLiter": 0,
+      "note": ""
+    },
+    {
+      "name": "קפיטל אנרג'י - מקדמות",
+      "amount": 1185000.0,
+      "liters": 0,
+      "pricePerLiter": 0,
+      "note": ""
+    },
+    {
+      "name": "קפיטל אנרג'י פריים י.ה בע\"מ",
+      "amount": 269888.45,
+      "liters": 0,
+      "pricePerLiter": 0,
+      "note": ""
+    },
+    {
+      "name": "טן חברה לדלק בע\"מ",
+      "amount": 173288.63,
+      "liters": 0,
+      "pricePerLiter": 0,
+      "note": ""
+    },
+    {
+      "name": "ברדוגו אנרגיה שיווק והובלת דלקים",
+      "amount": 42855.0,
+      "liters": 0,
+      "pricePerLiter": 0,
+      "note": ""
+    },
+    {
+      "name": "דלקול בע\"מ",
+      "amount": 2719.9,
+      "liters": 0,
+      "pricePerLiter": 0,
+      "note": ""
+    },
+    {
+      "name": "סונול ישראל בע\"מ",
+      "amount": 127.83,
+      "liters": 0,
+      "pricePerLiter": 0,
+      "note": ""
+    }
+  ],
+  "clients": [
+    {
+      "name": "דניה ח.ש עבודות עפר ותשתיות (2012)",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 326175.0
+    },
+    {
+      "name": "דניאל הרוש דיפון חפירה ופיתוח בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 71424.0
+    },
+    {
+      "name": "הנתיב החדש בטיחות בתנועה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 5271.5
+    },
+    {
+      "name": "א ד אקולוגיה עבודות עפר בניה ופיתוח",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 6346.0
+    },
+    {
+      "name": "טארגט מ.ע. לבניה ואחזקות בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 6324.0
+    },
+    {
+      "name": "סי 4 החוצבים בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 88639.0
+    },
+    {
+      "name": "ב ש ביסוס והנדסה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 531771.9
+    },
+    {
+      "name": "בטון קאט - רוימי אלישיב",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 50000.0
+    },
+    {
+      "name": "מרציאנו רון",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 6000.0
+    },
+    {
+      "name": "ערן י ד בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 10837.0
+    },
+    {
+      "name": "איברהים סאלם - פרגולת הגג",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 14634.0
+    },
+    {
+      "name": "סוסובר עופר",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 3321.0
+    },
+    {
+      "name": "מחצבת ירושלים הראשונה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 55127.42
+    },
+    {
+      "name": "אבן עמי מחצבים בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 331342.0
+    },
+    {
+      "name": "ש ש רובבשי בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 14230.0
+    },
+    {
+      "name": "גשר חפירה וחציבה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 48970.0
+    },
+    {
+      "name": "עלי נגאגרה תשתיות בטון והשקעות",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 24305.0
+    },
+    {
+      "name": "מולר ג'רמני יבוא ושיווק כלי עבודה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 7311.0
+    },
+    {
+      "name": "מרכז שירות ש חדד בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 54688.0
+    },
+    {
+      "name": "כ וואן פטרול ואנרגיה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 2360.0
+    },
+    {
+      "name": "ע נ חומרי בניין",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 1617.05
+    },
+    {
+      "name": "אלישר הנדסה אזרחית בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 38834.0
+    },
+    {
+      "name": "א.א.סטילווד בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 12662.0
+    },
+    {
+      "name": "קפיטל אנרג'י פריים י.ה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 314244.0
+    },
+    {
+      "name": "הובלות אחים ליית",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 33308.98
+    },
+    {
+      "name": "י.נ פתרונות תדלוק בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 12592.0
+    },
+    {
+      "name": "מ. בראשי תשתיות (2015) בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 20000.0
+    },
+    {
+      "name": "ס.נ.ה הנדסה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 42826.0
+    },
+    {
+      "name": "ע.א הובלות ועבודות עפר",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 2042.49
+    },
+    {
+      "name": "אשד ש.ד.י. תשתיות וקידוח בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 49313.34
+    },
+    {
+      "name": "טן חברה לדלק בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 92879.0
+    },
+    {
+      "name": "מ.ה. כלבו לבניה יוסף טל 71 לוד בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 71385.0
+    },
+    {
+      "name": "ברדוגו אנרגיה ושיווק דלקים",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 1608.0
+    },
+    {
+      "name": "צבאג השקעות ופיתוח בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 125776.0
+    },
+    {
+      "name": "מבנה חלומות - ייזום ובניה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 3482.0
+    },
+    {
+      "name": "אור השבת",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 62783.3
+    },
+    {
+      "name": "יהודה רחמים חברה לבניין בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 4651.0
+    },
+    {
+      "name": "נ.ש.ר עבודות קרקע והתזת בטון בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 27358.0
+    },
+    {
+      "name": "ד.מ.שירותי הובלות",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 4509.75
+    },
+    {
+      "name": "ברזאני אבני דרך ביצוע מגורים בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 20067.0
+    },
+    {
+      "name": "אלדן מלונות ונופש בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 2124.0
+    },
+    {
+      "name": "י.ד ברזאני בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 198179.4
+    },
+    {
+      "name": "דאקסטון קפיטל בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 781.0
+    },
+    {
+      "name": "בית הצעצוע בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 23530.0
+    },
+    {
+      "name": "שירן כהן",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 100000.0
+    },
+    {
+      "name": "מ.ר.ריבל בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 10505.0
+    },
+    {
+      "name": "הנסון ישראל בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 2596.0
+    },
+    {
+      "name": "מאיר ודוד כהן בניין והשקעות בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 3438.0
+    },
+    {
+      "name": "מ.ג.א.ד בניין והשקעות בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 3009.0
+    },
+    {
+      "name": "מועצה מקומית קרית יערים",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 4469.2
+    },
+    {
+      "name": "משכן נוף החומות בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 2671.0
+    },
+    {
+      "name": "טר ארמה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 4130.0
+    },
+    {
+      "name": "אשטרום ירושלים בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 2950.0
+    },
+    {
+      "name": "הפסטה בשדרה בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 2360.0
+    },
+    {
+      "name": "צרפתי שמעון ביצוע (2009) בע\"מ",
+      "liters": 0,
+      "salePrice": 0,
+      "purchasePrice": 0,
+      "profit": 3776.0
+    }
+  ],
+  "obligo": {},
+  "currentMonthId": "2026-05",
+  "currentMonthLabel": "מאי 2026",
+  "monthHistory": {}
+}

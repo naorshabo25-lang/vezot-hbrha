@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מערכת הזמנות סולר</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Heebo', Arial, sans-serif; background: #d8e0ec; color: #1a1a2e; display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: fixed; right: 0; top: 0; bottom: 0; width: 240px;
+      background: #1a2236; display: flex; flex-direction: column; z-index: 200;
+      box-shadow: -3px 0 18px rgba(0,0,0,0.22);
+    }
+    .sidebar-logo {
+      padding: 18px 14px 14px; border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sidebar-logo img { height: 86px; object-fit: contain; border-radius: 8px; background: rgba(255,255,255,0.07); padding: 6px; }
+    .sidebar-nav { flex: 1; padding: 10px 10px; overflow-y: auto; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      border-radius: 8px; cursor: pointer; color: #8da4be; font-size: 0.92em;
+      font-weight: 500; transition: all 0.18s; margin-bottom: 2px;
+      border: none; background: transparent; width: 100%; text-align: right;
+      font-family: inherit;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.06); color: #cbd5e1; }
+    .nav-item.active { background: rgba(229,57,53,0.18); color: #ff7070; font-weight: 700; box-shadow: none; }
+    .nav-icon { font-size: 1em; width: 18px; flex-shrink: 0; }
+    .sidebar-footer { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.07); color: rgba(255,255,255,0.25); font-size: 0.75em; display:flex; align-items:center; justify-content:space-between; }
+
+    /* ── Main ── */
+    .main { margin-right: 240px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar {
+      background: white; padding: 14px 28px;
+      border-bottom: 1px solid #cdd5e0;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .topbar-title { font-size: 1.05em; font-weight: 700; color: #374151; }
+    .topbar-right { display: flex; align-items: center; gap: 16px; }
+    .topbar-clock { font-size: 1.15em; font-weight: 700; color: #dc2626; font-variant-numeric: tabular-nums; }
+    .topbar-date-str { font-size: 0.82em; color: #9ca3af; }
+    .container { padding: 24px 28px; flex: 1; }
+
+    /* ── Sections ── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: white; border-radius: 16px; padding: 22px 24px;
+      margin-bottom: 20px;
+      border: 1px solid #cdd5e0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .card h2 {
+      font-size: 0.95em; font-weight: 700; color: #374151;
+      margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #eef0f3;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card h2::before {
+      content: ''; width: 3px; height: 16px;
+      background: #dc2626; border-radius: 2px; display: inline-block; flex-shrink: 0;
+    }
+
+    /* ── Stat cards ── */
+    .stats { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+    .stat-card {
+      background: white; border-radius: 16px; padding: 18px 22px;
+      flex: 1; min-width: 120px;
+      border: 1px solid #cdd5e0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .stat-card .num { font-size: 2em; font-weight: 300; color: #dc2626; line-height: 1.1; }
+    .stat-card .label { font-size: 0.78em; color: #9ca3af; font-weight: 500; margin-top: 5px; }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; font-size: 0.89em; }
+    th {
+      background: #fafafa; text-align: right; padding: 10px 14px;
+      font-weight: 600; color: #6b7280; font-size: 0.8em;
+      letter-spacing: 0.03em; border-bottom: 1px solid #f0f0f0;
+    }
+    td { padding: 11px 14px; border-bottom: 1px solid #f9fafb; color: #4b5563; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #fef9f9; }
+    td strong { color: #1f2937; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 6px 13px; border-radius: 7px; border: none;
+      cursor: pointer; font-size: 0.83em; font-weight: 600;
+      font-family: inherit; transition: all 0.18s;
+    }
+    .btn-primary { background: #dc2626; color: white; }
+    .btn-primary:hover { background: #b91c1c; box-shadow: 0 3px 10px rgba(220,38,38,0.25); transform: translateY(-1px); }
+    .btn-danger { background: #fef2f2; color: #dc2626; font-size: 0.78em; padding: 4px 9px; border-radius: 5px; border: none; }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-sm { font-size: 0.78em; padding: 4px 10px; }
+    #settings .btn { font-size: 0.76em; padding: 4px 11px; border-radius: 6px; }
+    #settings .form-row input, #settings .form-row select { padding: 7px 10px; font-size: 0.88em; }
+    #settings .card h2 { font-size: 0.78em; }
+    #drivers .card h2  { font-size: 0.82em; }
+    #emails  .card h2  { font-size: 0.82em; }
+
+    /* ── Forms ── */
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .form-row input, .form-row select {
+      flex: 1; min-width: 160px; padding: 9px 13px;
+      border: 1.5px solid #e5e7eb; border-radius: 8px;
+      font-size: 0.92em; font-family: inherit;
+      background: #fafafa; color: #1f2937;
+      transition: border-color 0.18s, background 0.18s;
+    }
+    .form-row input::placeholder { color: #9ca3af; }
+    .form-row input:focus, .form-row select:focus {
+      outline: none; border-color: #dc2626; background: white;
+      box-shadow: 0 0 0 3px rgba(220,38,38,0.08);
+    }
+    select.status-select {
+      padding: 5px 9px; border-radius: 6px; border: 1.5px solid #e5e7eb;
+      font-size: 0.83em; background: #fafafa; font-family: inherit; color: #6b7280;
+    }
+
+    /* ── Badges ── */
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.78em; font-weight: 700; }
+    .badge-ממתין { background: #fff7ed; color: #d97706; }
+    .badge-אושר  { background: #f0fdf4; color: #16a34a; }
+    .badge-נשלח  { background: #eff6ff; color: #2563eb; }
+    .badge-הושלם { background: #faf5ff; color: #9333ea; }
+
+    /* ── Orders sub-tabs ── */
+    .orders-subtabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .subtab {
+      background: #f9fafb; border: 1.5px solid #f0f0f0; color: #6b7280;
+      padding: 7px 18px; border-radius: 8px; cursor: pointer;
+      font-size: 0.88em; font-weight: 600; font-family: inherit; transition: all 0.18s;
+    }
+    .subtab.active { background: #dc2626; color: white; border-color: #dc2626; box-shadow: 0 3px 10px rgba(220,38,38,0.25); }
+    .subtab:hover:not(.active) { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+    /* ── Progress ── */
+    .progress-wrap { background: #f3f4f6; border-radius: 20px; height: 7px; width: 100%; overflow: hidden; margin: 6px 0 2px; }
+    .progress-bar { height: 100%; border-radius: 20px; background: linear-gradient(90deg,#dc2626,#f87171); transition: width 0.4s; }
+
+    /* ── Tasks ── */
+    .task-day-header {
+      font-size: 0.78em; font-weight: 700; color: #dc2626;
+      padding: 6px 0 4px; border-bottom: 1px solid #f3f4f6; margin: 12px 0 6px;
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .task-row { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f9fafb; font-size: 0.87em; }
+    .task-row:last-child { border-bottom: none; }
+    .task-num { background: #fef2f2; color: #dc2626; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.78em; font-weight: 700; flex-shrink: 0; }
+    .task-info { flex: 1; }
+    .task-info strong { display: block; color: #1f2937; }
+    .task-info span { color: #6b7280; font-size: 0.9em; }
+    .task-qty { color: #374151; font-weight: 600; font-size: 0.9em; min-width: 70px; text-align: center; }
+    .status-pill {
+      padding: 4px 12px; border-radius: 20px; font-size: 0.76em; font-weight: 700;
+      white-space: nowrap; border: none; cursor: pointer; font-family: inherit;
+    }
+    .s-ממתין { background: #fff7ed; color: #d97706; }
+    .s-אושר  { background: #f0fdf4; color: #16a34a; }
+    .s-נשלח  { background: #eff6ff; color: #2563eb; }
+    .s-הושלם { background: #faf5ff; color: #9333ea; }
+
+    /* ── Misc ── */
+    .empty { text-align: center; color: #9ca3af; padding: 36px; font-size: 0.9em; }
+    .driver-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+    .driver-name-badge { font-size: 1.05em; font-weight: 700; color: #1f2937; }
+    .tag { background: #f3f4f6; color: #6b7280; padding: 2px 10px; border-radius: 20px; font-size: 0.78em; font-weight: 500; }
+    .tag-red { background: #fef2f2; color: #dc2626; }
+
+    textarea {
+      width: 100%; min-height: 140px; padding: 12px 13px;
+      border: 1.5px solid #e5e7eb; border-radius: 8px;
+      font-family: inherit; font-size: 0.92em; resize: vertical;
+      direction: rtl; background: #fafafa; color: #1f2937;
+      transition: border-color 0.18s;
+    }
+    textarea:focus { outline: none; border-color: #dc2626; background: white; box-shadow: 0 0 0 3px rgba(220,38,38,0.08); }
+
+    input[type="file"] {
+      padding: 8px; border: 1.5px dashed #e5e7eb; border-radius: 8px;
+      background: #fafafa; font-family: inherit; color: #6b7280;
+    }
+
+    /* Calendar */
+    #cal-body td { cursor: pointer; border-radius: 5px; transition: background 0.1s; color: #4b5563; }
+    #cal-body td:hover { background: #fef2f2 !important; color: #dc2626 !important; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #f9fafb; }
+    ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #dc2626; }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<div class="sidebar">
+  <div class="sidebar-logo" style="justify-content:center">
+    <img src="/static/logo.jpeg" alt="לוגו" style="height:90px" />
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" onclick="showSection('home', this)">
+      <span class="nav-icon">&#8962;</span> דף הבית
+    </button>
+    <button class="nav-item" onclick="showSection('orders', this)">
+      <span class="nav-icon">&#9776;</span> הזמנות
+    </button>
+    <button class="nav-item" onclick="showSection('customers', this)">
+      <span class="nav-icon">&#9786;</span> לקוחות
+    </button>
+    <button class="nav-item" onclick="showSection('potential', this)">
+      <span class="nav-icon">&#9733;</span> לקוחות פוטנציאלים
+    </button>
+    <button class="nav-item" onclick="showSection('drivers', this)">
+      <span class="nav-icon">&#9654;</span> נהגים
+    </button>
+    <button class="nav-item" onclick="showSection('tasks', this)">
+      <span class="nav-icon">&#10003;</span> משימות
+    </button>
+    <button class="nav-item" onclick="showSection('emails', this)">
+      <span class="nav-icon">&#9993;</span> מיילים
+    </button>
+    <button class="nav-item" onclick="showSection('settings', this)">
+      <span class="nav-icon">&#9881;</span> הגדרות
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,0.2)"></span>זאת הברכה</span>
+    <span style="background:rgba(255,255,255,0.08);border-radius:4px;padding:1px 6px;font-size:0.85em;font-weight:700">v2</span>
+  </div>
+</div>
+
+<!-- ── Main ── -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">דף הבית</div>
+    <div class="topbar-right">
+      <span class="topbar-date-str" id="clock-date"></span>
+      <span class="topbar-clock" id="clock-time"></span>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- ── דף הבית ── -->
+    <div id="home" class="section active">
+
+      <!-- שורת KPIs -->
+      <div id="home-stats" style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px"></div>
+
+      <!-- גריד ראשי -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 220px;gap:14px;align-items:start">
+
+        <!-- הזמנות היום -->
+        <div class="card" style="margin-bottom:0;grid-column:1/3">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <h2 style="margin-bottom:0;border-bottom:none;padding-bottom:0">הזמנות היום</h2>
+            <button class="btn btn-sm" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0" onclick="showSectionByName('orders')">כל ההזמנות →</button>
+          </div>
+          <div id="home-today-orders"><div class="empty">טוען...</div></div>
+        </div>
+
+        <!-- טור ימין -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <!-- שעון -->
+          <div style="background:#0f172a;border-radius:14px;padding:18px 16px;text-align:center">
+            <div id="clock-day" style="font-size:0.72em;color:rgba(255,255,255,0.4);font-weight:600;letter-spacing:0.5px;margin-bottom:4px"></div>
+            <div id="home-clock" style="font-size:2.2em;font-weight:800;color:#fff;letter-spacing:2px;font-variant-numeric:tabular-nums"></div>
+            <div id="home-date" style="font-size:0.72em;color:rgba(255,255,255,0.35);margin-top:4px"></div>
+          </div>
+
+          <!-- ניווט -->
+          <div class="card" style="margin-bottom:0;padding:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <button onclick="showSectionByName('orders')"    style="padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:0.78em;font-weight:700;background:#fef2f2;color:#dc2626;text-align:center">☰<br>הזמנות</button>
+              <button onclick="showSectionByName('tasks')"     style="padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:0.78em;font-weight:700;background:#f5f3ff;color:#7c3aed;text-align:center">✓<br>משימות</button>
+              <button onclick="showSectionByName('drivers')"   style="padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:0.78em;font-weight:700;background:#f0f9ff;color:#0369a1;text-align:center">▶<br>נהגים</button>
+              <button onclick="showSectionByName('customers')" style="padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:0.78em;font-weight:700;background:#f0fdf4;color:#15803d;text-align:center">◉<br>לקוחות</button>
+            </div>
+          </div>
+
+          <!-- לוח שנה -->
+          <div class="card" style="margin-bottom:0;padding:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <button class="btn btn-sm" style="background:#f1f5f9;color:#374151" onclick="changeMonth(-1)">›</button>
+              <strong id="cal-title" style="font-size:0.82em;color:#1e293b"></strong>
+              <button class="btn btn-sm" style="background:#f1f5f9;color:#374151" onclick="changeMonth(1)">‹</button>
+            </div>
+            <table style="text-align:center;font-size:0.78em;width:100%">
+              <thead><tr id="cal-days-header"></tr></thead>
+              <tbody id="cal-body"></tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ליטרים לפי נהג -->
+      <div style="margin-top:14px" id="home-driver-breakdown"></div>
+
+    </div>
+
+    <!-- ── הזמנות ── -->
+    <div id="orders" class="section">
+
+      <!-- stats strip -->
+      <div id="stats" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap"></div>
+
+      <!-- טופס הוספה מקופל -->
+      <details class="card" style="margin-bottom:12px;padding:0">
+        <summary style="padding:12px 18px;cursor:pointer;font-size:0.83em;font-weight:700;color:#374151;list-style:none;display:flex;align-items:center;gap:8px">
+          <span style="font-size:1em">＋</span> הוספת הזמנה ידנית
+        </summary>
+        <div style="padding:0 18px 16px;border-top:1px solid #f1f5f9">
+          <div class="form-row" style="margin-top:12px">
+            <select id="o-customer" onchange="fillCustomerData()"><option value="">-- לקוח קיים --</option></select>
+            <input id="o-name" placeholder="שם הלקוח" />
+            <input id="o-site" placeholder="כתובת האתר" />
+          </div>
+          <div class="form-row">
+            <input id="o-contact-name" placeholder="שם איש קשר" />
+            <input id="o-contact-phone" placeholder="טל' איש קשר" />
+            <input id="o-quantity" type="number" min="1" placeholder="כמות (ליטר)" />
+            <input id="o-date" type="date" />
+          </div>
+          <div class="form-row" style="align-items:center">
+            <select id="o-area" onchange="previewDriver()" style="flex:1;min-width:160px"><option value="">-- אזור --</option></select>
+            <div id="o-driver-preview" style="flex:2;font-size:0.83em;color:#64748b;padding:4px"></div>
+            <button class="btn btn-primary btn-sm" onclick="addOrderManual()">הוסף הזמנה</button>
+          </div>
+        </div>
+      </details>
+
+      <!-- sub-tabs -->
+      <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+        <button class="subtab active" onclick="showOrdersSubtab('active', this)">פעילות</button>
+        <button class="subtab" onclick="showOrdersSubtab('completed', this)">הושלמו</button>
+        <button class="subtab" onclick="showOrdersSubtab('by-driver', this)">לפי נהגים</button>
+      </div>
+
+      <div id="orders-subtab-active" class="orders-subtab-content">
+        <div class="card" style="padding:14px 16px">
+          <table>
+            <thead><tr><th>#</th><th>לקוח</th><th>כתובת</th><th>איש קשר</th><th>טלפון</th><th>כמות</th><th>נהג</th><th>סטטוס</th><th>שעה</th><th></th></tr></thead>
+            <tbody id="orders-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="orders-subtab-completed" class="orders-subtab-content" style="display:none">
+        <div class="card" style="padding:14px 16px">
+          <table>
+            <thead><tr><th>#</th><th>לקוח</th><th>כתובת</th><th>איש קשר</th><th>טלפון</th><th>כמות</th><th>נהג</th><th>סטטוס</th><th>שעה</th><th></th></tr></thead>
+            <tbody id="completed-orders-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="orders-subtab-by-driver" class="orders-subtab-content" style="display:none">
+        <div id="orders-by-driver-container"></div>
+      </div>
+    </div>
+
+    <!-- ── לקוחות ── -->
+    <div id="customers" class="section">
+
+      <details class="card" style="margin-bottom:12px;padding:0">
+        <summary style="padding:11px 16px;cursor:pointer;font-size:0.82em;font-weight:700;color:#374151;list-style:none;display:flex;align-items:center;gap:7px">
+          <span>＋</span> הוספת לקוח
+        </summary>
+        <div style="padding:0 16px 14px;border-top:1px solid #f1f5f9">
+          <div class="form-row" style="margin-top:10px">
+            <input id="c-name" placeholder="שם הלקוח" />
+            <input id="c-phone" placeholder="טלפון ראשי (972XXXXXXXXX)" />
+            <input id="c-area" placeholder="אזור" />
+            <input id="c-site" placeholder="כתובת האתר" />
+          </div>
+          <div class="form-row">
+            <input id="c-contact-name" placeholder="שם איש קשר" />
+            <input id="c-contact-phone" placeholder="טל' איש קשר (972XXXXXXXXX)" />
+            <button class="btn btn-primary btn-sm" onclick="addCustomer()">הוסף לקוח</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="card" style="padding:14px 16px">
+        <table>
+          <thead><tr><th>שם</th><th>אזור</th><th>כתובת</th><th>איש קשר</th><th>טלפון</th><th></th></tr></thead>
+          <tbody id="customers-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── לקוחות פוטנציאלים ── -->
+    <div id="potential" class="section">
+
+      <!-- ייבוא + הוספה מקופלים -->
+      <details class="card" style="margin-bottom:10px;padding:0">
+        <summary style="padding:11px 16px;cursor:pointer;font-size:0.82em;font-weight:700;color:#374151;list-style:none;display:flex;align-items:center;gap:7px">
+          <span>📥</span> ייבוא מ-Excel / הוספה ידנית
+        </summary>
+        <div style="padding:0 16px 14px;border-top:1px solid #f1f5f9;display:flex;flex-direction:column;gap:14px;margin-top:12px">
+          <!-- ייבוא -->
+          <div>
+            <div style="font-size:0.75em;font-weight:700;color:#64748b;margin-bottom:6px">ייבוא מ-Excel</div>
+            <div class="form-row">
+              <input type="file" id="potential-excel-file" accept=".xlsx,.xls" style="flex:2" />
+              <button class="btn btn-primary btn-sm" onclick="importPotentialExcel()">ייבא</button>
+            </div>
+            <div id="potential-import-result" style="margin-top:6px;font-size:0.83em"></div>
+          </div>
+          <!-- הוספה ידנית -->
+          <div>
+            <div style="font-size:0.75em;font-weight:700;color:#64748b;margin-bottom:6px">הוספה ידנית</div>
+            <div class="form-row">
+              <input id="p-name" placeholder="שם / חברה" />
+              <input id="p-area" placeholder="אזור" />
+              <input id="p-site" placeholder="כתובת" />
+            </div>
+            <div class="form-row">
+              <input id="p-contact-name" placeholder="איש קשר" />
+              <input id="p-contact-phone" placeholder="טלפון" />
+              <input id="p-email" placeholder="מייל" type="email" />
+              <button class="btn btn-primary btn-sm" onclick="addPotentialCustomer()">הוסף</button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- רשימה + חיפוש -->
+      <div class="card" style="padding:14px 16px">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+          <input id="p-filter-text" placeholder="חיפוש שם / מייל / טלפון..." oninput="filterPotentialCustomers()"
+            style="flex:2;min-width:160px;padding:7px 11px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:0.85em;font-family:inherit;background:#f8fafc;color:#1e293b"
+            onfocus="this.style.borderColor='#b71c1c'" onblur="this.style.borderColor='#e2e8f0'" />
+          <select id="p-filter-area" onchange="filterPotentialCustomers()"
+            style="flex:1;min-width:120px;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:0.85em;font-family:inherit;background:#f8fafc;color:#1e293b">
+            <option value="">כל האזורים</option>
+          </select>
+          <button class="btn btn-sm" onclick="resetPotentialFilter()" style="background:#f1f5f9;color:#374151">איפוס</button>
+          <span id="p-filter-count" style="font-size:0.78em;color:#94a3b8;white-space:nowrap"></span>
+        </div>
+        <table>
+          <thead><tr><th>שם</th><th>אזור</th><th>טלפונים</th><th>פקס</th><th>מייל</th><th></th></tr></thead>
+          <tbody id="potential-customers-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── נהגים ── -->
+    <div id="drivers" class="section">
+      <details class="card" style="margin-bottom:12px;padding:0">
+        <summary style="padding:11px 16px;cursor:pointer;font-size:0.82em;font-weight:700;color:#374151;list-style:none;display:flex;align-items:center;gap:7px">
+          <span>＋</span> הוספת נהג
+        </summary>
+        <div style="padding:0 16px 14px;border-top:1px solid #f1f5f9">
+          <div class="form-row" style="margin-top:10px">
+            <input id="d-name" placeholder="שם נהג" />
+            <input id="d-phone" placeholder="טלפון" />
+            <input id="d-area" placeholder="אזור" />
+          </div>
+          <div class="form-row">
+            <input id="d-truck" placeholder="מס' משאית" />
+            <input id="d-volume" type="number" min="1" placeholder="נפח מכלית (ליטר)" />
+            <button class="btn btn-primary btn-sm" onclick="addDriver()">הוסף נהג</button>
+          </div>
+        </div>
+      </details>
+      <div id="drivers-list"></div>
+    </div>
+
+    <!-- ── מיילים ── -->
+    <div id="emails" class="section">
+
+      <details class="card" style="margin-bottom:10px;padding:0">
+        <summary style="padding:11px 16px;cursor:pointer;font-size:0.82em;font-weight:700;color:#374151;list-style:none;display:flex;align-items:center;gap:7px">
+          <span>📥</span> ייבוא מ-Excel / שליחת מיילים
+        </summary>
+        <div style="padding:0 16px 14px;border-top:1px solid #f1f5f9;display:flex;flex-direction:column;gap:14px;margin-top:12px">
+          <div>
+            <div style="font-size:0.75em;font-weight:700;color:#64748b;margin-bottom:6px">ייבוא מ-Excel</div>
+            <div class="form-row">
+              <input type="file" id="excel-file" accept=".xlsx,.xls" style="flex:2" />
+              <button class="btn btn-primary btn-sm" onclick="importExcel()">ייבא</button>
+            </div>
+            <div id="import-result" style="margin-top:6px;font-size:0.83em"></div>
+          </div>
+          <div>
+            <div style="font-size:0.75em;font-weight:700;color:#64748b;margin-bottom:6px">שליחת מייל המוני</div>
+            <div class="form-row">
+              <input id="email-subject" placeholder="נושא המייל" style="flex:2" />
+            </div>
+            <textarea id="email-content" placeholder="תוכן המייל... (השתמש ב-{name} לשם הלקוח)" style="margin-bottom:10px;min-height:80px"></textarea>
+            <div style="display:flex;align-items:center;gap:10px">
+              <button class="btn btn-primary btn-sm" onclick="sendEmails()">שלח לכולם</button>
+              <span id="email-count" style="font-size:0.82em;color:#94a3b8"></span>
+            </div>
+            <div id="email-result" style="margin-top:8px;font-size:0.85em"></div>
+          </div>
+        </div>
+      </details>
+
+      <div class="card" style="padding:14px 16px">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+          <input id="email-filter-text" placeholder="חיפוש שם / מייל..." oninput="filterEmailCustomers()"
+            style="flex:2;min-width:160px;padding:7px 11px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:0.85em;font-family:inherit;background:#f8fafc;color:#1e293b"
+            onfocus="this.style.borderColor='#b71c1c'" onblur="this.style.borderColor='#e2e8f0'" />
+          <select id="email-filter-area" onchange="filterEmailCustomers()"
+            style="flex:1;min-width:120px;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:0.85em;font-family:inherit;background:#f8fafc;color:#1e293b">
+            <option value="">כל האזורים</option>
+          </select>
+          <button class="btn btn-sm" onclick="resetEmailFilter()" style="background:#f1f5f9;color:#374151">איפוס</button>
+          <span id="email-filter-count" style="font-size:0.78em;color:#94a3b8;white-space:nowrap"></span>
+        </div>
+        <table>
+          <thead><tr><th>שם</th><th>מייל</th><th>אזור</th><th></th></tr></thead>
+          <tbody id="email-customers-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── משימות ── -->
+    <div id="tasks" class="section">
+      <div id="tasks-container"></div>
+      <div id="tasks-summary"></div>
+    </div>
+
+    <!-- ── הגדרות ── -->
+    <div id="settings" class="section">
+      <div class="card">
+        <h2>שעת שליחת הודעות יומית</h2>
+        <div class="form-row">
+          <input id="s-hour" type="number" min="0" max="23" placeholder="שעה (0-23)" style="max-width:160px" />
+          <input id="s-minute" type="number" min="0" max="59" placeholder="דקות (0-59)" style="max-width:160px" />
+          <button class="btn btn-primary btn-sm" onclick="saveTime()">שמור שעה</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>תבנית הודעה</h2>
+        <div class="form-row">
+          <input id="s-template" placeholder="השתמש ב-{name} לשם הלקוח" style="flex:3" />
+          <button class="btn btn-primary btn-sm" onclick="saveTemplate()">שמור תבנית</button>
+        </div>
+        <p style="font-size:0.85em;color:#94a3b8;margin-top:8px">דוגמה: שלום {name}, האם תצטרך הזמנת דלק סולר למחר?</p>
+      </div>
+      <div class="card">
+        <h2>קישור לאיתורן</h2>
+        <p style="font-size:0.87em;color:#64748b;margin-bottom:12px">הכנס את כתובת לוח הבקרה של איתורן שלך.</p>
+        <div class="form-row">
+          <input id="s-ituran" placeholder="https://..." style="flex:3" />
+          <button class="btn btn-primary btn-sm" onclick="saveIturanUrl()">שמור קישור</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>קישור למצלמות</h2>
+        <p style="font-size:0.87em;color:#64748b;margin-bottom:12px">הכנס את כתובת מערכת המצלמות שלך.</p>
+        <div class="form-row">
+          <input id="s-cameras" placeholder="https://..." style="flex:3" />
+          <button class="btn btn-primary btn-sm" onclick="saveCamerasUrl()">שמור קישור</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>טלפון מנהל</h2>
+        <p style="font-size:0.87em;color:#64748b;margin-bottom:12px">המספר שאליו יישלח הסידור היומי בוואטסאפ.</p>
+        <div class="form-row">
+          <input id="s-admin-phone" placeholder="05XXXXXXXX או 972XXXXXXXXX" style="max-width:260px" />
+          <button class="btn btn-primary btn-sm" onclick="saveAdminPhone()">שמור מספר</button>
+          <span id="admin-phone-result" style="font-size:0.88em;color:#15803d"></span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>סידור יומי למנהל</h2>
+        <p style="font-size:0.87em;color:#64748b;margin-bottom:14px">שלח את כל ההזמנות של היום לוואטסאפ שלך לבדיקה, או הגדר שעה לשליחה אוטומטית.</p>
+        <div class="form-row" style="align-items:center">
+          <input id="s-admin-schedule-hour"   type="number" min="0" max="23" placeholder="שעה" style="max-width:100px" />
+          <input id="s-admin-schedule-minute" type="number" min="0" max="59" placeholder="דקות" style="max-width:100px" />
+          <button class="btn btn-primary btn-sm" onclick="saveAdminScheduleTime()">שמור שעה אוטומטית</button>
+          <button class="btn btn-primary btn-sm" style="background:#1e40af" onclick="sendScheduleToAdmin()">📋 שלח עכשיו</button>
+        </div>
+        <div id="admin-schedule-result" style="margin-top:10px;font-size:0.88em"></div>
+      </div>
+      <div class="card">
+        <h2>אתר מידע עסקי</h2>
+        <p style="font-size:0.87em;color:#64748b;margin-bottom:12px">כתובת אתר לבדיקת לקוחות פוטנציאלים. השתמש ב-<code>{name}</code> לשם הלקוח.</p>
+        <div class="form-row">
+          <input id="s-biz-info" placeholder="https://www.bdind.co.il/search?q={name}" style="flex:3;font-size:0.85em" />
+          <button class="btn btn-primary btn-sm" onclick="saveBizInfoUrl()">שמור</button>
+        </div>
+        <p style="font-size:0.78em;color:#94a3b8;margin-top:6px">דוגמה: https://www.bdind.co.il/search?q={name}</p>
+      </div>
+      <div class="card">
+        <h2>שליחת הודעת בדיקה</h2>
+        <p style="font-size:0.87em;color:#64748b;margin-bottom:12px">שלח את הודעת הוואטסאפ היומית לטלפון כלשהו לבדיקה.</p>
+        <div class="form-row">
+          <input id="test-phone" placeholder="טלפון (972XXXXXXXXX)" style="max-width:280px" />
+          <button class="btn btn-primary btn-sm" onclick="sendTestMessage()">שלח הודעת בדיקה</button>
+        </div>
+        <div id="test-result" style="margin-top:12px;font-size:0.9em"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── מודל עריכת נהג ── -->
+<div id="edit-modal" onclick="if(event.target===this)closeEditModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
+  <div style="background:white;border-radius:16px;padding:30px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,0.15);position:relative">
+    <h2 style="color:#1f2937;margin-bottom:20px;font-size:1.05em;border-bottom:1px solid #f3f4f6;padding-bottom:12px">עריכת פרטי נהג</h2>
+    <input type="hidden" id="edit-id" />
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <label style="font-size:0.82em;font-weight:600;color:#6b7280">שם נהג</label>
+      <input id="edit-name" style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      <label style="font-size:0.82em;font-weight:600;color:#6b7280">טלפון</label>
+      <input id="edit-phone" style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      <label style="font-size:0.82em;font-weight:600;color:#6b7280">אזור</label>
+      <input id="edit-area" style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      <label style="font-size:0.82em;font-weight:600;color:#6b7280">מס' משאית</label>
+      <input id="edit-truck" style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      <label style="font-size:0.82em;font-weight:600;color:#6b7280">נפח מכלית (ליטר)</label>
+      <input id="edit-volume" type="number" style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px">
+      <button class="btn" onclick="closeEditModal()" style="background:#f9fafb;color:#6b7280;border:1.5px solid #e5e7eb">ביטול</button>
+      <button class="btn btn-primary" onclick="saveDriver()">שמור שינויים</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STATUS_OPTIONS = ['ממתין','אושר','נשלח','הושלם'];
+
+const WA_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="white" style="vertical-align:middle;margin-left:4px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
+
+function waBtn(phone) {
+  if (!phone) return '—';
+  const num = phone.replace(/[\s\-\+\(\)]/g, '').replace(/^0/, '972');
+  return `<a href="https://wa.me/${num}" target="_blank" style="display:inline-flex;align-items:center;gap:3px;background:#25D366;color:white;padding:3px 7px;border-radius:5px;font-size:0.74em;font-weight:600;text-decoration:none">${WA_ICON}</a>`;
+}
+const SECTION_TITLES = {
+  home: 'דף הבית', orders: 'הזמנות', customers: 'לקוחות',
+  potential: 'מאגר לקוחות פוטנציאלים',
+  drivers: 'נהגים', tasks: 'משימות', emails: 'מיילים', settings: 'הגדרות'
+};
+
+function showSection(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  document.getElementById('topbar-title').textContent = SECTION_TITLES[id] || id;
+  if (id === 'home') loadHome();
+  if (id === 'orders') loadOrders();
+  if (id === 'customers') loadCustomers();
+  if (id === 'potential') loadPotentialCustomers();
+  if (id === 'drivers') loadDrivers();
+  if (id === 'tasks') loadTasks();
+  if (id === 'emails') loadEmailSection();
+  if (id === 'settings') loadSettings();
+}
+
+function showSectionByName(id) {
+  const btn = [...document.querySelectorAll('.nav-item')].find(b => b.onclick?.toString().includes(`'${id}'`));
+  showSection(id, btn);
+}
+
+// ── Home ──────────────────────────────────────────────
+
+function parseQty(str) {
+  if (!str) return 0;
+  const clean = String(str).replace(/,/g, '').trim();
+  // טווח כמו "400–1000" — קח את הערך העליון
+  const parts = clean.split(/[–\-]/);
+  if (parts.length >= 2) return parseInt(parts[1]) || 0;
+  return parseInt(clean) || 0;
+}
+
+async function loadHome() {
+  const res = await fetch('/api/orders');
+  const orders = await res.json();
+  const counts = { total: orders.length, ממתין: 0, אושר: 0, נשלח: 0, הושלם: 0 };
+  let litersDelivered = 0;
+  const byDriver = {};
+
+  orders.forEach(o => {
+    if (counts[o.status] !== undefined) counts[o.status]++;
+    if (o.status === 'הושלם') {
+      const qty = parseQty(o.quantity);
+      litersDelivered += qty;
+      const name = o.driver_name || 'ללא נהג';
+      if (!byDriver[name]) byDriver[name] = { orders: 0, liters: 0 };
+      byDriver[name].orders++;
+      byDriver[name].liters += qty;
+    }
+  });
+
+  const fmt = n => n >= 1000 ? (n/1000).toFixed(1).replace('.0','') + 'K' : String(n);
+
+  const statDefs = [
+    { num: counts.total,         label: 'סה"כ הזמנות', bg: 'linear-gradient(135deg,#1e293b,#0f172a)' },
+    { num: counts['ממתין'],      label: 'ממתינות',      bg: 'linear-gradient(135deg,#d97706,#b45309)' },
+    { num: counts['אושר'],       label: 'אושרו',        bg: 'linear-gradient(135deg,#1d4ed8,#1e40af)' },
+    { num: counts['נשלח'],       label: 'נשלחו',        bg: 'linear-gradient(135deg,#7c3aed,#5b21b6)' },
+    { num: counts['הושלם'],      label: 'הושלמו',       bg: 'linear-gradient(135deg,#16a34a,#15803d)' },
+    { num: fmt(litersDelivered), label: 'ליטרים סופקו', bg: 'linear-gradient(135deg,#059669,#047857)' },
+  ];
+  document.getElementById('home-stats').innerHTML = statDefs.map(s => `
+    <div style="background:${s.bg};border-radius:16px;padding:18px 14px;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,0.18)">
+      <div style="font-size:2em;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums">${s.num}</div>
+      <div style="font-size:0.7em;color:rgba(255,255,255,0.7);font-weight:600;margin-top:7px;letter-spacing:0.3px">${s.label}</div>
+    </div>`).join('');
+
+  // הזמנות היום
+  const today = new Date().toISOString().slice(0,10);
+  const todayOrders = orders.filter(o => (o.order_date || '').slice(0,10) === today);
+  const todayEl = document.getElementById('home-today-orders');
+  if (todayOrders.length) {
+    todayEl.innerHTML = `<table>
+      <thead><tr><th>#</th><th>לקוח</th><th>כתובת</th><th>כמות</th><th>נהג</th><th>שעה</th><th>סטטוס</th></tr></thead>
+      <tbody>${todayOrders.map(o => `<tr>
+        <td style="color:#94a3b8;font-size:0.82em">${o.id}</td>
+        <td><strong>${o.customer_name}</strong></td>
+        <td style="font-size:0.85em">${o.site_address}</td>
+        <td><strong>${o.quantity}</strong> ל'</td>
+        <td>${o.driver_name ? `<span class="tag">${o.driver_name}</span>` : '—'}</td>
+        <td style="font-size:0.82em;color:#64748b">${o.delivery_time || '—'}</td>
+        <td><span class="badge badge-${o.status}">${o.status}</span></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } else {
+    todayEl.innerHTML = '<div class="empty">אין הזמנות להיום</div>';
+  }
+
+  // חלוקה לפי נהגים
+  const breakdownEl = document.getElementById('home-driver-breakdown');
+  if (Object.keys(byDriver).length) {
+    const rows = Object.entries(byDriver)
+      .sort((a,b) => b[1].liters - a[1].liters)
+      .map(([name, d]) => `
+        <tr>
+          <td><strong>${name}</strong></td>
+          <td style="text-align:center">${d.orders}</td>
+          <td style="text-align:center;font-weight:700;color:#15803d">${d.liters.toLocaleString()} ל'</td>
+          <td style="min-width:120px">
+            <div class="progress-wrap" style="margin:0">
+              <div class="progress-bar" style="width:${Math.round((d.liters/litersDelivered)*100)}%;background:linear-gradient(90deg,#15803d,#4ade80)"></div>
+            </div>
+          </td>
+        </tr>`).join('');
+
+    breakdownEl.innerHTML = `
+      <div class="card" style="margin-bottom:0">
+        <h2 style="font-size:0.78em">⛽ ליטרים שסופקו — לפי נהגים</h2>
+        <table>
+          <thead><tr><th>נהג</th><th style="text-align:center">הזמנות</th><th style="text-align:center">ליטרים</th><th>חלק יחסי</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  } else {
+    breakdownEl.innerHTML = '';
+  }
+}
+
+// ── Orders ──────────────────────────────────────────────
+
+let _allOrders = [];
+let currentOrdersSubtab = 'active';
+
+function showOrdersSubtab(tab, btn) {
+  currentOrdersSubtab = tab;
+  document.querySelectorAll('.orders-subtab-content').forEach(el => el.style.display = 'none');
+  document.getElementById(`orders-subtab-${tab}`).style.display = 'block';
+  document.querySelectorAll('.subtab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCurrentSubtab();
+}
+
+async function sendScheduleToAdmin() {
+  if (!confirm('לשלוח את הסידור היומי אליך בוואטסאפ לבדיקה?')) return;
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'שולח...';
+  try {
+    const res  = await fetch('/api/send-daily-schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ send_to_admin: true })
+    });
+    const data = await res.json();
+    if (data.ok) alert(`הסידור נשלח! ${data.orders_sent} הזמנות נשלחו אליך.`);
+    else alert('שגיאה בשליחה — ודא שהוגדר טלפון מנהל בהגדרות');
+  } catch(e) {
+    alert('שגיאה: השרת לא זמין');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📋 שלח סידור לבדיקת מנהל';
+  }
+}
+
+async function loadOrders() {
+  const url = selectedDate ? `/api/orders?date=${selectedDate}` : '/api/orders';
+  const res = await fetch(url);
+  _allOrders = await res.json();
+
+  const counts = { total: _allOrders.length, ממתין: 0, אושר: 0, נשלח: 0, הושלם: 0 };
+  _allOrders.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
+
+  const sDefs = [
+    { n: counts.total,       l: 'סה"כ',  bg:'linear-gradient(135deg,#1e293b,#0f172a)' },
+    { n: counts['ממתין'],    l: 'ממתין', bg:'linear-gradient(135deg,#d97706,#b45309)' },
+    { n: counts['אושר'],     l: 'אושר',  bg:'linear-gradient(135deg,#1d4ed8,#1e40af)' },
+    { n: counts['נשלח'],     l: 'נשלח',  bg:'linear-gradient(135deg,#7c3aed,#5b21b6)' },
+    { n: counts['הושלם'],    l: 'הושלם', bg:'linear-gradient(135deg,#16a34a,#15803d)' },
+  ];
+  document.getElementById('stats').innerHTML = sDefs.map(s =>
+    `<div style="background:${s.bg};border-radius:10px;padding:8px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 8px rgba(0,0,0,0.15)">
+      <span style="font-size:1.4em;font-weight:800;color:#fff">${s.n}</span>
+      <span style="font-size:0.72em;color:rgba(255,255,255,0.75);font-weight:600">${s.l}</span>
+    </div>`).join('');
+  renderCurrentSubtab();
+}
+
+function renderCurrentSubtab() {
+  if (currentOrdersSubtab === 'active') renderActiveOrders();
+  else if (currentOrdersSubtab === 'completed') renderCompletedOrders();
+  else renderOrdersByDriver();
+}
+
+function orderRowHtml(o, showStatus = true) {
+  return `
+    <tr>
+      <td style="color:#94a3b8;font-size:0.85em">${o.id}</td>
+      <td><strong>${o.customer_name}</strong></td>
+      <td>${o.site_address}</td>
+      <td>${o.contact_name || '—'}</td>
+      <td>${o.contact_phone || '—'}</td>
+      <td><strong>${o.quantity}</strong> ל'</td>
+      <td>${o.driver_name ? `<span class="tag">${o.driver_name}</span>` : '<span style="color:#94a3b8">—</span>'}</td>
+      <td>${showStatus ? `<select class="status-select" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="badge badge-הושלם">הושלם</span>`}</td>
+      <td style="color:#94a3b8;font-size:0.85em">${o.created_at ? o.created_at.slice(11,16) : ''}</td>
+      <td><button class="btn btn-danger" onclick="deleteOrder(${o.id})">מחק</button></td>
+    </tr>`;
+}
+
+function renderActiveOrders() {
+  const orders = _allOrders.filter(o => o.status !== 'הושלם');
+  const tbody = document.getElementById('orders-body');
+  tbody.innerHTML = orders.length
+    ? orders.map(o => orderRowHtml(o, true)).join('')
+    : '<tr><td colspan="10" class="empty">אין הזמנות פעילות</td></tr>';
+}
+
+function renderCompletedOrders() {
+  const orders = _allOrders.filter(o => o.status === 'הושלם');
+  const tbody = document.getElementById('completed-orders-body');
+  tbody.innerHTML = orders.length
+    ? orders.map(o => orderRowHtml(o, false)).join('')
+    : '<tr><td colspan="10" class="empty">אין הזמנות שהושלמו</td></tr>';
+}
+
+function renderOrdersByDriver() {
+  const container = document.getElementById('orders-by-driver-container');
+  if (!_allOrders.length) {
+    container.innerHTML = '<div class="card"><p class="empty">אין הזמנות</p></div>';
+    return;
+  }
+  const byDriver = {};
+  _allOrders.forEach(o => {
+    const key = o.driver_name || 'ללא נהג';
+    if (!byDriver[key]) byDriver[key] = [];
+    byDriver[key].push(o);
+  });
+
+  container.innerHTML = Object.entries(byDriver).map(([driverName, orders]) => {
+    const totalLiters = orders.reduce((sum, o) => sum + (parseFloat(o.quantity) || 0), 0);
+    const completedCount = orders.filter(o => o.status === 'הושלם').length;
+    const rows = orders.map(o => `
+      <tr>
+        <td style="color:#94a3b8;font-size:0.85em">${o.id}</td>
+        <td><strong>${o.customer_name}</strong></td>
+        <td>${o.site_address}</td>
+        <td>${o.contact_name || '—'}</td>
+        <td>${o.contact_phone || '—'}</td>
+        <td><strong>${o.quantity}</strong> ל'</td>
+        <td><select class="status-select" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></td>
+        <td style="color:#94a3b8;font-size:0.85em">${o.created_at ? o.created_at.slice(11,16) : ''}</td>
+        <td><button class="btn btn-danger" onclick="deleteOrder(${o.id})">מחק</button></td>
+      </tr>`).join('');
+
+    return `
+      <div class="card" style="margin-bottom:20px">
+        <div class="driver-card-header">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="driver-name-badge">${driverName}</span>
+            <span class="tag tag-red">${orders.length} הזמנות</span>
+            <span class="tag">${totalLiters} ליטר</span>
+            ${completedCount ? `<span class="tag" style="background:#faf5ff;color:#7e22ce">${completedCount} הושלמו</span>` : ''}
+          </div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>#</th><th>לקוח</th><th>כתובת אתר</th><th>איש קשר</th>
+            <th>טלפון</th><th>כמות</th><th>סטטוס</th><th>שעה</th><th></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }).join('');
+}
+
+async function deleteOrder(id) {
+  if (!confirm('למחוק הזמנה זו?')) return;
+  await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+  loadOrders();
+  if (document.getElementById('drivers').classList.contains('active')) loadDrivers();
+}
+
+async function updateStatus(id, status) {
+  await fetch(`/api/orders/${id}/status`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+  loadOrders();
+  if (document.getElementById('home').classList.contains('active')) loadHome();
+}
+
+// ── Customers ────────────────────────────────────────────
+
+async function loadCustomers() {
+  const res = await fetch('/api/customers');
+  const list = await res.json();
+  const tbody = document.getElementById('customers-body');
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">אין לקוחות</td></tr>'; return; }
+  tbody.innerHTML = list.map(c => `
+    <tr>
+      <td><strong>${c.name}</strong></td>
+      <td><span class="tag">${c.area}</span></td>
+      <td>${c.site_address || '—'}</td>
+      <td>${c.contact_name || '—'}${c.order_contact_name && c.order_contact_name !== c.contact_name ? `<br><span style="font-size:0.82em;color:#0891b2">🚚 ${c.order_contact_name}</span>` : ''}</td>
+      <td>${c.contact_phone || '—'}${c.order_contact_phone && c.order_contact_phone !== c.contact_phone ? `<br><span style="font-size:0.82em;color:#0891b2">${c.order_contact_phone}</span>` : ''}</td>
+      <td>${waBtn(c.order_contact_phone || c.contact_phone)}</td>
+      <td><button class="btn btn-danger" onclick="deleteCustomer(${c.id})">מחק</button></td>
+    </tr>`).join('');
+}
+
+async function addCustomer() {
+  const name = document.getElementById('c-name').value.trim();
+  const phone = document.getElementById('c-phone').value.trim();
+  const area = document.getElementById('c-area').value.trim();
+  const site_address = document.getElementById('c-site').value.trim();
+  const contact_name = document.getElementById('c-contact-name').value.trim();
+  const contact_phone = document.getElementById('c-contact-phone').value.trim();
+  if (!name || !area) return alert('יש למלא שם ואזור');
+  await fetch('/api/customers', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, phone, area, site_address, contact_name, contact_phone })
+  });
+  ['c-name','c-phone','c-area','c-site','c-contact-name','c-contact-phone'].forEach(id => document.getElementById(id).value = '');
+  loadCustomers();
+}
+
+async function deleteCustomer(id) {
+  if (!confirm('למחוק לקוח זה?')) return;
+  await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+  loadCustomers();
+}
+
+// ── Drivers ──────────────────────────────────────────────
+
+async function loadDrivers() {
+  const res = await fetch('/api/drivers');
+  const list = await res.json();
+  const container = document.getElementById('drivers-list');
+  if (!list.length) { container.innerHTML = '<div class="card"><p class="empty">אין נהגים רשומים</p></div>'; return; }
+
+  container.innerHTML = list.map(d => `
+      <div class="card" style="margin-bottom:20px">
+        <div class="driver-card-header">
+          <div>
+            <div class="driver-name-badge">${d.name}</div>
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+              <span class="tag">${d.area}</span>
+              ${d.truck_number ? `<span class="tag tag-red">מ"ס ${d.truck_number}</span>` : ''}
+              ${d.tanker_volume ? `<span class="tag">${d.tanker_volume} ליטר</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="openIturan()" style="background:#1e293b;color:white;font-size:0.72em">איתורן</button>
+            <button class="btn btn-sm" onclick="openCameras()" style="background:#374151;color:white;font-size:0.72em">מצלמות</button>
+            ${waBtn(d.phone)}
+            <button class="btn btn-primary btn-sm" style="font-size:0.72em" onclick="openEditModal(${d.id},'${d.name}','${d.phone}','${d.area}','${d.truck_number||''}','${d.tanker_volume||''}')">ערוך</button>
+            <button class="btn btn-danger" style="font-size:0.72em" onclick="deleteDriver(${d.id})">מחק</button>
+          </div>
+        </div>
+      </div>`).join('');
+}
+
+async function addDriver() {
+  const name = document.getElementById('d-name').value.trim();
+  const phone = document.getElementById('d-phone').value.trim();
+  const area = document.getElementById('d-area').value.trim();
+  const truck_number = document.getElementById('d-truck').value.trim();
+  const tanker_volume = document.getElementById('d-volume').value.trim();
+  if (!name || !phone || !area) return alert('יש למלא שם, טלפון ואזור');
+  await fetch('/api/drivers', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, phone, area, truck_number, tanker_volume })
+  });
+  ['d-name','d-phone','d-area','d-truck','d-volume'].forEach(id => document.getElementById(id).value = '');
+  loadDrivers();
+}
+
+async function deleteDriver(id) {
+  if (!confirm('למחוק נהג זה?')) return;
+  await fetch(`/api/drivers/${id}`, { method: 'DELETE' });
+  loadDrivers();
+}
+
+function openEditModal(id, name, phone, area, truck, volume) {
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-name').value = name;
+  document.getElementById('edit-phone').value = phone;
+  document.getElementById('edit-area').value = area;
+  document.getElementById('edit-truck').value = truck;
+  document.getElementById('edit-volume').value = volume;
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+}
+
+async function saveDriver() {
+  const id = document.getElementById('edit-id').value;
+  const name = document.getElementById('edit-name').value.trim();
+  const phone = document.getElementById('edit-phone').value.trim();
+  const area = document.getElementById('edit-area').value.trim();
+  const truck_number = document.getElementById('edit-truck').value.trim();
+  const tanker_volume = document.getElementById('edit-volume').value.trim();
+  if (!name || !phone || !area) return alert('יש למלא שם, טלפון ואזור');
+  await fetch(`/api/drivers/${id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, phone, area, truck_number, tanker_volume })
+  });
+  closeEditModal();
+  loadDrivers();
+}
+
+// ── Settings ─────────────────────────────────────────────
+
+let _ituranUrl = '';
+let _camerasUrl = '';
+
+async function loadSettings() {
+  const res = await fetch('/api/settings');
+  const s = await res.json();
+  document.getElementById('s-hour').value = s.daily_hour || 14;
+  document.getElementById('s-minute').value = s.daily_minute || 0;
+  document.getElementById('s-template').value = s.message_template || '';
+  document.getElementById('s-ituran').value = s.ituran_url || '';
+  _ituranUrl = s.ituran_url || '';
+  document.getElementById('s-cameras').value = s.cameras_url || '';
+  _camerasUrl = s.cameras_url || '';
+  document.getElementById('s-admin-phone').value = s.admin_phone || '';
+  document.getElementById('s-biz-info').value = s.biz_info_url || '';
+  _bizInfoUrl = s.biz_info_url || '';
+  document.getElementById('s-admin-schedule-hour').value   = s.admin_schedule_hour   || '';
+  document.getElementById('s-admin-schedule-minute').value = s.admin_schedule_minute || '';
+  const h = s.admin_schedule_hour, m = s.admin_schedule_minute;
+  if (h !== undefined) {
+    document.getElementById('admin-schedule-result').textContent =
+      `שליחה אוטומטית מוגדרת לשעה ${String(h).padStart(2,'0')}:${String(m||0).padStart(2,'0')}`;
+    document.getElementById('admin-schedule-result').style.color = '#15803d';
+  }
+}
+
+async function saveBizInfoUrl() {
+  const url = document.getElementById('s-biz-info').value.trim();
+  if (!url) return alert('יש להזין כתובת');
+  await fetch('/api/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ biz_info_url: url })
+  });
+  _bizInfoUrl = url;
+  alert('נשמר בהצלחה');
+}
+
+async function saveAdminPhone() {
+  const phone = document.getElementById('s-admin-phone').value.trim();
+  if (!phone) return alert('יש להזין מספר טלפון');
+  await fetch('/api/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ admin_phone: phone })
+  });
+  document.getElementById('admin-phone-result').textContent = '✓ נשמר';
+}
+
+async function saveAdminScheduleTime() {
+  const hour   = parseInt(document.getElementById('s-admin-schedule-hour').value);
+  const minute = parseInt(document.getElementById('s-admin-schedule-minute').value) || 0;
+  if (isNaN(hour)) return alert('יש להזין שעה');
+  const res  = await fetch('/api/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ admin_schedule_hour: hour, admin_schedule_minute: minute })
+  });
+  const result = document.getElementById('admin-schedule-result');
+  result.textContent = `✓ שליחה אוטומטית נשמרה לשעה ${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+  result.style.color = '#15803d';
+}
+
+async function sendScheduleToAdmin() {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'שולח...';
+  try {
+    const res  = await fetch('/api/send-daily-schedule', { method: 'POST' });
+    const data = await res.json();
+    const result = document.getElementById('admin-schedule-result');
+    if (data.ok) {
+      result.textContent = `✓ נשלח! ${data.orders_sent} הזמנות נשלחו לוואטסאפ שלך`;
+      result.style.color = '#15803d';
+    } else {
+      result.textContent = `שגיאה: ${data.error || 'ודא שהוגדר טלפון מנהל'}`;
+      result.style.color = '#b91c1c';
+    }
+  } catch(e) {
+    alert('שגיאה: השרת לא זמין');
+  } finally {
+    btn.disabled = false; btn.textContent = '📋 שלח עכשיו';
+  }
+}
+
+function openIturan() {
+  if (!_ituranUrl) { alert('יש להגדיר את קישור איתורן בלשונית הגדרות'); return; }
+  window.open(_ituranUrl, '_blank');
+}
+
+function openCameras() {
+  if (!_camerasUrl) { alert('יש להגדיר את קישור המצלמות בלשונית הגדרות'); return; }
+  window.open(_camerasUrl, '_blank');
+}
+
+async function saveIturanUrl() {
+  const url = document.getElementById('s-ituran').value.trim();
+  if (!url) return alert('יש להזין כתובת URL');
+  await fetch('/api/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ituran_url: url })
+  });
+  _ituranUrl = url;
+  alert('הקישור נשמר בהצלחה');
+}
+
+async function saveCamerasUrl() {
+  const url = document.getElementById('s-cameras').value.trim();
+  if (!url) return alert('יש להזין כתובת URL');
+  await fetch('/api/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cameras_url: url })
+  });
+  _camerasUrl = url;
+  alert('הקישור נשמר בהצלחה');
+}
+
+async function saveTime() {
+  const hour = parseInt(document.getElementById('s-hour').value);
+  const minute = parseInt(document.getElementById('s-minute').value);
+  await fetch('/api/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ daily_hour: hour, daily_minute: minute })
+  });
+  alert(`שעת השליחה עודכנה ל-${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`);
+}
+
+async function sendTestMessage() {
+  const phone = document.getElementById('test-phone').value.trim();
+  if (!phone) return alert('יש להזין מספר טלפון');
+  const result = document.getElementById('test-result');
+  result.textContent = 'שולח...'; result.style.color = '#94a3b8';
+  try {
+    const res = await fetch('/api/test-message', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    const data = await res.json();
+    result.style.color = data.ok ? '#15803d' : '#b71c1c';
+    result.textContent = data.ok ? `ההודעה נשלחה: "${data.message}"` : 'שליחה נכשלה — בדוק את ה-Token ב-.env';
+  } catch(e) {
+    result.style.color = '#b71c1c'; result.textContent = 'שגיאה: השרת לא זמין';
+  }
+}
+
+async function saveTemplate() {
+  const template = document.getElementById('s-template').value.trim();
+  if (!template) return alert('יש להזין תבנית הודעה');
+  await fetch('/api/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message_template: template })
+  });
+  alert('התבנית נשמרה בהצלחה');
+}
+
+// ── Emails ────────────────────────────────────────────────
+
+let _emailCustomers = [];
+let _emailFilterText = '';
+let _emailFilterArea = '';
+
+async function loadEmailSection() {
+  const [res1, res2] = await Promise.all([fetch('/api/customers'), fetch('/api/potential-customers')]);
+  const [regular, potential] = await Promise.all([res1.json(), res2.json()]);
+  const list = [...regular, ...potential];
+  _emailCustomers = list.filter(c => c.email && c.email.trim());
+  _emailFilterText = '';
+  _emailFilterArea = '';
+
+  const areas = [...new Set(_emailCustomers.map(c => c.area).filter(Boolean))].sort();
+  const areaSel = document.getElementById('email-filter-area');
+  areaSel.innerHTML = '<option value="">כל האזורים</option>' + areas.map(a => `<option value="${a}">${a}</option>`).join('');
+  if (document.getElementById('email-filter-text')) document.getElementById('email-filter-text').value = '';
+
+  document.getElementById('email-count').textContent = `${_emailCustomers.length} לקוחות עם כתובת מייל`;
+  renderEmailCustomers();
+}
+
+function filterEmailCustomers() {
+  _emailFilterText = document.getElementById('email-filter-text').value.toLowerCase();
+  _emailFilterArea = document.getElementById('email-filter-area').value;
+  renderEmailCustomers();
+}
+
+function resetEmailFilter() {
+  document.getElementById('email-filter-text').value = '';
+  document.getElementById('email-filter-area').value = '';
+  _emailFilterText = '';
+  _emailFilterArea = '';
+  renderEmailCustomers();
+}
+
+function removeEmailCustomer(id) {
+  _emailCustomers = _emailCustomers.filter(c => c.id !== id);
+  document.getElementById('email-count').textContent = `${_emailCustomers.length} לקוחות עם כתובת מייל`;
+  renderEmailCustomers();
+}
+
+function renderEmailCustomers() {
+  const filtered = _emailCustomers.filter(c => {
+    const matchText = !_emailFilterText ||
+      c.name.toLowerCase().includes(_emailFilterText) ||
+      (c.email || '').toLowerCase().includes(_emailFilterText);
+    const matchArea = !_emailFilterArea || c.area === _emailFilterArea;
+    return matchText && matchArea;
+  });
+
+  const tbody = document.getElementById('email-customers-body');
+  const countEl = document.getElementById('email-filter-count');
+
+  if (!_emailCustomers.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">אין לקוחות עם מייל — ייבא מ-Excel</td></tr>';
+    if (countEl) countEl.textContent = '';
+    return;
+  }
+
+  const isFiltered = _emailFilterText || _emailFilterArea;
+  if (countEl) countEl.textContent = isFiltered ? `מציג ${filtered.length} מתוך ${_emailCustomers.length}` : '';
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">אין תוצאות לסינון זה</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(c => `
+    <tr>
+      <td><strong>${c.name}</strong></td>
+      <td>${c.email}</td>
+      <td>${c.area || '—'}</td>
+      <td><button class="btn btn-danger" onclick="removeEmailCustomer(${c.id})">הסר</button></td>
+    </tr>`).join('');
+}
+
+async function importExcel() {
+  const file = document.getElementById('excel-file').files[0];
+  if (!file) return alert('יש לבחור קובץ Excel');
+  const result = document.getElementById('import-result');
+  result.textContent = 'מייבא...'; result.style.color = '#94a3b8';
+  const buf = await file.arrayBuffer();
+  try {
+    const res = await fetch('/api/customers/import-excel', {
+      method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: buf
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      result.style.color = '#15803d';
+      const cols = data.mapped_columns?.join(', ') || '';
+      const skip = data.skipped ? ` | ${data.skipped} שורות ריקות דולגו` : '';
+      result.innerHTML = `יובאו בהצלחה <strong>${data.imported} לקוחות</strong>${skip}<br><span style="font-size:0.85em;color:#64748b">עמודות שזוהו: ${cols}</span>`;
+      loadEmailSection();
+      loadCustomers();
+    } else {
+      result.style.color = '#b71c1c';
+      result.innerHTML = `<strong>שגיאה:</strong> ${data.detail || 'בדוק את מבנה הקובץ'}`;
+    }
+  } catch(e) {
+    result.style.color = '#b71c1c';
+    result.textContent = 'שגיאה: השרת לא זמין';
+  }
+}
+
+async function sendEmails() {
+  const subject = document.getElementById('email-subject').value.trim();
+  const content = document.getElementById('email-content').value.trim();
+  if (!subject || !content) return alert('יש למלא נושא ותוכן');
+  if (!_emailCustomers.length) return alert('אין לקוחות ברשימה לשליחה');
+  if (!confirm(`לשלוח מייל ל-${_emailCustomers.length} לקוחות?`)) return;
+  const result = document.getElementById('email-result');
+  result.style.color = '#94a3b8'; result.textContent = 'שולח...';
+  const res = await fetch('/api/send-email', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subject, content, recipients: _emailCustomers.map(c => ({ email: c.email, name: c.name })) })
+  });
+  const data = await res.json();
+  result.style.color = data.ok ? '#15803d' : '#b71c1c';
+  result.textContent = data.ok
+    ? `נשלח ל-${data.sent} לקוחות${data.failed ? ` | נכשל: ${data.failed}` : ''}`
+    : `שגיאה: ${data.detail || 'בדוק פרטי Gmail ב-.env'}`;
+}
+
+// ── Potential Customers ──────────────────────────────────
+
+let _potentialAll = [];
+let _potentialFilterText = '';
+let _potentialFilterArea = '';
+
+async function loadPotentialCustomers() {
+  const res = await fetch('/api/potential-customers');
+  _potentialAll = await res.json();
+  _potentialFilterText = '';
+  _potentialFilterArea = '';
+  if (document.getElementById('p-filter-text')) document.getElementById('p-filter-text').value = '';
+
+  const areas = [...new Set(_potentialAll.map(c => c.area).filter(Boolean))].sort();
+  const areaSel = document.getElementById('p-filter-area');
+  areaSel.innerHTML = '<option value="">כל האזורים</option>' + areas.map(a => `<option value="${a}">${a}</option>`).join('');
+
+  renderPotentialCustomers();
+}
+
+function filterPotentialCustomers() {
+  _potentialFilterText = document.getElementById('p-filter-text').value.toLowerCase();
+  _potentialFilterArea = document.getElementById('p-filter-area').value;
+  renderPotentialCustomers();
+}
+
+function resetPotentialFilter() {
+  document.getElementById('p-filter-text').value = '';
+  document.getElementById('p-filter-area').value = '';
+  _potentialFilterText = '';
+  _potentialFilterArea = '';
+  renderPotentialCustomers();
+}
+
+function renderPotentialCustomers() {
+  const filtered = _potentialAll.filter(c => {
+    const matchText = !_potentialFilterText ||
+      c.name.toLowerCase().includes(_potentialFilterText) ||
+      (c.email || '').toLowerCase().includes(_potentialFilterText) ||
+      (c.contact_phone || '').includes(_potentialFilterText) ||
+      (c.phone || '').includes(_potentialFilterText);
+    const matchArea = !_potentialFilterArea || c.area === _potentialFilterArea;
+    return matchText && matchArea;
+  });
+
+  const tbody = document.getElementById('potential-customers-body');
+  const countEl = document.getElementById('p-filter-count');
+  const isFiltered = _potentialFilterText || _potentialFilterArea;
+  if (countEl) countEl.textContent = isFiltered ? `מציג ${filtered.length} מתוך ${_potentialAll.length}` : `סה"כ ${_potentialAll.length}`;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">${_potentialAll.length ? 'אין תוצאות לסינון זה' : 'אין לקוחות פוטנציאלים — הוסף ידנית או ייבא מ-Excel'}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(c => {
+    const phones = [c.phone, ...(c.phones_extra ? c.phones_extra.split(',').map(p=>p.trim()) : [])].filter(Boolean);
+    const phonesHtml = phones.length
+      ? `<div style="display:table;border-collapse:separate;border-spacing:0 2px">${
+          phones.map((p, i) => `
+            <div style="display:table-row">
+              <span style="display:table-cell;padding:3px 8px 3px 0;font-size:0.85em;white-space:nowrap;vertical-align:middle${i > 0 ? ';border-top:1px solid #f3f4f6' : ''}">${p}</span>
+              <span style="display:table-cell;vertical-align:middle${i > 0 ? ';border-top:1px solid #f3f4f6' : ''}">${waBtn(p)}</span>
+            </div>`).join('')
+        }</div>`
+      : '—';
+    return `
+    <tr>
+      <td>
+        <div style="font-weight:700;color:#1e293b">${c.name}</div>
+        ${c.company_id ? `<div style="font-size:0.75em;color:#94a3b8">ח.פ. ${c.company_id}</div>` : ''}
+      </td>
+      <td>${c.area ? `<span class="tag" style="font-size:0.75em">${c.area}</span>` : '—'}</td>
+      <td style="font-size:0.85em;min-width:160px">${phonesHtml}</td>
+      <td style="font-size:0.83em;color:#6b7280">${c.fax || '—'}</td>
+      <td>${c.email ? `<a href="mailto:${c.email}" style="color:#dc2626;text-decoration:none;font-size:0.83em">${c.email}</a>` : '—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" style="background:#1e40af;color:white;margin-left:4px;font-size:0.72em" onclick="checkCustomer('${encodeURIComponent(c.name)}')">🔍 בדיקה</button>
+        <button class="btn btn-danger" onclick="deletePotentialCustomer(${c.id})">מחק</button>
+      </td>
+    </tr>`}).join('');
+}
+
+let _bizInfoUrl = '';
+
+function checkCustomer(encodedName) {
+  if (!_bizInfoUrl) { alert('יש להגדיר אתר מידע עסקי בהגדרות'); return; }
+  const name = decodeURIComponent(encodedName);
+  window.open(_bizInfoUrl.replace('{name}', encodeURIComponent(name)), '_blank');
+}
+
+async function addPotentialCustomer() {
+  const name = document.getElementById('p-name').value.trim();
+  const area = document.getElementById('p-area').value.trim();
+  const site_address = document.getElementById('p-site').value.trim();
+  const contact_name = document.getElementById('p-contact-name').value.trim();
+  const contact_phone = document.getElementById('p-contact-phone').value.trim();
+  const email = document.getElementById('p-email').value.trim();
+  if (!name) return alert('יש למלא שם לקוח');
+  await fetch('/api/potential-customers', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, area, site_address, contact_name, contact_phone, email, phone: contact_phone })
+  });
+  ['p-name','p-area','p-site','p-contact-name','p-contact-phone','p-email'].forEach(id => document.getElementById(id).value = '');
+  loadPotentialCustomers();
+}
+
+async function deletePotentialCustomer(id) {
+  if (!confirm('למחוק לקוח פוטנציאלי זה?')) return;
+  await fetch(`/api/potential-customers/${id}`, { method: 'DELETE' });
+  loadPotentialCustomers();
+}
+
+async function importPotentialExcel() {
+  const file = document.getElementById('potential-excel-file').files[0];
+  if (!file) return alert('יש לבחור קובץ Excel');
+  const result = document.getElementById('potential-import-result');
+  result.textContent = 'מייבא...'; result.style.color = '#94a3b8';
+  const buf = await file.arrayBuffer();
+  try {
+    const res = await fetch('/api/potential-customers/import-excel', {
+      method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: buf
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      result.style.color = '#15803d';
+      const cols = data.mapped_columns?.join(', ') || '';
+      const skip = data.skipped ? ` | ${data.skipped} שורות ריקות דולגו` : '';
+      result.innerHTML = `יובאו בהצלחה <strong>${data.imported} לקוחות</strong>${skip}<br><span style="font-size:0.85em;color:#64748b">עמודות שזוהו: ${cols}</span>`;
+      loadPotentialCustomers();
+    } else {
+      result.style.color = '#b71c1c';
+      result.innerHTML = `<strong>שגיאה:</strong> ${data.detail || 'בדוק את מבנה הקובץ'}`;
+    }
+  } catch(e) {
+    result.style.color = '#b71c1c';
+    result.textContent = 'שגיאה: השרת לא זמין';
+  }
+}
+
+// ── Tasks ─────────────────────────────────────────────────
+
+async function loadTasks() {
+  const res = await fetch('/api/tasks/week');
+  const drivers = await res.json();
+  const container = document.getElementById('tasks-container');
+  const today = new Date().toISOString().slice(0,10);
+  if (!drivers.length) { container.innerHTML = '<div class="card"><p class="empty">אין נהגים רשומים</p></div>'; return; }
+
+  // אסוף את כל ההזמנות של היום לטבלת סיכום
+  const allTodayOrders = [];
+  drivers.forEach(d => {
+    (d.orders_by_date[today] || []).forEach(o => allTodayOrders.push({...o, driver_name: d.name}));
+  });
+
+  const summaryEl = document.getElementById('tasks-summary');
+  if (allTodayOrders.length) {
+    const byDriver = {};
+    allTodayOrders.forEach(o => {
+      if (!byDriver[o.driver_name]) byDriver[o.driver_name] = [];
+      byDriver[o.driver_name].push(o);
+    });
+    const tableRows = Object.entries(byDriver).map(([driverName, orders]) =>
+      orders.map((o, i) => `
+        <tr>
+          ${i === 0 ? `<td rowspan="${orders.length}" style="font-weight:700;color:#1e293b;background:#fef2f2;vertical-align:middle;text-align:center">${driverName}</td>` : ''}
+          <td>${o.id}</td>
+          <td><strong>${o.customer_name}</strong></td>
+          <td>${o.site_address}</td>
+          <td>${o.contact_name || '—'}</td>
+          <td>${o.contact_phone || '—'}</td>
+          <td><strong>${o.quantity}</strong> ל'</td>
+          <td>${o.delivery_time || '—'}</td>
+          <td><span class="badge badge-${o.status}">${o.status}</span></td>
+        </tr>`).join('')
+    ).join('');
+
+    summaryEl.innerHTML = `
+      <div class="card" style="margin-top:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <h2 style="margin-bottom:0;border-bottom:none;padding-bottom:0">סידור יום זה — לפי נהגים</h2>
+          <button class="btn btn-primary" style="background:#1e40af;font-size:0.85em;padding:7px 16px"
+            onclick="sendScheduleToAdminFromTasks(this)">📋 שלח סידור לבדיקת מנהל</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>נהג</th><th>#</th><th>לקוח</th><th>כתובת</th>
+              <th>איש קשר</th><th>טלפון</th><th>כמות</th><th>שעה</th><th>סטטוס</th>
+            </tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+        <div id="tasks-send-result" style="margin-top:10px;font-size:0.88em"></div>
+      </div>`;
+  } else {
+    summaryEl.innerHTML = '';
+  }
+
+  container.innerHTML = drivers.map(d => {
+    const allOrders = Object.values(d.orders_by_date).flat().filter(o => o.status !== 'הושלם');
+    const total = allOrders.length;
+    const done  = allOrders.filter(o => o.status === 'אושר' || o.status === 'נשלח').length;
+    const pct   = total ? Math.round((done / total) * 100) : 0;
+    const todayOrders = (d.orders_by_date[today] || []).filter(o => o.status !== 'הושלם').length;
+
+    const daysHtml = Object.keys(d.orders_by_date).sort().map(dateStr => {
+      const orders = d.orders_by_date[dateStr].filter(o => o.status !== 'הושלם');
+      if (!orders.length) return '';
+      const dateObj = new Date(dateStr + 'T00:00:00');
+      const label = dateStr === today
+        ? 'היום'
+        : `יום ${DAYS_HE[dateObj.getDay()]} — ${dateObj.getDate()} ${MONTHS_HE[dateObj.getMonth()]}`;
+      const rowsHtml = orders.map((o, idx) => `
+        <div class="task-row">
+          <div class="task-num">${idx + 1}</div>
+          <div class="task-info">
+            <strong>${o.customer_name}</strong>
+            <span>${o.site_address}</span>
+            ${o.contact_name ? `<span> · ${o.contact_name}${o.contact_phone ? ' · ' + o.contact_phone : ''}</span>` : ''}
+          </div>
+          <div class="task-qty">${o.quantity} ל'</div>
+          <select class="status-pill s-${o.status}" onchange="updateTaskStatus(${o.id}, this.value, this)">
+            ${STATUS_OPTIONS.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>`).join('');
+      return `<div class="task-day-header">${label} — ${orders.length} הזמנות</div>${rowsHtml}`;
+    }).join('');
+
+    return `
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+          <div>
+            <div style="font-size:1.05em;font-weight:700;color:#1e293b">${d.name}</div>
+            <div style="font-size:0.82em;color:#94a3b8;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
+              <span>${d.area}</span>
+              ${d.phone ? `<span>· ${d.phone}</span>` : ''}
+              ${d.truck_number ? `<span>· מ"ס ${d.truck_number}</span>` : ''}
+              ${d.tanker_volume ? `<span>· ${d.tanker_volume} ליטר</span>` : ''}
+            </div>
+          </div>
+          <div style="min-width:180px">
+            <div style="font-size:0.8em;color:#64748b;margin-bottom:4px">${done} / ${total} הושלמו · היום: ${todayOrders}</div>
+            <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+              <span style="font-size:0.78em;font-weight:700;color:#b71c1c">${pct}%</span>
+              <button class="btn btn-sm" onclick="openIturan()" style="background:#1e293b;color:white;font-size:0.75em;padding:3px 12px">איתורן</button>
+            </div>
+          </div>
+        </div>
+        ${total ? daysHtml : '<p class="empty" style="padding:16px">אין משימות לשבוע זה</p>'}
+      </div>`;
+  }).join('');
+}
+
+async function sendScheduleToAdminFromTasks(btn) {
+  btn.disabled = true; btn.textContent = 'שולח...';
+  try {
+    const res  = await fetch('/api/send-daily-schedule', { method: 'POST' });
+    const data = await res.json();
+    const result = document.getElementById('tasks-send-result');
+    if (data.ok) {
+      result.textContent = `✓ נשלח! ${data.orders_sent} הזמנות נשלחו לוואטסאפ שלך`;
+      result.style.color = '#15803d';
+    } else {
+      result.textContent = `שגיאה: ${data.error || 'ודא שהוגדר טלפון מנהל בהגדרות'}`;
+      result.style.color = '#b91c1c';
+    }
+  } catch(e) {
+    alert('שגיאה: השרת לא זמין');
+  } finally {
+    btn.disabled = false; btn.textContent = '📋 שלח סידור לבדיקת מנהל';
+  }
+}
+
+async function updateTaskStatus(id, status, el) {
+  el.className = `status-pill s-${status}`;
+  await fetch(`/api/orders/${id}/status`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+  if (document.getElementById('orders').classList.contains('active')) loadOrders();
+  if (document.getElementById('home').classList.contains('active'))   loadHome();
+  // רענן את הטבלה התחתונה אם נמצאים במשימות
+  if (document.getElementById('tasks').classList.contains('active'))  loadTasks();
+}
+
+// ── Clock ─────────────────────────────────────────────────
+
+const DAYS_HE   = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  const dateStr = `${now.getDate()} ${MONTHS_HE[now.getMonth()]} ${now.getFullYear()}`;
+  const dayStr  = `יום ${DAYS_HE[now.getDay()]}`;
+  if (document.getElementById('clock-time'))  document.getElementById('clock-time').textContent  = `${h}:${m}:${s}`;
+  if (document.getElementById('clock-date'))  document.getElementById('clock-date').textContent  = dateStr;
+  if (document.getElementById('clock-day'))   document.getElementById('clock-day').textContent   = dayStr;
+  if (document.getElementById('home-clock'))  document.getElementById('home-clock').textContent  = `${h}:${m}`;
+  if (document.getElementById('home-date'))   document.getElementById('home-date').textContent   = `${dayStr} · ${dateStr}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Calendar ──────────────────────────────────────────────
+
+let calYear, calMonth, orderDates = new Set(), selectedDate = null;
+
+async function initCalendar() {
+  const now = new Date();
+  calYear = now.getFullYear(); calMonth = now.getMonth();
+  const res = await fetch('/api/orders/dates');
+  orderDates = new Set(await res.json());
+  renderCalendar();
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('cal-title').textContent = `${MONTHS_HE[calMonth]} ${calYear}`;
+  document.getElementById('cal-days-header').innerHTML =
+    ['א','ב','ג','ד','ה','ו','ש'].map(d => `<th style="padding:5px;color:#94a3b8;font-weight:500;font-size:0.85em">${d}</th>`).join('');
+
+  const first = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date().toISOString().slice(0,10);
+
+  let html = '<tr>';
+  for (let i = 0; i < first; i++) html += '<td></td>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = dateStr === today, hasOrders = orderDates.has(dateStr), isSelected = dateStr === selectedDate;
+    let style = 'padding:6px;border-radius:6px;font-size:0.88em;';
+    const onHome = document.getElementById('home').classList.contains('active');
+    if (isSelected) style += 'background:#1f6feb;color:white;font-weight:700;';
+    else if (isToday) style += `border:1.5px solid ${onHome?'#58a6ff':'#b71c1c'};font-weight:700;color:${onHome?'#58a6ff':'#b71c1c'};`;
+    if (hasOrders && !isSelected) style += onHome ? 'background:#0d4a9c22;color:#58a6ff;' : 'background:#fee2e2;';
+    html += `<td style="${style}" onclick="selectDate('${dateStr}')">${d}${hasOrders&&!isSelected?`<span style="color:${onHome?'#58a6ff':'#b71c1c'};font-size:0.5em;vertical-align:super">●</span>`:''}</td>`;
+    if ((first + d) % 7 === 0) html += '</tr><tr>';
+  }
+  html += '</tr>';
+  document.getElementById('cal-body').innerHTML = html;
+}
+
+function selectDate(dateStr) {
+  if (selectedDate === dateStr) {
+    selectedDate = null;
+    document.getElementById('orders-title').textContent = 'כל ההזמנות';
+  } else {
+    selectedDate = dateStr;
+    const [y,m,d] = dateStr.split('-');
+    document.getElementById('orders-title').textContent = `הזמנות ל-${parseInt(d)} ${MONTHS_HE[parseInt(m)-1]} ${y}`;
+  }
+  renderCalendar();
+  if (document.getElementById('orders').classList.contains('active')) loadOrders();
+}
+
+// ── Manual Order ─────────────────────────────────────────
+
+let _customers = [], _drivers = [];
+
+async function loadCustomerDropdown() {
+  const [cRes, dRes] = await Promise.all([fetch('/api/customers'), fetch('/api/drivers')]);
+  _customers = await cRes.json();
+  _drivers   = await dRes.json();
+
+  const sel = document.getElementById('o-customer');
+  sel.innerHTML = '<option value="">-- בחר לקוח קיים (אופציונלי) --</option>';
+  _customers.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; sel.appendChild(o); });
+
+  const areas = [...new Set(_drivers.map(d => d.area).filter(Boolean))];
+  const areaSel = document.getElementById('o-area');
+  areaSel.innerHTML = '<option value="">-- בחר אזור לשיוך נהג --</option>';
+  areas.forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; areaSel.appendChild(o); });
+}
+
+function fillCustomerData() {
+  const id = parseInt(document.getElementById('o-customer').value);
+  const c = _customers.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('o-name').value = c.name;
+  document.getElementById('o-site').value = c.site_address || '';
+  document.getElementById('o-contact-name').value  = c.order_contact_name  || c.contact_name  || '';
+  document.getElementById('o-contact-phone').value = c.order_contact_phone || c.contact_phone || '';
+  document.getElementById('o-area').value = c.area || '';
+  previewDriver();
+}
+
+function previewDriver() {
+  const area = document.getElementById('o-area').value;
+  const preview = document.getElementById('o-driver-preview');
+  if (!area) { preview.textContent = ''; return; }
+  const driver = _drivers.find(d => d.area === area);
+  if (driver) {
+    preview.innerHTML = `נהג משויך: <strong style="color:#1e293b">${driver.name}</strong> <span style="color:#94a3b8">(${driver.phone})</span>`;
+    preview.style.color = '#15803d';
+  } else {
+    preview.innerHTML = `אין נהג רשום לאזור "${area}"`;
+    preview.style.color = '#b71c1c';
+  }
+}
+
+async function addOrderManual() {
+  const customer_id   = document.getElementById('o-customer').value || null;
+  const customer_name = document.getElementById('o-name').value.trim();
+  const site_address  = document.getElementById('o-site').value.trim();
+  const contact_name  = document.getElementById('o-contact-name').value.trim();
+  const contact_phone = document.getElementById('o-contact-phone').value.trim();
+  const quantity      = document.getElementById('o-quantity').value.trim();
+  const order_date    = document.getElementById('o-date').value;
+  const area          = document.getElementById('o-area').value;
+  if (!customer_name || !site_address || !quantity) return alert('יש למלא שם לקוח, כתובת וכמות');
+  if (!area) return alert('יש לבחור אזור כדי לשייך נהג');
+  await fetch('/api/orders', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ customer_id, customer_name, site_address, contact_name, contact_phone, quantity, order_date, area })
+  });
+  ['o-name','o-site','o-contact-name','o-contact-phone','o-quantity','o-date'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('o-customer').value = '';
+  document.getElementById('o-area').value = '';
+  document.getElementById('o-driver-preview').textContent = '';
+  loadOrders();
+}
+
+// ── Init ─────────────────────────────────────────────────
+loadHome();
+loadCustomerDropdown();
+initCalendar();
+</script>
+</body>
+</html>

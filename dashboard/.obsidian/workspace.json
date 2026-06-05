@@ -1,0 +1,194 @@
+{
+  "main": {
+    "id": "49dbff3269089fea",
+    "type": "split",
+    "children": [
+      {
+        "id": "fb78644c1ecbdfa0",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "3e2ea781117ddc7c",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "תצוגת גרף"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "7eb3557cabd3bda0",
+    "type": "split",
+    "children": [
+      {
+        "id": "b936dfa79c1c74a4",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b68ca52fb33f7038",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "סייר קבצים"
+            }
+          },
+          {
+            "id": "b02494bf64fcfd89",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "לחפש"
+            }
+          },
+          {
+            "id": "82a989c8b79cb3e1",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "סימניות"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "right": {
+    "id": "a4224bce5f794734",
+    "type": "split",
+    "children": [
+      {
+        "id": "1e4a58592ae4c309",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "44960acf727cc9fd",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "dist/לוגו חברה.jpeg",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "קישורים נכנסים עבור לוגו חברה"
+            }
+          },
+          {
+            "id": "528e985a1bc795b4",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "dist/לוגו חברה.jpeg",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "קישורים יוצאים מ-לוגו חברה"
+            }
+          },
+          {
+            "id": "97788537c8c85c09",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "תגים"
+            }
+          },
+          {
+            "id": "ea64ae9b91e234f5",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "כל המאפיינים"
+            }
+          },
+          {
+            "id": "ad1be5fc63ea8ee2",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "dist/לוגו חברה.jpeg",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "מתאר של לוגו חברה"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:פתח את המחליף המהיר": false,
+      "graph:פתח תצוגת גרף": false,
+      "canvas:צור קנבס חדש": false,
+      "daily-notes:פתח את ההערה של היום": false,
+      "templates:הכנס תבנית": false,
+      "command-palette:פתח את לוח הפקודות": false,
+      "bases:צור בסיס חדש": false
+    }
+  },
+  "active": "3e2ea781117ddc7c",
+  "lastOpenFiles": [
+    "ללא כותרת.base",
+    "dist/icons.svg",
+    "dist/favicon.svg",
+    "dist/לוגו חברה.jpeg",
+    "WhatsApp Image 2026-05-27 at 13.53.23.jpeg",
+    "node_modules/@reduxjs/toolkit/skills/orchestrate-side-effects/handle-side-effects/SKILL.md",
+    "node_modules/@babel/compat-data/README.md",
+    "d1_page5.png",
+    "d1_page2.png"
+  ]
+}

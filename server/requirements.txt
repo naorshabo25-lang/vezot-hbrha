@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+apscheduler
+requests
+jinja2
+python-multipart
+aiofiles
+python-dotenv
+openpyxl
