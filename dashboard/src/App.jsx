@@ -271,7 +271,7 @@ export default function App() {
         }}>
           {tab === 'orders' && (
             <iframe
-              src={`/dashboard?v=${Date.now()}`}
+              src={`${window.location.port === '5173' || window.location.port === '5174' ? 'http://localhost:8000' : ''}/dashboard?v=${Date.now()}`}
               style={{ width: '100%', height: '100vh', border: 'none', display: 'block' }}
               title="מערכת ניהול — זאת הברכה דלקים"
             />

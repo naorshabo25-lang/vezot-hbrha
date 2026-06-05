@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API = 'http://localhost:8000';
+const API = window.location.port === '5173' || window.location.port === '5174' ? 'http://localhost:8000' : '';
 
 const Card = ({ children, style = {} }) => (
   <div style={{
@@ -44,8 +44,10 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [successMsg, setSuccessMsg] = useState('');
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [editError,       setEditError]       = useState('');
-  const [salePriceEdit,   setSalePriceEdit]   = useState(null); // { name, value }
+  const [salePriceEdit,   setSalePriceEdit]   = useState(null);
   const [salePriceSaved,  setSalePriceSaved]  = useState(false);
+  const [syncing,         setSyncing]         = useState(false);
+  const [syncMsg,         setSyncMsg]         = useState('');
 
   const load = () =>
     Promise.all([
@@ -70,6 +72,44 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
     (b.order_date || '').localeCompare(a.order_date || '')
   );
   const completedOrders  = customerOrders.filter(o => o.status === 'הושלם').length;
+
+  const syncAllCustomers = async () => {
+    setSyncing(true);
+    setSyncMsg('');
+    try {
+      const res = await fetch(`${API}/api/customers`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const dbCustomers = await res.json();
+      if (!onChange || !Array.isArray(dbCustomers) || dbCustomers.length === 0)
+        throw new Error('אין לקוחות במסד הנתונים');
+
+      const existingNames = new Set((workPlanData?.clients || []).map(c => c.name));
+      const existingObligo = workPlanData?.obligo || {};
+      let added = 0;
+
+      const newClients = [...(workPlanData?.clients || [])];
+      const newObligo  = { ...existingObligo };
+
+      dbCustomers.forEach(c => {
+        const name = c.name?.trim();
+        if (!name) return;
+        if (!existingNames.has(name)) {
+          newClients.push({ name, liters: 0, profit: 0, dailyLiters: 0 });
+          added++;
+        }
+        if (!newObligo[name]) {
+          newObligo[name] = { creditLimit: 0, currentBalance: 0, paymentTerms: '', note: '' };
+        }
+      });
+
+      onChange(prev => ({ ...(prev || {}), clients: newClients, obligo: newObligo }));
+      setSyncMsg(`✓ סונכרנו ${dbCustomers.length} לקוחות — ${added} חדשים נוספו`);
+    } catch (e) {
+      setSyncMsg(`שגיאה: ${e.message}`);
+    }
+    setSyncing(false);
+    setTimeout(() => setSyncMsg(''), 6000);
+  };
 
   const handleAdd = async () => {
     if (!form.name.trim())  return setError('נא להזין שם לקוח');
@@ -190,6 +230,25 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* כפתור סנכרון */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <button
+          onClick={syncAllCustomers}
+          disabled={syncing}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px',
+            borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none',
+            opacity: syncing ? 0.7 : 1,
+          }}
+        >
+          {syncing ? '⏳ מסנכרן...' : '🔄 סנכרן לקוחות למערכת'}
+        </button>
+        {syncMsg && (
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>✓ {syncMsg}</span>
+        )}
+      </div>
 
       {/* הוספת לקוח */}
       <div>

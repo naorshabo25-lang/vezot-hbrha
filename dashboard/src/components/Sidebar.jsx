@@ -31,13 +31,13 @@ export default function Sidebar({ tab, onTab }) {
           overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: 'rgba(255,255,255,0.07)',
-          padding: '8px 10px',
-          minHeight: 58,
+          padding: '12px 10px',
+          minHeight: 90,
         }}>
           <img
             src="/לוגו חברה.jpeg"
             alt="זאת הברכה"
-            style={{ maxHeight: 50, maxWidth: '100%', objectFit: 'contain' }}
+            style={{ maxHeight: 80, maxWidth: '100%', objectFit: 'contain' }}
           />
         </div>
       </div>
