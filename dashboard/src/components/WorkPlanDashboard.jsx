@@ -401,9 +401,33 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
         </div>
 
         <GroupLabel>הכנסות ממכירות</GroupLabel>
-        {[...d.clients].sort((a, b) => clientProfit(b) - clientProfit(a)).map((c, i) => (
-          <PLRow key={i} label={c.name} value={clientProfit(c)} pct={(clientProfit(c) / totalRev) * 100} indent />
-        ))}
+        {[...d.clients].sort((a, b) => clientProfit(b) - clientProfit(a)).map((c, i) => {
+          const sell1   = c.salePrice  || 0;
+          const sell2   = c.salePrice2 || 0;
+          const liters1 = (c.actualLiters  != null ? c.actualLiters  : c.liters)  || 0;
+          const liters2 = (c.actualLiters2 != null ? c.actualLiters2 : (c.liters2 || 0));
+          const profit1 = sell1 > 0 ? liters1 * sell1 : c.profit || 0;
+          const profit2 = sell2 > 0 && liters2 > 0 ? liters2 * sell2 : 0;
+          const hasTwo  = sell2 > 0 && liters2 > 0;
+          return (
+            <div key={i}>
+              <PLRow
+                label={hasTwo ? `${c.name} — מחיר א׳ (${sell1.toFixed(3)} ₪/ל׳ × ${liters1.toLocaleString('he-IL')} ל׳)` : c.name}
+                value={profit1}
+                pct={(profit1 / totalRev) * 100}
+                indent
+              />
+              {hasTwo && (
+                <PLRow
+                  label={`${c.name} — מחיר ב׳ (${sell2.toFixed(3)} ₪/ל׳ × ${liters2.toLocaleString('he-IL')} ל׳)`}
+                  value={profit2}
+                  pct={(profit2 / totalRev) * 100}
+                  indent
+                />
+              )}
+            </div>
+          );
+        })}
         <PLRow label="הכנסות ממכירות" value={totalRev} pct={100} bold subtotal color="var(--green)" />
 
         {(d.fuelPurchases || []).length > 0 && <>
