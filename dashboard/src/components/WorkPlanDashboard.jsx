@@ -404,35 +404,9 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
         </div>
 
         <GroupLabel>הכנסות ממכירות</GroupLabel>
-        {[...d.clients].sort((a, b) => clientProfit(b) - clientProfit(a)).flatMap((c, i) => {
-          const sell1   = c.salePrice    || 0;
-          const sell2   = c.salePrice2   || 0;
-          const buy     = c.purchasePrice || 0;
-          const liters1 = (c.actualLiters  != null ? c.actualLiters  : c.liters)  || 0;
-          const liters2 = (c.actualLiters2 != null ? c.actualLiters2 : (c.liters2 || 0));
-          const margin1 = sell1 > 0 ? (buy > 0 ? sell1 - buy : sell1) : 0;
-          const margin2 = sell2 > 0 ? (buy > 0 ? sell2 - buy : sell2) : 0;
-          const profit1 = sell1 > 0 ? liters1 * margin1 : c.profit || 0;
-          const profit2 = sell2 > 0 && liters2 > 0 ? liters2 * margin2 : 0;
-          const rows = [
-            <PLRow
-              key={`${i}-1`}
-              label={sell1 > 0 ? `${c.name} — מחיר א׳ (${sell1.toFixed(3)} ₪/ל׳)` : c.name}
-              value={profit1}
-              pct={totalRev > 0 ? (profit1 / totalRev) * 100 : 0}
-              indent
-            />,
-            <PLRow
-              key={`${i}-2`}
-              label={`${c.name} — מחיר ב׳${sell2 > 0 ? ` (${sell2.toFixed(3)} ₪/ל׳)` : ''}`}
-              value={profit2}
-              pct={totalRev > 0 ? (profit2 / totalRev) * 100 : 0}
-              indent
-              color={profit2 === 0 ? 'var(--text-3)' : undefined}
-            />,
-          ];
-          return rows;
-        })}
+        {[...d.clients].sort((a, b) => clientProfit(b) - clientProfit(a)).map((c, i) => (
+          <PLRow key={i} label={c.name} value={clientProfit(c)} pct={totalRev > 0 ? (clientProfit(c) / totalRev) * 100 : 0} indent />
+        ))}
         <PLRow label="הכנסות ממכירות" value={totalRev} pct={100} bold subtotal color="var(--green)" />
 
         {(d.fuelPurchases || []).length > 0 && <>
