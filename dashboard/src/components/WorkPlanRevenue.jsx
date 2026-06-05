@@ -858,7 +858,36 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
                       </div>
                     ) : <span style={{ color: 'var(--text-3)', fontSize: 11 }}>—</span>}
                   </td>
-                  <td style={{ ...P, fontWeight: 700, color: 'var(--green)', fontSize: 13 }}>{fmt(cp)}</td>
+                  <td style={P}>
+                    {(() => {
+                      const sell1 = c.salePrice || 0;
+                      const sell2 = c.salePrice2 || 0;
+                      const buy   = c.purchasePrice || 0;
+                      const l1    = effectiveLiters(c);
+                      const l2    = effectiveLiters2(c);
+                      const p1    = sell1 > 0 ? l1 * (buy > 0 ? sell1 - buy : sell1) : (c.profit || 0);
+                      const p2    = sell2 > 0 && l2 > 0 ? l2 * (buy > 0 ? sell2 - buy : sell2) : null;
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontWeight: 700, color: 'var(--green)', fontSize: 12 }}>
+                            {fmt(Math.round(p1))}
+                            {sell1 > 0 && <span style={{ fontSize: 9, color: 'var(--text-3)', marginRight: 3 }}>מ1</span>}
+                          </span>
+                          {p2 !== null && (
+                            <span style={{ fontWeight: 700, color: '#059669', fontSize: 12 }}>
+                              {fmt(Math.round(p2))}
+                              <span style={{ fontSize: 9, color: 'var(--text-3)', marginRight: 3 }}>מ2</span>
+                            </span>
+                          )}
+                          {p2 !== null && (
+                            <span style={{ fontSize: 10, color: 'var(--text-3)', borderTop: '1px solid var(--border)', paddingTop: 2 }}>
+                              סה״כ: {fmt(Math.round(p1 + p2))}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td style={P}>
                     {c.salePrice > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
