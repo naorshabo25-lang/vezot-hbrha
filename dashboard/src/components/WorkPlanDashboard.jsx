@@ -118,6 +118,15 @@ const clientProfit = c => {
 const clientActualLiters = c =>
   (c.actualLiters != null ? c.actualLiters : c.liters) || 0;
 
+const clientInvoice = c => {
+  const sell1   = c.salePrice  || 0;
+  const sell2   = c.salePrice2 || 0;
+  const liters1 = (c.actualLiters  != null ? c.actualLiters  : c.liters)       || 0;
+  const liters2 = (c.actualLiters2 != null ? c.actualLiters2 : (c.liters2 || 0));
+  if (sell1 > 0) return liters1 * sell1 + (sell2 > 0 && liters2 > 0 ? liters2 * sell2 : 0);
+  return c.profit || 0;
+};
+
 const CLIENT_COLORS = ['#d32f2f','#2563eb','#0891b2','#16a34a','#7c3aed','#ea580c','#0f766e'];
 const EXP_COLORS    = ['#d32f2f','#ea580c','#1e2d3d'];
 
@@ -188,14 +197,33 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
   const totalSal    = d.salaries.reduce((s, e) => s + e.amount, 0);
   const totalFuel   = (d.fuelPurchases || []).reduce((s, e) => s + e.amount, 0);
   const totalEx     = totalOpEx + totalSal + totalFuel;
-  const totalRev    = d.clients.reduce((s, c) => s + clientProfit(c), 0);
-  const totalLiters = d.clients.reduce((s, c) => s + clientActualLiters(c), 0);
-  const netProfit   = totalRev - totalEx;
-  const margin      = totalRev > 0 ? (netProfit / totalRev) * 100 : 0;
-  const costRatio   = totalRev > 0 ? (totalEx / totalRev) * 100 : 0;
-  const salPct      = totalRev > 0 ? (totalSal / totalRev) * 100 : 0;
-  const opPct       = totalRev > 0 ? (totalOpEx / totalRev) * 100 : 0;
-  const fuelPct     = totalRev > 0 ? (totalFuel / totalRev) * 100 : 0;
+
+  // כרטיסי תדלוק לפי לקוח
+  const additiveTypes  = d.additiveTypes  || {};
+  const fcRows         = d.fuelCardCustomers || [];
+  const fcRevenue      = Math.round(fcRows.reduce((s, r) => s + (r.liters || 0) * (r.salePrice || 0), 0));
+  const fcProfitTotal  = Math.round(fcRows.reduce((s, r) => s + (r.liters || 0) * ((r.salePrice || 0) - (r.purchasePrice || 0)), 0));
+
+  // תוספים ושירותים משלימים
+  const addRevenue     = Math.round(d.clients.reduce((s, c) =>
+    s + (c.additives || []).reduce((cs, a) => cs + (a.qty || 0) * (additiveTypes[a.type]?.salePrice || 0), 0), 0));
+  const addProfitTotal = Math.round(d.clients.reduce((s, c) =>
+    s + (c.additives || []).reduce((cs, a) => {
+      const sell = additiveTypes[a.type]?.salePrice || 0;
+      const buy  = additiveTypes[a.type]?.purchasePrice || 0;
+      return cs + (a.qty || 0) * (sell - buy);
+    }, 0), 0));
+
+  const totalRev     = d.clients.reduce((s, c) => s + clientProfit(c), 0) + fcProfitTotal + addProfitTotal;
+  const totalInvoice = d.clients.reduce((s, c) => s + clientInvoice(c), 0) + fcRevenue + addRevenue;
+  const totalLiters  = d.clients.reduce((s, c) => s + clientActualLiters(c), 0);
+  const netProfit   = totalInvoice - totalEx;
+  const base        = totalInvoice > 0 ? totalInvoice : 1;
+  const margin      = (netProfit / base) * 100;
+  const costRatio   = (totalEx    / base) * 100;
+  const salPct      = (totalSal   / base) * 100;
+  const opPct       = (totalOpEx  / base) * 100;
+  const fuelPct     = (totalFuel  / base) * 100;
 
   const revPerLiter  = totalLiters > 0 ? totalRev / totalLiters : 0;
   const costPerLiter = totalLiters > 0 ? totalEx / totalLiters : 0;
@@ -223,7 +251,7 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
   const months     = ['יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
   const projection = months.map((m, i) => ({
     month: m,
-    הכנסות: Math.round(totalRev * (1 + i * 0.02)),
+    הכנסות: Math.round(totalInvoice * (1 + i * 0.02)),
     הוצאות: Math.round(totalEx  * (1 + i * 0.01)),
     רווח:   Math.round(netProfit * (1 + i * 0.05)),
   }));
@@ -236,18 +264,24 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
     return { month, רווח: Math.round(netProfit * (1 + (i - CURRENT_IDX) * 0.025)), type: 'future' };
   });
 
-  const grossProfit = totalRev - totalFuel - totalOpEx;
-  const grossMargin = totalRev > 0 ? (grossProfit / totalRev) * 100 : 0;
-  const opProfit    = grossProfit - totalSal;
-  const opMargin    = totalRev > 0 ? (opProfit / totalRev) * 100 : 0;
+  const grossProfit = totalInvoice - totalFuel;
+  const grossMargin = totalInvoice > 0 ? (grossProfit / totalInvoice) * 100 : 0;
+  const opProfit    = grossProfit - totalOpEx;
+  const opMargin    = totalInvoice > 0 ? (opProfit / totalInvoice) * 100 : 0;
 
   /* ── KPI cards ──────────────────────────────────────────── */
   const kpis = [
     {
-      label: 'הכנסות ברוטו',
-      value: fmt(totalRev),
-      sub: `${d.clients.length} לקוחות · ${fmtL(totalLiters)}`,
-      bg: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+      label: 'סה"כ הכנסות לפני מע"מ',
+      value: fmt(Math.round(totalInvoice)),
+      sub: 'סכום כל החשבוניות ללא מע"מ',
+      bg: 'linear-gradient(135deg, #0891b2 0%, #0369a1 100%)',
+    },
+    {
+      label: 'סה"כ הכנסות אחרי מע"מ',
+      value: fmt(Math.round(totalInvoice * 1.18)),
+      sub: 'כולל מע"מ 18%',
+      bg: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)',
     },
     {
       label: 'הוצאות כוללות',
@@ -256,7 +290,7 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
       bg: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
     },
     {
-      label: 'רווח נקי חודשי',
+      label: 'רווח נקי חודשי לפני מס',
       value: fmt(netProfit),
       sub: netProfit >= 0 ? 'פרופיטבילי ✓' : 'גירעון ⚠',
       bg: netProfit >= 0
@@ -292,7 +326,7 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
       {/* KPI Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
         {kpis.map((k, i) => (
           <div key={i} style={{
             background: k.bg,
@@ -404,40 +438,46 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
         </div>
 
         <GroupLabel>הכנסות ממכירות</GroupLabel>
-        {[...d.clients].sort((a, b) => clientProfit(b) - clientProfit(a)).map((c, i) => (
-          <PLRow key={i} label={c.name} value={clientProfit(c)} pct={totalRev > 0 ? (clientProfit(c) / totalRev) * 100 : 0} indent />
+        {[...d.clients].sort((a, b) => clientInvoice(b) - clientInvoice(a)).map((c, i) => (
+          <PLRow key={i} label={c.name} value={clientInvoice(c)} pct={totalInvoice > 0 ? (clientInvoice(c) / totalInvoice) * 100 : 0} indent />
         ))}
-        <PLRow label="הכנסות ממכירות" value={totalRev} pct={100} bold subtotal color="var(--green)" />
+        {fcRevenue > 0 && (
+          <PLRow label="כרטיסי תדלוק לפי לקוח" value={fcRevenue} pct={totalInvoice > 0 ? (fcRevenue / totalInvoice) * 100 : 0} indent />
+        )}
+        {addRevenue > 0 && (
+          <PLRow label="תוספים ושירותים משלימים" value={addRevenue} pct={totalInvoice > 0 ? (addRevenue / totalInvoice) * 100 : 0} indent />
+        )}
+        <PLRow label='סה"כ הכנסות' value={totalInvoice} pct={100} bold subtotal color="var(--green)" />
 
         {(d.fuelPurchases || []).length > 0 && <>
-          <GroupLabel>עלות סחורה — רכישת דלקים</GroupLabel>
+          <GroupLabel>עלות המכר — רכישת דלקים</GroupLabel>
           {[...(d.fuelPurchases || [])].sort((a, b) => b.amount - a.amount).map((e, i) => (
-            <PLRow key={i} label={e.name} value={e.amount} pct={(e.amount / totalRev) * 100} indent negative />
+            <PLRow key={i} label={e.name} value={e.amount} pct={totalInvoice > 0 ? (e.amount / totalInvoice) * 100 : 0} indent negative />
           ))}
-          <PLRow label="עלות סחורה" value={totalFuel} pct={fuelPct} bold subtotal negative color="var(--orange)" />
+          <PLRow label="עלות המכר" value={totalFuel} pct={fuelPct} bold subtotal negative color="var(--orange)" />
         </>}
-
-        <GroupLabel>הוצאות תפעוליות</GroupLabel>
-        {[...d.operationalExpenses].sort((a, b) => b.amount - a.amount).map((e, i) => (
-          <PLRow key={i} label={e.name} value={e.amount} pct={(e.amount / totalRev) * 100} indent negative />
-        ))}
-        <PLRow label="הוצאות תפעוליות" value={totalOpEx} pct={opPct} bold subtotal negative color="var(--red)" />
 
         <PLRow
           label="רווח גולמי" value={grossProfit} pct={grossMargin} bold subtotal
           color={grossProfit >= 0 ? 'var(--green)' : 'var(--red)'}
         />
 
-        <GroupLabel>הוצאות הנהלה — שכר</GroupLabel>
-        {d.salaries.map((s, i) => (
-          <PLRow key={i} label={s.name} value={s.amount} pct={(s.amount / totalRev) * 100} indent negative />
+        <GroupLabel>הוצאות תפעוליות</GroupLabel>
+        {[...d.operationalExpenses].sort((a, b) => b.amount - a.amount).map((e, i) => (
+          <PLRow key={i} label={e.name} value={e.amount} pct={totalInvoice > 0 ? (e.amount / totalInvoice) * 100 : 0} indent negative />
         ))}
-        <PLRow label="הוצאות שכר" value={totalSal} pct={salPct} bold subtotal negative color="var(--purple)" />
+        <PLRow label="הוצאות תפעוליות" value={totalOpEx} pct={opPct} bold subtotal negative color="var(--red)" />
 
         <PLRow
           label="רווח תפעולי" value={opProfit} pct={opMargin} bold subtotal
           color={opProfit >= 0 ? 'var(--green)' : 'var(--red)'}
         />
+
+        <GroupLabel>הוצאות הנהלה — שכר</GroupLabel>
+        {d.salaries.map((s, i) => (
+          <PLRow key={i} label={s.name} value={s.amount} pct={totalInvoice > 0 ? (s.amount / totalInvoice) * 100 : 0} indent negative />
+        ))}
+        <PLRow label="הוצאות שכר" value={totalSal} pct={salPct} bold subtotal negative color="var(--purple)" />
 
         <div style={{ marginTop: 8 }}>
           <PLRow

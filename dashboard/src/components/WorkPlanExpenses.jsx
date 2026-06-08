@@ -267,7 +267,7 @@ export default function WorkPlanExpenses({ data: externalData, onChange, monthId
       </div>
 
       {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
         {[
           {
             label: 'הוצאות תפעוליות', value: fmt(totalOpEx), sub: `${data.operationalExpenses.length} סעיפים`,
@@ -284,6 +284,14 @@ export default function WorkPlanExpenses({ data: externalData, onChange, monthId
           {
             label: 'סה"כ הוצאות', value: fmt(totalEx), sub: 'חודשי · תפעול + דלקים + שכר',
             bg: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+          },
+          {
+            label: 'סה"כ הוצאות לפני מע"מ', value: fmt(Math.round(totalOpEx + totalFuel)), sub: 'תפעול + דלקים · ללא משכורות',
+            bg: 'linear-gradient(135deg, #0891b2 0%, #0369a1 100%)',
+          },
+          {
+            label: 'סה"כ הוצאות אחרי מע"מ', value: fmt(Math.round((totalOpEx + totalFuel) * 1.18)), sub: 'כולל מע"מ 18% · ללא משכורות',
+            bg: 'linear-gradient(135deg, #0f766e 0%, #115e59 100%)',
           },
         ].map((k, i) => (
           <div key={i} style={{

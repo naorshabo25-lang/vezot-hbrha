@@ -7,8 +7,16 @@ const REDS = ['#cc0000','#e62020','#ff5555','#990000','#ff7070','#b30000','#ff33
 const MONTH_NAMES = ['ינו׳','פבר׳','מרץ','אפר׳','מאי','יונ׳','יול׳','אוג׳','ספט׳','אוק׳','נוב׳','דצמ׳'];
 
 const Card = ({ title, children }) => (
-  <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
-    <h3 style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 20 }}>{title}</h3>
+  <div style={{
+    background: 'rgba(255,255,255,0.78)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    borderRadius: 18,
+    padding: '18px 20px',
+    border: '1px solid rgba(255,255,255,0.92)',
+    boxShadow: '0 1px 4px rgba(14,22,40,0.05), 0 4px 18px rgba(99,102,241,0.07)',
+  }}>
+    <h3 style={{ fontSize: 10.5, fontWeight: 800, color: '#8b98c2', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 14 }}>{title}</h3>
     {children}
   </div>
 );
@@ -16,8 +24,16 @@ const Card = ({ title, children }) => (
 const Tip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '8px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 13 }}>
-      <p style={{ fontWeight: 700, color: '#cc0000' }}>₪{Number(payload[0].value).toLocaleString('he-IL')}</p>
+    <div style={{
+      background: 'rgba(255,255,255,0.95)',
+      border: '1px solid rgba(255,255,255,0.95)',
+      borderRadius: 10,
+      padding: '8px 14px',
+      boxShadow: '0 8px 24px rgba(14,22,40,0.14)',
+      fontSize: 13,
+      backdropFilter: 'blur(12px)',
+    }}>
+      <p style={{ fontWeight: 700, color: '#e53935' }}>₪{Number(payload[0].value).toLocaleString('he-IL')}</p>
     </div>
   );
 };
@@ -50,7 +66,7 @@ export default function Charts({ expenses, large }) {
   const areaData = Object.entries(monthlyMap).sort(([a],[b]) => a.localeCompare(b)).slice(-12)
     .map(([key, value]) => ({ name: `${MONTH_NAMES[Number(key.split('-')[1])-1]} ${key.slice(2,4)}`, value }));
 
-  const h = large ? 300 : 240;
+  const h = large ? 220 : 180;
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
@@ -71,17 +87,17 @@ export default function Charts({ expenses, large }) {
           <AreaChart data={areaData} margin={{ top: 5, right: 5, left: 10, bottom: 45 }}>
             <defs>
               <linearGradient id="redArea" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#cc0000" stopOpacity={0.15} />
-                <stop offset="95%" stopColor="#cc0000" stopOpacity={0}    />
+                <stop offset="5%"  stopColor="#e53935" stopOpacity={0.18} />
+                <stop offset="95%" stopColor="#e53935" stopOpacity={0}    />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} angle={-40} textAnchor="end" interval={0} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={v => `₪${(v/1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(160,174,220,0.15)" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#8b98c2' }} angle={-40} textAnchor="end" interval={0} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#8b98c2' }} tickFormatter={v => `₪${(v/1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
             <Tooltip content={<Tip />} />
-            <Area type="monotone" dataKey="value" stroke="#cc0000" strokeWidth={2.5} fill="url(#redArea)"
-              dot={{ fill: '#cc0000', r: 3, strokeWidth: 0 }}
-              activeDot={{ r: 5, fill: '#8b0000' }} name="סכום" />
+            <Area type="monotone" dataKey="value" stroke="#e53935" strokeWidth={2.5} fill="url(#redArea)"
+              dot={{ fill: '#e53935', r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: '#b71c1c' }} name="סכום" />
           </AreaChart>
         </ResponsiveContainer>
       </Card>

@@ -48,6 +48,8 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [salePriceSaved,  setSalePriceSaved]  = useState(false);
   const [syncing,         setSyncing]         = useState(false);
   const [syncMsg,         setSyncMsg]         = useState('');
+  const [editingNoteId,     setEditingNoteId]     = useState(null);
+  const [noteDraft,         setNoteDraft]         = useState('');
 
   const load = () =>
     Promise.all([
@@ -222,6 +224,20 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
     }
   };
 
+  const toggleWhatsapp = async (customer) => {
+    const newVal = !customer.whatsapp_enabled;
+    setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, whatsapp_enabled: newVal } : c));
+    try {
+      await fetch(`${API}/api/customers/${customer.id}/whatsapp`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newVal }),
+      });
+    } catch {
+      setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, whatsapp_enabled: !newVal } : c));
+    }
+  };
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, color: '#9ca3af', fontSize: 15 }}>
       טוען נתונים...
@@ -230,6 +246,8 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      <>
 
       {/* כפתור סנכרון */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -526,6 +544,16 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                           : 'הגדר מחיר מכירה'}
                       </button>
                     )}
+                    <button onClick={() => toggleWhatsapp(selectedCustomer)}
+                      title={selectedCustomer.whatsapp_enabled ? 'לחץ להשבית הודעות וואטסאפ' : 'לחץ להפעיל הודעות וואטסאפ'}
+                      style={{
+                        padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                        background: selectedCustomer.whatsapp_enabled ? '#f0fdf4' : '#f9fafb',
+                        color: selectedCustomer.whatsapp_enabled ? '#16a34a' : '#9ca3af',
+                        border: `1px solid ${selectedCustomer.whatsapp_enabled ? '#bbf7d0' : '#e5e7eb'}`,
+                      }}>
+                      {selectedCustomer.whatsapp_enabled ? '💬 וואטסאפ פעיל' : '💬 וואטסאפ כבוי'}
+                    </button>
                     <button onClick={() => startEdit(selectedCustomer)}
                       style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', background: '#f0f9ff', color: '#0891b2', border: '1px solid #bae6fd' }}
                       onMouseEnter={e => e.currentTarget.style.background = '#e0f2fe'}
@@ -595,6 +623,9 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
           </div>
         )}
       </div>
+
+      </>
+
     </div>
   );
 }

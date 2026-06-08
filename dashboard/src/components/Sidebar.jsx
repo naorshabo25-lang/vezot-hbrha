@@ -1,12 +1,13 @@
 const NAV = [
-  { id: 'workplan',  label: 'תמונת מצב',          icon: '⛽' },
-  { id: 'expenses',  label: 'הוצאות',             icon: '📋' },
-  { id: 'revenue',   label: 'הכנסות',             icon: '📈' },
-  { id: 'customers', label: 'לקוחות והזמנות',     icon: '👥' },
-  { id: 'obligo',    label: 'אובליגו',            icon: '💳' },
-  { id: 'orders',    label: 'מערכת הזמנות',       icon: '🚛' },
-  { id: 'import',    label: 'ייבוא/ייצוא',        icon: '⇅'  },
-  { id: 'settings',  label: 'הגדרות',             icon: '⚙'  },
+  { id: 'workplan',   label: 'תמונת מצב',          icon: '⛽' },
+  { id: 'expenses',   label: 'הוצאות',             icon: '📋' },
+  { id: 'revenue',    label: 'הכנסות',             icon: '📈' },
+  { id: 'customers',  label: 'לקוחות והזמנות',     icon: '👥' },
+  { id: 'potential',  label: 'לקוחות פוטנציאלים',  icon: '🎯' },
+  { id: 'obligo',     label: 'אובליגו',            icon: '💳' },
+  { id: 'orders',     label: 'מערכת הזמנות',       icon: '🚛' },
+  { id: 'import',     label: 'ייבוא/ייצוא',        icon: '⇅'  },
+  { id: 'settings',   label: 'הגדרות',             icon: '⚙'  },
 ];
 
 const DIVIDER_AFTER = new Set(['revenue', 'obligo']);

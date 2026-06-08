@@ -68,7 +68,7 @@ const CenterLabel = ({ viewBox, value, label }) => {
   );
 };
 
-const DEFAULT_ADDITIVE_TYPES = ['אוריאה', 'הידראולי 68', 'הידראולי 46', 'מנוע 15W40'];
+const DEFAULT_ADDITIVE_TYPES = ['אוריאה', 'הידראולי 68', 'הידראולי 46', 'מנוע 15W40', 'אוריאה משטח (100 י"ח)', 'הובלת מיכל סולר'];
 const EMPTY = { name: '', liters: '', liters2: '', actualLiters: '', actualLiters2: '', profit: '', purchasePrice: '', salePrice: '', salePrice2: '', additives: [] };
 
 /* ── Business logic helpers ─────────────────────────────────── */
@@ -88,20 +88,84 @@ const parseQty = q => {
 export default function WorkPlanRevenue({ data: externalData, onChange, monthId, monthLabel, allMonths = [], onMonthSwitch, onNewMonth }) {
   const clients            = externalData?.clients || DEFAULT_CLIENTS;
   const additiveTypes      = externalData?.additiveTypes || {};
-  const [showForm,         setShowForm]         = useState(false);
-  const [actualLitersMap,  setActualLitersMap]  = useState({});
-  const [editingAddPrices, setEditingAddPrices] = useState(false);
-  const [draftPrices,      setDraftPrices]      = useState({});
-  const [form,             setForm]             = useState(EMPTY);
-  const [error,            setError]            = useState('');
+  const [showForm,          setShowForm]          = useState(false);
+  const [showAdditiveForm,  setShowAdditiveForm]  = useState(false);
+  const [additiveName,      setAdditiveName]      = useState('');
+  const [additiveQtys,      setAdditiveQtys]      = useState({});
+  const [additiveError,     setAdditiveError]     = useState('');
+  const [actualLitersMap,   setActualLitersMap]   = useState({});
+  const [editingAddPrices,  setEditingAddPrices]  = useState(false);
+  const [draftPrices,       setDraftPrices]       = useState({});
+  const [form,              setForm]              = useState(EMPTY);
+  const [error,             setError]             = useState('');
   const [editing,          setEditing]          = useState(null);
   const [editingFuelCard,  setEditingFuelCard]  = useState(false);
-  const [fuelCardDraft,    setFuelCardDraft]    = useState({ diesel: {}, benzin: {} });
+  const [fuelCardDraft,    setFuelCardDraft]    = useState({ diesel: {}, benzin: {}, tanDiesel: {}, tanBenzin: {}, transport: {}, generator: {} });
 
-  const fuelCardIdx      = clients.findIndex(c => c.name === 'הכנסות כרטיסי תדלוק');
-  const fuelCardClient   = fuelCardIdx >= 0 ? clients[fuelCardIdx] : null;
-  const fuelCardBenzIdx  = clients.findIndex(c => c.name === 'הכנסות כרטיסי תדלוק בנזין');
+  const CARD_TYPES = ['סולר', 'בנזין', 'סולר טן', 'בנזין טן'];
+  const fuelCardCustomers = externalData?.fuelCardCustomers || [];
+  const [fcForm, setFcForm] = useState({ name: '', type: 'סולר', liters: '', purchasePrice: '', salePrice: '' });
+  const [fcEditing, setFcEditing] = useState(null);
+  const [fcDraft, setFcDraft] = useState({});
+  const [showFcForm, setShowFcForm] = useState(false);
+  const [fcNameInput, setFcNameInput] = useState('');
+  const [fcShowSuggestions, setFcShowSuggestions] = useState(false);
+
+  // רשימת לקוחות קיימים לאוטוקמפליט
+  const existingClientNames = clients.map(c => c.name).filter(Boolean);
+
+  const fcProfit = row => {
+    const l = +row.liters || 0, buy = +row.purchasePrice || 0, sell = +row.salePrice || 0;
+    return l > 0 && sell > 0 ? Math.round(l * (sell - buy)) : 0;
+  };
+
+  const saveFcRow = () => {
+    const name = fcForm.name.trim() || fcNameInput.trim();
+    if (!name || !fcForm.liters) return;
+    const entry = { id: Date.now().toString(), name, type: fcForm.type, liters: +fcForm.liters, purchasePrice: +fcForm.purchasePrice || 0, salePrice: +fcForm.salePrice || 0 };
+    onChange(prev => {
+      const base = prev || DEFAULT_WORKPLAN;
+      return { ...base, fuelCardCustomers: [...(base.fuelCardCustomers || []), entry] };
+    });
+    setFcForm({ name: '', type: 'סולר', liters: '', purchasePrice: '', salePrice: '' });
+    setFcNameInput('');
+    setShowFcForm(false);
+    // הרשימה תיפתח אוטומטית — הגלול אליה
+    setTimeout(() => {
+      document.getElementById('fc-table')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
+  };
+
+  const saveFcEdit = idx => {
+    onChange(prev => {
+      const base = prev || DEFAULT_WORKPLAN;
+      const list = [...(base.fuelCardCustomers || [])];
+      list[idx] = { ...list[idx], ...fcDraft, liters: +fcDraft.liters || 0, purchasePrice: +fcDraft.purchasePrice || 0, salePrice: +fcDraft.salePrice || 0 };
+      return { ...base, fuelCardCustomers: list };
+    });
+    setFcEditing(null);
+  };
+
+  const deleteFcRow = idx => {
+    if (!window.confirm('למחוק שורה זו?')) return;
+    onChange(prev => {
+      const base = prev || DEFAULT_WORKPLAN;
+      return { ...base, fuelCardCustomers: (base.fuelCardCustomers || []).filter((_, i) => i !== idx) };
+    });
+  };
+
+  const fuelCardIdx        = clients.findIndex(c => c.name === 'הכנסות כרטיסי תדלוק');
+  const fuelCardClient     = fuelCardIdx >= 0 ? clients[fuelCardIdx] : null;
+  const fuelCardBenzIdx    = clients.findIndex(c => c.name === 'הכנסות כרטיסי תדלוק בנזין');
   const fuelCardBenzClient = fuelCardBenzIdx >= 0 ? clients[fuelCardBenzIdx] : null;
+  const fuelCardTanDIdx    = clients.findIndex(c => c.name === 'הכנסות כרטיסי תדלוק סולר טן');
+  const fuelCardTanDClient = fuelCardTanDIdx >= 0 ? clients[fuelCardTanDIdx] : null;
+  const fuelCardTanBIdx      = clients.findIndex(c => c.name === 'הכנסות כרטיסי תדלוק טן בנזין');
+  const fuelCardTanBClient   = fuelCardTanBIdx >= 0 ? clients[fuelCardTanBIdx] : null;
+  const fuelCardTransIdx     = clients.findIndex(c => c.name === 'הובלות סולר תחבורה');
+  const fuelCardTransClient  = fuelCardTransIdx >= 0 ? clients[fuelCardTransIdx] : null;
+  const fuelCardGenIdx       = clients.findIndex(c => c.name === 'נוזל גנרטורים');
+  const fuelCardGenClient    = fuelCardGenIdx >= 0 ? clients[fuelCardGenIdx] : null;
 
   const openFuelCardEdit = () => {
     setFuelCardDraft({
@@ -115,6 +179,26 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
         purchasePrice: String(fuelCardBenzClient?.purchasePrice || ''),
         salePrice:     String(fuelCardBenzClient?.salePrice     || ''),
       },
+      tanDiesel: {
+        quantity:      String(fuelCardTanDClient?.liters        || ''),
+        purchasePrice: String(fuelCardTanDClient?.purchasePrice || ''),
+        salePrice:     String(fuelCardTanDClient?.salePrice     || ''),
+      },
+      tanBenzin: {
+        quantity:      String(fuelCardTanBClient?.liters        || ''),
+        purchasePrice: String(fuelCardTanBClient?.purchasePrice || ''),
+        salePrice:     String(fuelCardTanBClient?.salePrice     || ''),
+      },
+      transport: {
+        quantity:      String(fuelCardTransClient?.liters        || ''),
+        purchasePrice: String(fuelCardTransClient?.purchasePrice || ''),
+        salePrice:     String(fuelCardTransClient?.salePrice     || ''),
+      },
+      generator: {
+        quantity:      String(fuelCardGenClient?.liters        || ''),
+        purchasePrice: String(fuelCardGenClient?.purchasePrice || ''),
+        salePrice:     String(fuelCardGenClient?.salePrice     || ''),
+      },
     });
     setEditingFuelCard(true);
   };
@@ -127,15 +211,25 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
       const profit = qty > 0 && sell > 0 ? Math.round(qty * (sell - buy)) : (existing?.profit || 0);
       return { name, liters: qty, purchasePrice: buy > 0 ? buy : undefined, salePrice: sell > 0 ? sell : undefined, profit };
     };
-    const dieselEntry = makeEntry('הכנסות כרטיסי תדלוק',       fuelCardDraft.diesel, fuelCardClient);
-    const benzinEntry = makeEntry('הכנסות כרטיסי תדלוק בנזין', fuelCardDraft.benzin, fuelCardBenzClient);
+    const dieselEntry    = makeEntry('הכנסות כרטיסי תדלוק',           fuelCardDraft.diesel,    fuelCardClient);
+    const benzinEntry    = makeEntry('הכנסות כרטיסי תדלוק בנזין',     fuelCardDraft.benzin,    fuelCardBenzClient);
+    const tanDieselEntry = makeEntry('הכנסות כרטיסי תדלוק סולר טן',   fuelCardDraft.tanDiesel, fuelCardTanDClient);
+    const tanBenzinEntry = makeEntry('הכנסות כרטיסי תדלוק טן בנזין',  fuelCardDraft.tanBenzin, fuelCardTanBClient);
     onChange(prev => {
       const base = prev || DEFAULT_WORKPLAN;
       const list = [...(base.clients || [])];
-      const dIdx = list.findIndex(c => c.name === 'הכנסות כרטיסי תדלוק');
-      if (dIdx >= 0) list[dIdx] = dieselEntry; else list.push(dieselEntry);
-      const bIdx = list.findIndex(c => c.name === 'הכנסות כרטיסי תדלוק בנזין');
-      if (bIdx >= 0) list[bIdx] = benzinEntry; else list.push(benzinEntry);
+      const upsert = (name, entry) => {
+        const i = list.findIndex(c => c.name === name);
+        if (i >= 0) list[i] = entry; else list.push(entry);
+      };
+      const transportEntry = makeEntry('הובלות סולר תחבורה', fuelCardDraft.transport, fuelCardTransClient);
+      upsert('הכנסות כרטיסי תדלוק',          dieselEntry);
+      upsert('הכנסות כרטיסי תדלוק בנזין',    benzinEntry);
+      upsert('הכנסות כרטיסי תדלוק סולר טן',  tanDieselEntry);
+      upsert('הכנסות כרטיסי תדלוק טן בנזין', tanBenzinEntry);
+      upsert('הובלות סולר תחבורה',            transportEntry);
+      const generatorEntry = makeEntry('נוזל גנרטורים', fuelCardDraft.generator, fuelCardGenClient);
+      upsert('נוזל גנרטורים',                generatorEntry);
       return { ...base, clients: list };
     });
     setEditingFuelCard(false);
@@ -210,6 +304,22 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
     setForm(EMPTY); setError(''); setShowForm(false);
   };
 
+  const handleAdditiveOnlySubmit = () => {
+    if (!additiveName.trim()) return setAdditiveError('נא להזין שם לקוח');
+    const additivesArr = DEFAULT_ADDITIVE_TYPES
+      .filter(t => +additiveQtys[t] > 0)
+      .map(t => ({ type: t, qty: +additiveQtys[t] }));
+    if (!additivesArr.length) return setAdditiveError('נא להזין כמות לפחות לתוסף אחד');
+    const totalProfit = additivesArr.reduce((s, a) => {
+      const buy = additiveTypes[a.type]?.purchasePrice || 0;
+      const sell = additiveTypes[a.type]?.salePrice || 0;
+      return s + a.qty * (sell - buy);
+    }, 0);
+    const entry = { name: additiveName.trim(), liters: 0, profit: Math.round(totalProfit), additives: additivesArr };
+    onChange(prev => ({ ...(prev || DEFAULT_WORKPLAN), clients: [...((prev || DEFAULT_WORKPLAN).clients || DEFAULT_CLIENTS), entry] }));
+    setAdditiveName(''); setAdditiveQtys({}); setAdditiveError(''); setShowAdditiveForm(false);
+  };
+
   const startEdit = (idx, client) => {
     const cp = clientProfit(client);
     const autoActual = actualLitersMap[client.name] || 0;
@@ -277,11 +387,21 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
 
   const invoiceTotal = c => {
     const sell1 = c.salePrice || 0, sell2 = c.salePrice2 || 0;
-    return effectiveLiters(c) * sell1 + (sell2 > 0 ? effectiveLiters2(c) * sell2 : 0);
+    if (sell1 > 0) return effectiveLiters(c) * sell1 + (sell2 > 0 ? effectiveLiters2(c) * sell2 : 0);
+    return c.profit || 0;
   };
 
-  const totalRev          = clients.reduce((s, c) => s + grossProfit(c), 0);
-  const totalInvoice      = clients.reduce((s, c) => s + invoiceTotal(c), 0);
+  const fcRevenueTotal    = fuelCardCustomers.reduce((s, r) => s + (+r.liters || 0) * (+r.salePrice || 0), 0);
+  const fcGrossTotal      = fuelCardCustomers.reduce((s, r) => s + fcProfit(r), 0);
+  const addRevenueTotal   = clients.reduce((s, c) => s + (c.additives || []).reduce((cs, a) => cs + (a.qty || 0) * (additiveTypes[a.type]?.salePrice || 0), 0), 0);
+  const addGrossTotal     = clients.reduce((s, c) => s + (c.additives || []).reduce((cs, a) => {
+    const sell = additiveTypes[a.type]?.salePrice || 0;
+    const buy  = additiveTypes[a.type]?.purchasePrice || 0;
+    return cs + (a.qty || 0) * (sell - buy);
+  }, 0), 0);
+
+  const totalRev          = clients.reduce((s, c) => s + grossProfit(c), 0) + fcGrossTotal + addGrossTotal;
+  const totalInvoice      = clients.reduce((s, c) => s + invoiceTotal(c), 0) + fcRevenueTotal + addRevenueTotal;
   const totalLiters       = clients.reduce((s, c) => s + c.liters, 0);
   const totalActualLiters = clients.reduce((s, c) => s + effectiveLiters(c), 0);
 
@@ -317,7 +437,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
         {[
           {
-            label: 'סה"כ הכנסות', value: fmt(totalRev), sub: `${clients.length} לקוחות`,
+            label: 'סה"כ הכנסות', value: fmt(Math.round(totalInvoice)), sub: `${clients.length} לקוחות`,
             bg: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
           },
           {
@@ -337,7 +457,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
             bg: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
           },
           {
-            label: 'ממוצע ללקוח', value: fmt(Math.round(totalRev / (clients.length || 1))), sub: 'הכנסה ברוטו ממוצעת',
+            label: 'ממוצע ללקוח', value: fmt(Math.round(totalInvoice / (clients.length || 1))), sub: 'הכנסה ברוטו ממוצעת',
             bg: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)',
           },
         ].map((k, i) => (
@@ -506,108 +626,190 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
         </div>
       )}
 
-      {/* Fuel Card Revenue */}
+      {/* Fuel Card per customer */}
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div>
-            <p className="section-title" style={{ marginBottom: 2 }}>הכנסות כרטיסי תדלוק</p>
-            <p style={{ fontSize: 11, color: 'var(--text-3)' }}>מחיר קניה ומכירה לליטר · רווח מחושב אוטומטית</p>
+            <p className="section-title" style={{ marginBottom: 2 }}>כרטיסי תדלוק לפי לקוח</p>
+            <p style={{ fontSize: 11, color: 'var(--text-3)' }}>פירוט לקוחות · סוג כרטיס · כמות · מחירים · רווח</p>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {editingFuelCard ? (
-              <>
-                <button className="btn btn-sm" style={{ background: 'var(--green)', color: '#fff', border: 'none' }} onClick={saveFuelCard}>✓ שמור</button>
-                <button className="btn btn-sm btn-ghost" onClick={() => setEditingFuelCard(false)}>ביטול</button>
-              </>
-            ) : (
-              <button className="btn btn-sm" style={{ background: '#0891b2', color: '#fff', border: 'none' }} onClick={openFuelCardEdit}>✎ עריכה</button>
-            )}
-          </div>
+          <button className="btn btn-sm" style={{ background: 'var(--green)', color: '#fff', border: 'none' }}
+            onClick={() => { setShowFcForm(v => !v); setFcEditing(null); }}>
+            {showFcForm ? '✕ ביטול' : '+ הוספת לקוח'}
+          </button>
         </div>
 
-        {editingFuelCard ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {[
-              { key: 'diesel', label: 'כרטיסי תדלוק סולר' },
-              { key: 'benzin', label: 'כרטיסי תדלוק בנזין' },
-            ].map(({ key, label }) => {
-              const d = fuelCardDraft[key] || {};
-              const calcProfit = () => {
-                const qty = +d.quantity || 0, buy = +d.purchasePrice || 0, sell = +d.salePrice || 0;
-                return qty > 0 && sell > 0 ? fmt(Math.round(qty * (sell - buy))) : '—';
-              };
-              return (
-                <div key={key}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>{label}</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>כמות ליטרים</label>
-                      <input className="input" type="number" min="0" placeholder="0"
-                        value={d.quantity || ''}
-                        onChange={e => setFuelCardDraft(fd => ({ ...fd, [key]: { ...fd[key], quantity: e.target.value } }))} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>מחיר קניה (₪/ל׳)</label>
-                      <input className="input" type="number" step="0.001" min="0" placeholder="₪/ל׳"
-                        value={d.purchasePrice || ''}
-                        onChange={e => setFuelCardDraft(fd => ({ ...fd, [key]: { ...fd[key], purchasePrice: e.target.value } }))}
-                        style={{ borderColor: '#fca5a5', background: '#fff5f5', color: 'var(--red)' }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>מחיר מכירה (₪/ל׳)</label>
-                      <input className="input" type="number" step="0.001" min="0" placeholder="₪/ל׳"
-                        value={d.salePrice || ''}
-                        onChange={e => setFuelCardDraft(fd => ({ ...fd, [key]: { ...fd[key], salePrice: e.target.value } }))}
-                        style={{ borderColor: '#6ee7b7', background: '#f0fdf4', color: 'var(--green)' }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>רווח מחושב</label>
-                      <div style={{ padding: '8px 11px', borderRadius: 'var(--r-md)', background: 'var(--green-soft)', border: '1px solid var(--green-border)', color: 'var(--green)', fontWeight: 800, fontSize: 14, minHeight: 38, display: 'flex', alignItems: 'center' }}>
-                        {calcProfit()}
-                      </div>
-                    </div>
+        {/* Add form */}
+        {showFcForm && (
+          <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 14, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr', gap: 10, alignItems: 'flex-end' }}>
+              <div style={{ position: 'relative' }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 5 }}>שם לקוח</label>
+                <input className="input" placeholder="הקלד לחיפוש לקוח..."
+                  value={fcNameInput}
+                  onChange={e => { setFcNameInput(e.target.value); setFcForm(f => ({ ...f, name: e.target.value })); setFcShowSuggestions(true); }}
+                  onFocus={() => setFcShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setFcShowSuggestions(false), 150)}
+                  autoComplete="off" />
+                {fcShowSuggestions && fcNameInput && (
+                  <div style={{ position: 'absolute', top: '100%', right: 0, left: 0, background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-md)', zIndex: 100, maxHeight: 200, overflowY: 'auto' }}>
+                    {existingClientNames
+                      .filter(n => n.includes(fcNameInput))
+                      .map(n => (
+                        <div key={n} style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, color: 'var(--text-1)' }}
+                          onMouseDown={() => { setFcNameInput(n); setFcForm(f => ({ ...f, name: n })); setFcShowSuggestions(false); }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          {n}
+                        </div>
+                      ))
+                    }
+                    {existingClientNames.filter(n => n.includes(fcNameInput)).length === 0 && (
+                      <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-3)' }}>לקוח חדש: "{fcNameInput}"</div>
+                    )}
                   </div>
-                </div>
-              );
-            })}
+                )}
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 5 }}>סוג כרטיס</label>
+                <select className="input" value={fcForm.type} onChange={e => setFcForm(f => ({ ...f, type: e.target.value }))}>
+                  {CARD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 5 }}>ליטרים</label>
+                <input className="input" type="number" min="0" placeholder="0" value={fcForm.liters} onChange={e => setFcForm(f => ({ ...f, liters: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 5 }}>מחיר קניה לפני מע"מ (₪/ל׳)</label>
+                <input className="input" type="number" step="0.001" min="0" placeholder="₪/ל׳" value={fcForm.purchasePrice}
+                  onChange={e => setFcForm(f => ({ ...f, purchasePrice: e.target.value }))}
+                  style={{ borderColor: '#fca5a5', background: '#fff5f5', color: 'var(--red)' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 5 }}>מחיר מכירה לפני מע"מ (₪/ל׳)</label>
+                <input className="input" type="number" step="0.001" min="0" placeholder="₪/ל׳" value={fcForm.salePrice}
+                  onChange={e => setFcForm(f => ({ ...f, salePrice: e.target.value }))}
+                  style={{ borderColor: '#6ee7b7', background: '#f0fdf4', color: 'var(--green)' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
+              <button className="btn btn-sm" style={{ background: 'var(--green)', color: '#fff', border: 'none' }} onClick={saveFcRow}>✓ שמור</button>
+              <button className="btn btn-sm btn-ghost" onClick={() => setShowFcForm(false)}>ביטול</button>
+              {fcForm.liters && fcForm.salePrice && (
+                <span style={{ fontSize: 12, color: 'var(--green)', fontWeight: 700, marginRight: 8 }}>
+                  רווח משוער: {fmt(Math.round((+fcForm.liters) * ((+fcForm.salePrice) - (+fcForm.purchasePrice || 0))))}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {fuelCardCustomers.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--text-3)', fontSize: 13 }}>
+            לחץ "+ הוספת לקוח" להתחיל
           </div>
         ) : (
-          <table className="data-table">
+          <table className="data-table" id="fc-table">
             <thead>
-              <tr>
-                {['סוג', 'ליטרים', 'מחיר קניה (₪/ל׳)', 'מחיר מכירה (₪/ל׳)', 'הכנסה כוללת', 'רווח גולמי'].map(h => <th key={h}>{h}</th>)}
-              </tr>
+              <tr>{['לקוח', 'סוג כרטיס', 'ליטרים', 'מחיר קניה (לפני מע"מ)', 'מחיר מכירה (לפני מע"מ)', 'הכנסה (לפני מע"מ)', 'רווח גולמי', ''].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {[
-                { label: 'כרטיסי תדלוק סולר', client: fuelCardClient },
-                { label: 'כרטיסי תדלוק בנזין', client: fuelCardBenzClient },
-              ].map(({ label, client }, i) => (
-                <tr key={i}>
-                  <td style={{ fontWeight: 700 }}>{label}</td>
-                  <td style={{ color: '#0891b2', fontWeight: 600 }}>{client?.liters > 0 ? fmtL(client.liters) : '—'}</td>
-                  <td style={{ color: 'var(--red)', fontWeight: 600 }}>{client?.purchasePrice > 0 ? `₪${Number(client.purchasePrice).toFixed(3)}` : '—'}</td>
-                  <td style={{ color: 'var(--green)', fontWeight: 600 }}>{client?.salePrice > 0 ? `₪${Number(client.salePrice).toFixed(3)}` : '—'}</td>
-                  <td style={{ fontWeight: 700 }}>{client?.salePrice > 0 && client?.liters > 0 ? fmt(Math.round(client.liters * client.salePrice)) : '—'}</td>
-                  <td style={{ fontWeight: 700, color: 'var(--green)' }}>{client ? fmt(Math.round(grossProfit(client))) : '—'}</td>
+              {(() => {
+                // Group by customer name, preserving insertion order
+                const groups = [];
+                const seen = {};
+                fuelCardCustomers.forEach((row, idx) => {
+                  if (!seen[row.name]) { seen[row.name] = []; groups.push(row.name); }
+                  seen[row.name].push({ row, idx });
+                });
+                const btn = (color, style) => ({ background: 'none', border: 'none', cursor: 'pointer', color, fontSize: 14, padding: '2px 5px', ...style });
+                return groups.map(name => {
+                  const entries = seen[name];
+                  const rowSpan = entries.length;
+                  return entries.map(({ row, idx }, ei) => (
+                    fcEditing === idx ? (
+                      <tr key={idx} style={{ background: '#fffbeb' }}>
+                        {ei === 0 && (
+                          <td rowSpan={rowSpan} style={{ fontWeight: 800, verticalAlign: 'middle', borderLeft: '3px solid #6366f1' }}>
+                            <input className="input-sm" value={fcDraft.name} onChange={e => setFcDraft(d => ({ ...d, name: e.target.value }))} />
+                          </td>
+                        )}
+                        <td>
+                          <select className="input-sm" value={fcDraft.type} onChange={e => setFcDraft(d => ({ ...d, type: e.target.value }))}>
+                            {CARD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </td>
+                        <td><input className="input-sm" type="number" value={fcDraft.liters} onChange={e => setFcDraft(d => ({ ...d, liters: e.target.value }))} /></td>
+                        <td><input className="input-sm" type="number" step="0.001" value={fcDraft.purchasePrice} onChange={e => setFcDraft(d => ({ ...d, purchasePrice: e.target.value }))} style={{ borderColor: '#fca5a5', color: 'var(--red)' }} /></td>
+                        <td><input className="input-sm" type="number" step="0.001" value={fcDraft.salePrice} onChange={e => setFcDraft(d => ({ ...d, salePrice: e.target.value }))} style={{ borderColor: '#6ee7b7', color: 'var(--green)' }} /></td>
+                        <td style={{ color: 'var(--text-2)', fontWeight: 700 }}>{(+fcDraft.liters > 0 && +fcDraft.salePrice > 0) ? fmt(Math.round(+fcDraft.liters * +fcDraft.salePrice)) : '—'}</td>
+                        <td style={{ color: 'var(--green)', fontWeight: 800 }}>{(+fcDraft.liters > 0 && +fcDraft.salePrice > 0) ? fmt(Math.round(+fcDraft.liters * ((+fcDraft.salePrice) - (+fcDraft.purchasePrice || 0)))) : '—'}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <button onClick={() => saveFcEdit(idx)} style={btn('var(--green)')}>✓</button>
+                          <button onClick={() => setFcEditing(null)} style={btn('var(--text-3)')}>✕</button>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={idx} style={{ borderBottom: ei === rowSpan - 1 ? '2px solid var(--border)' : undefined }}>
+                        {ei === 0 && (
+                          <td rowSpan={rowSpan} style={{ fontWeight: 800, verticalAlign: 'middle', borderLeft: '3px solid #6366f1', paddingRight: 10 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <span>{row.name}</span>
+                              <button
+                                onClick={() => { setFcNameInput(row.name); setFcForm(f => ({ ...f, name: row.name, type: 'בנזין' })); setShowFcForm(true); setTimeout(() => document.querySelector('#fc-add-form input')?.focus(), 50); }}
+                                style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: '#f0f9ff', color: '#0891b2', border: '1px solid #bae6fd', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                title="הוסף כרטיס שני לאותו לקוח">
+                                + כרטיס שני
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                        <td><span className="badge" style={{ background: '#f0f9ff', color: '#0891b2', border: '1px solid #bae6fd', fontSize: 11, borderRadius: 6, padding: '2px 8px' }}>{row.type}</span></td>
+                        <td style={{ color: '#0891b2', fontWeight: 600 }}>{fmtL(row.liters)}</td>
+                        <td style={{ color: 'var(--red)', fontWeight: 600 }}>{row.purchasePrice > 0 ? `₪${Number(row.purchasePrice).toFixed(3)}` : '—'}</td>
+                        <td style={{ color: 'var(--green)', fontWeight: 600 }}>{row.salePrice > 0 ? `₪${Number(row.salePrice).toFixed(3)}` : '—'}</td>
+                        <td style={{ fontWeight: 700 }}>{row.liters > 0 && row.salePrice > 0 ? fmt(Math.round(row.liters * row.salePrice)) : '—'}</td>
+                        <td style={{ color: 'var(--green)', fontWeight: 800 }}>{fcProfit(row) > 0 ? fmt(fcProfit(row)) : '—'}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <button onClick={() => { setFcEditing(idx); setFcDraft({ ...row }); }} style={btn('var(--blue)')}>✎</button>
+                          <button onClick={() => deleteFcRow(idx)} style={btn('var(--red)')}>🗑</button>
+                        </td>
+                      </tr>
+                    )
+                  ));
+                });
+              })()}
+
+              {/* Summary rows per card type */}
+              {CARD_TYPES.filter(t => fuelCardCustomers.some(r => r.type === t)).map(t => {
+                const rows = fuelCardCustomers.filter(r => r.type === t);
+                const totalL = rows.reduce((s, r) => s + (+r.liters || 0), 0);
+                const totalRev2 = rows.reduce((s, r) => s + (+r.liters > 0 && +r.salePrice > 0 ? +r.liters * +r.salePrice : 0), 0);
+                const totalP = rows.reduce((s, r) => s + fcProfit(r), 0);
+                return (
+                  <tr key={t} style={{ background: 'var(--surface-2)', borderTop: '1px solid var(--border)' }}>
+                    <td colSpan={2} style={{ fontWeight: 800, fontSize: 12, color: '#0891b2' }}>סה"כ {t}</td>
+                    <td style={{ fontWeight: 800, color: '#0891b2' }}>{fmtL(totalL)}</td>
+                    <td colSpan={2} />
+                    <td style={{ fontWeight: 800 }}>{totalRev2 > 0 ? fmt(Math.round(totalRev2)) : '—'}</td>
+                    <td style={{ fontWeight: 800, color: 'var(--green)' }}>{totalP > 0 ? fmt(totalP) : '—'}</td>
+                    <td />
+                  </tr>
+                );
+              })}
+
+              {/* Grand total */}
+              {fuelCardCustomers.length > 0 && (
+                <tr style={{ background: 'var(--green-soft)', borderTop: '2px solid var(--green-border)', fontWeight: 800 }}>
+                  <td colSpan={2} style={{ fontSize: 13 }}>סה"כ כולל</td>
+                  <td style={{ color: '#0891b2' }}>{fmtL(fuelCardCustomers.reduce((s, r) => s + (+r.liters || 0), 0))}</td>
+                  <td colSpan={2} />
+                  <td>{fmt(Math.round(fuelCardCustomers.reduce((s, r) => s + (+r.liters > 0 && +r.salePrice > 0 ? +r.liters * +r.salePrice : 0), 0)))}</td>
+                  <td style={{ color: 'var(--green)' }}>{fmt(fuelCardCustomers.reduce((s, r) => s + fcProfit(r), 0))}</td>
+                  <td />
                 </tr>
-              ))}
-              <tr style={{ background: 'var(--surface-2)', borderTop: '2px solid var(--border)' }}>
-                <td style={{ fontWeight: 800 }}>סה"כ</td>
-                <td style={{ fontWeight: 800, color: '#0891b2' }}>
-                  {fmtL((fuelCardClient?.liters || 0) + (fuelCardBenzClient?.liters || 0))}
-                </td>
-                <td colSpan={2} />
-                <td style={{ fontWeight: 800 }}>
-                  {fmt(Math.round(
-                    (fuelCardClient?.salePrice > 0 && fuelCardClient?.liters > 0 ? fuelCardClient.liters * fuelCardClient.salePrice : 0) +
-                    (fuelCardBenzClient?.salePrice > 0 && fuelCardBenzClient?.liters > 0 ? fuelCardBenzClient.liters * fuelCardBenzClient.salePrice : 0)
-                  ))}
-                </td>
-                <td style={{ fontWeight: 800, color: 'var(--green)' }}>
-                  {fmt(Math.round((fuelCardClient ? grossProfit(fuelCardClient) : 0) + (fuelCardBenzClient ? grossProfit(fuelCardBenzClient) : 0)))}
-                </td>
-              </tr>
+              )}
             </tbody>
           </table>
         )}
@@ -617,7 +819,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div>
-            <p className="section-title" style={{ marginBottom: 2 }}>מחירי תוספים</p>
+            <p className="section-title" style={{ marginBottom: 2 }}>מחירי תוספים ושירותים משלימים</p>
             <p style={{ fontSize: 11, color: 'var(--text-3)' }}>מחיר קניה ומכירה לכל סוג תוסף</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -699,9 +901,54 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
 
       {/* Add client button */}
       <div>
-        <button className={`btn ${showForm ? 'btn-soft' : 'btn-primary'}`} style={showForm ? {} : { background: 'var(--green)', borderColor: 'var(--green)' }} onClick={() => { setShowForm(v => !v); setError(''); setEditing(null); }}>
-          {showForm ? '✕ ביטול' : '+ הוספת לקוח'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button className={`btn ${showForm ? 'btn-soft' : 'btn-primary'}`} style={showForm ? {} : { background: 'var(--green)', borderColor: 'var(--green)' }}
+            onClick={() => { setShowForm(v => !v); setShowAdditiveForm(false); setError(''); setEditing(null); }}>
+            {showForm ? '✕ ביטול' : '+ הוספת לקוח'}
+          </button>
+          <button className={`btn ${showAdditiveForm ? 'btn-soft' : ''}`}
+            style={showAdditiveForm ? {} : { background: 'var(--purple)', color: '#fff', border: 'none' }}
+            onClick={() => { setShowAdditiveForm(v => !v); setShowForm(false); setAdditiveError(''); }}>
+            {showAdditiveForm ? '✕ ביטול' : '+ הוספת הכנסת תוספים'}
+          </button>
+        </div>
+
+        {showAdditiveForm && (
+          <div className="card card-pad" style={{ marginTop: 12 }}>
+            <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: 'var(--purple)' }}>הכנסת תוספים — לקוח חדש</p>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>שם לקוח</label>
+              <input className="input" style={{ maxWidth: 280 }} value={additiveName} onChange={e => setAdditiveName(e.target.value)} placeholder="שם לקוח..." />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 14 }}>
+              {DEFAULT_ADDITIVE_TYPES.map(type => {
+                const buy  = additiveTypes[type]?.purchasePrice || 0;
+                const sell = additiveTypes[type]?.salePrice     || 0;
+                const qty  = +additiveQtys[type] || 0;
+                const rowProfit = qty > 0 && sell > 0 ? qty * (sell - buy) : null;
+                return (
+                  <div key={type} style={{ background: 'var(--purple-soft)', borderRadius: 'var(--r-md)', padding: '10px 12px', border: '1px solid #e9d5ff' }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--purple)', marginBottom: 6 }}>{type}</p>
+                    <p style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 6 }}>
+                      {sell > 0 ? `₪${sell.toFixed(2)} / יח׳` : 'מחיר לא הוגדר'}
+                    </p>
+                    <input className="input" type="number" min="0" placeholder="כמות יח׳"
+                      value={additiveQtys[type] || ''}
+                      onChange={e => setAdditiveQtys(q => ({ ...q, [type]: e.target.value }))} />
+                    {rowProfit != null && (
+                      <p style={{ fontSize: 11, color: 'var(--green)', fontWeight: 700, marginTop: 5 }}>רווח: {fmt(Math.round(rowProfit))}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {additiveError && <p style={{ color: 'var(--red)', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{additiveError}</p>}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn" style={{ background: 'var(--purple)', color: '#fff', border: 'none' }} onClick={handleAdditiveOnlySubmit}>שמור</button>
+              <button className="btn btn-ghost" onClick={() => { setShowAdditiveForm(false); setAdditiveError(''); }}>ביטול</button>
+            </div>
+          </div>
+        )}
 
         {showForm && (
           <div className="card card-pad" style={{ marginTop: 12 }}>

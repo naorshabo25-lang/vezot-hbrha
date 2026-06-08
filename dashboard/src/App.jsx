@@ -9,6 +9,8 @@ import WorkPlanExpenses from './components/WorkPlanExpenses';
 import WorkPlanRevenue from './components/WorkPlanRevenue';
 import WorkPlanObligo from './components/WorkPlanObligo';
 import CustomerOrdersTab from './components/CustomerOrdersTab';
+import PotentialClientsTab from './components/PotentialClientsTab';
+import SettingsTab from './components/SettingsTab';
 
 const MIGRATION_V = 'workPlanMigration_v4';
 if (!localStorage.getItem(MIGRATION_V)) {
@@ -30,6 +32,7 @@ const PAGE_TITLES = {
   expenses:  'הוצאות',
   revenue:   'הכנסות',
   customers: 'לקוחות והזמנות',
+  potential: 'לקוחות פוטנציאלים',
   obligo:    'אובליגו ותנאי תשלום',
   orders:    'מערכת הזמנות',
   import:    'ייבוא / ייצוא',
@@ -64,6 +67,8 @@ export default function App() {
       return {
         ...base,
         obligo:            parsed.obligo           || {},
+        additiveTypes:     parsed.additiveTypes    || {},
+        fuelCardCustomers: Array.isArray(parsed.fuelCardCustomers) ? parsed.fuelCardCustomers : [],
         currentMonthId:    parsed.currentMonthId   || '2026-05',
         currentMonthLabel: parsed.currentMonthLabel || 'מאי 2026',
         monthHistory:      parsed.monthHistory     || {},
@@ -86,20 +91,27 @@ export default function App() {
     }).catch(() => {});
   };
 
-  // טעינה מהשרת בעלייה — עדיפות על localStorage
+  // טעינה מהשרת בעלייה — משלים את localStorage, לא דורס
   useEffect(() => {
     fetch('/api/workplan')
       .then(r => r.json())
       .then(data => {
         if (!data) return;
         const base = repairMonth(data, DEFAULT_WORKPLAN);
-        setWorkPlanData({
+        setWorkPlanData(prev => ({
           ...base,
           obligo:            data.obligo            || {},
+          // אם השרת מחזיר ריק אבל ה-state הנוכחי (מ-localStorage) יש בו נתונים — שמור אותם
+          additiveTypes:     (data.additiveTypes && Object.keys(data.additiveTypes).length > 0)
+            ? data.additiveTypes
+            : (prev?.additiveTypes || {}),
+          fuelCardCustomers: (Array.isArray(data.fuelCardCustomers) && data.fuelCardCustomers.length > 0)
+            ? data.fuelCardCustomers
+            : (prev?.fuelCardCustomers || []),
           currentMonthId:    data.currentMonthId    || '2026-05',
           currentMonthLabel: data.currentMonthLabel || 'מאי 2026',
           monthHistory:      data.monthHistory      || {},
-        });
+        }));
       })
       .catch(() => {});
   }, []);
@@ -122,8 +134,9 @@ export default function App() {
         clients:             Array.isArray(next.clients)
           ? next.clients.filter((c, i, arr) => arr.findIndex(x => x.name === c.name) === i)
           : base.clients,
-        obligo:        next.obligo        != null ? next.obligo        : (base.obligo || {}),
-        additiveTypes: next.additiveTypes != null ? next.additiveTypes : (base.additiveTypes || {}),
+        obligo:             next.obligo             != null ? next.obligo             : (base.obligo || {}),
+        additiveTypes:      next.additiveTypes      != null ? next.additiveTypes      : (base.additiveTypes || {}),
+        fuelCardCustomers:  Array.isArray(next.fuelCardCustomers) ? next.fuelCardCustomers : (base.fuelCardCustomers || []),
         currentMonthId:    base.currentMonthId    || '2026-05',
         currentMonthLabel: base.currentMonthLabel || 'מאי 2026',
         monthHistory:      base.monthHistory      || {},
@@ -223,8 +236,10 @@ export default function App() {
         {/* Header */}
         {!isOrders && (
           <header style={{
-            background: 'var(--surface)',
-            borderBottom: '1px solid var(--border)',
+            background: 'rgba(255,255,255,0.80)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderBottom: '1px solid rgba(160,174,220,0.18)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -233,7 +248,7 @@ export default function App() {
             position: 'sticky',
             top: 0,
             zIndex: 20,
-            boxShadow: '0 1px 8px rgba(0,0,0,0.06)',
+            boxShadow: '0 1px 12px rgba(14,22,40,0.06)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
@@ -308,11 +323,11 @@ export default function App() {
               workPlanFileName={workPlanFileName}
             />
           )}
+          {tab === 'potential' && (
+            <PotentialClientsTab />
+          )}
           {tab === 'settings' && (
-            <div className="card card-pad" style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>⚙️</div>
-              <p style={{ color: 'var(--text-3)', fontSize: 14 }}>הגדרות בפיתוח</p>
-            </div>
+            <SettingsTab />
           )}
         </main>
       </div>
