@@ -85,17 +85,18 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [recurringActionError, setRecurringActionError] = useState('');
   const [deleteRecurringConfirmId, setDeleteRecurringConfirmId] = useState(null);
 
+  const safeJson = r => r.ok ? r.json() : [];
   const load = () =>
     Promise.all([
-      fetch(`${API}/api/customers`).then(r => r.json()),
-      fetch(`${API}/api/orders`).then(r => r.json()),
-      fetch(`${API}/api/drivers`).then(r => r.json()),
-      fetch(`${API}/api/recurring-orders`).then(r => r.json()),
+      fetch(`${API}/api/customers`).then(safeJson),
+      fetch(`${API}/api/orders`).then(safeJson),
+      fetch(`${API}/api/drivers`).then(safeJson),
+      fetch(`${API}/api/recurring-orders`).then(safeJson),
     ]).then(([c, o, d, r]) => {
-      setCustomers(c);
-      setOrders(o);
-      setDrivers(d);
-      setRecurring(r);
+      setCustomers(Array.isArray(c) ? c : []);
+      setOrders(Array.isArray(o) ? o : []);
+      setDrivers(Array.isArray(d) ? d : []);
+      setRecurring(Array.isArray(r) ? r : []);
       setLoading(false);
     }).catch(() => setLoading(false));
 
@@ -103,8 +104,8 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
 
   const loadSites = (cid) =>
     fetch(`${API}/api/customers/${cid}/sites`)
-      .then(r => r.json())
-      .then(setSites)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setSites(Array.isArray(data) ? data : []))
       .catch(() => setSites([]));
 
   useEffect(() => {
