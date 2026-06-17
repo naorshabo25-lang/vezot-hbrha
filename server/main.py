@@ -8,7 +8,9 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from database import init_db, get_db
-from whatsapp import send_whatsapp_message, send_quantity_list, send_area_list, send_time_list, send_date_list
+from whatsapp import (send_whatsapp_message, send_quantity_list, send_area_list,
+                      send_time_list, send_date_list, send_site_list,
+                      download_whatsapp_media, send_order_confirmation_card)
 from scheduler import start_scheduler, reschedule, reschedule_admin
 
 AREA_DISPLAY = {
@@ -16,12 +18,14 @@ AREA_DISPLAY = {
     "area_modiin":       "מודיעין",
     "area_maale_adumim": "מעלה אדומים",
     "area_beit_shemesh": "בית שמש",
+    "area_other":        "אחר",
 }
 AREA_DRIVER_KEY = {
     "area_jerusalem":    "ירושלים",
     "area_modiin":       "מודיעין",
     "area_maale_adumim": "מעלה אדומים",
     "area_beit_shemesh": "בית שמש",
+    "area_other":        "אחר",
 }
 QUANTITY_MAP = {
     "qty_0_100":     "0–100",
@@ -85,11 +89,11 @@ def assign_driver(conn, area: str, quantity_str: str):
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="מערכת הזמנות סולר")
-_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
+_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -111,6 +115,91 @@ def startup():
     admin_hour   = int(settings["admin_schedule_hour"])   if settings.get("admin_schedule_hour")   else None
     admin_minute = int(settings.get("admin_schedule_minute", 0))
     start_scheduler(hour, minute, admin_hour, admin_minute)
+
+
+# ── Order document parsing ───────────────────────────────────────────────────
+
+def _extract_pdf_text(file_bytes: bytes) -> str:
+    try:
+        import pdfplumber, io
+        parts = []
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+            for page in pdf.pages:
+                t = page.extract_text()
+                if t:
+                    parts.append(t)
+        return "\n".join(parts)
+    except Exception as e:
+        print(f"[PDF] {e}")
+        return ""
+
+
+def _regex_parse(text: str) -> dict:
+    import re
+    from datetime import datetime
+    result = {"quantity": None, "delivery_date": None, "address": None,
+              "contact_name": None, "contact_phone": None}
+    qty = re.search(r'(\d[\d,]*)\s*(?:ל[יי][טת]ר|ל[\'"]|lit)', text, re.IGNORECASE)
+    if qty:
+        result["quantity"] = int(qty.group(1).replace(",", ""))
+    dt = re.search(r'(\d{1,2})[/\.](\d{1,2})[/\.](\d{2,4})', text)
+    if dt:
+        d, m, y = dt.groups()
+        if len(y) == 2: y = "20" + y
+        try:
+            result["delivery_date"] = datetime(int(y), int(m), int(d)).strftime("%Y-%m-%d")
+        except Exception:
+            pass
+    phone = re.search(r'(0\d[-\s]?\d{3}[-\s]?\d{4})', text)
+    if phone:
+        result["contact_phone"] = phone.group(1)
+    addr = re.search(r'(?:כתובת|משלוח ל|אתר)[:\s]+([^\n]{5,60})', text, re.IGNORECASE)
+    if addr:
+        result["address"] = addr.group(1).strip()
+    return result
+
+
+def parse_order_document(file_bytes: bytes, mime_type: str, customer_name: str) -> dict | None:
+    import json, base64, re as _re
+    text_content = ""
+    if "pdf" in mime_type.lower():
+        text_content = _extract_pdf_text(file_bytes)
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if api_key:
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key)
+            system = (
+                'חלץ פרטי הזמנת דלק סולר. החזר JSON בלבד:\n'
+                '{"quantity":<ליטרים כמספר שלם>,"delivery_date":"<YYYY-MM-DD או null>",'
+                '"address":"<כתובת מלאה או null>","contact_name":"<שם או null>","contact_phone":"<טלפון או null>"}'
+            )
+            if text_content:
+                msgs = [{"role": "user", "content": f"לקוח: {customer_name}\n\n{text_content[:3000]}"}]
+            else:
+                for mt in ["image/jpeg", "image/png", "image/webp"]:
+                    if mt in mime_type:
+                        real_mt = mt; break
+                else:
+                    real_mt = "image/jpeg"
+                img_b64 = base64.standard_b64encode(file_bytes).decode()
+                msgs = [{"role": "user", "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": real_mt, "data": img_b64}},
+                    {"type": "text", "text": f"לקוח: {customer_name}\nחלץ פרטי הזמנה"},
+                ]}]
+            resp = client.messages.create(model="claude-haiku-4-5-20251001", max_tokens=400,
+                                          system=system, messages=msgs)
+            raw = resp.content[0].text
+            m = _re.search(r'\{.*?\}', raw, _re.DOTALL)
+            if m:
+                return json.loads(m.group())
+        except Exception as e:
+            print(f"[Claude parse] {e}")
+
+    if text_content:
+        return _regex_parse(text_content)
+    return None
 
 
 # ── WhatsApp Webhook ──────────────────────────────────────────────────────────
@@ -167,6 +256,8 @@ async def receive_message(request: Request):
                 text     = inter["button_reply"]["title"]
             else:
                 return JSONResponse({"status": "ok"})
+        elif msg_type in ("document", "image"):
+            text = ""; reply_id = None
         else:
             return JSONResponse({"status": "ok"})
     except (KeyError, IndexError):
@@ -189,6 +280,85 @@ async def receive_message(request: Request):
 
     step = state["step"] if state else None
 
+    # טיפול בקובץ PDF / תמונה — הזמנת רכש
+    if msg_type in ("document", "image"):
+        import json as _json
+        media_obj = message.get(msg_type, {})
+        media_id  = media_obj.get("id")
+        if not media_id:
+            return JSONResponse({"status": "ok"})
+        send_whatsapp_message(phone, "⏳ מעבד את ההזמנה, רגע...")
+        extracted_text = ""
+        try:
+            file_bytes, mime_type = download_whatsapp_media(media_id)
+            print(f"[Doc] mime={mime_type} size={len(file_bytes)}")
+            if "pdf" in mime_type.lower():
+                extracted_text = _extract_pdf_text(file_bytes)
+            print(f"[Doc] text={repr(extracted_text[:300])}")
+            info = parse_order_document(file_bytes, mime_type, customer["name"])
+            print(f"[Doc] parsed={info}")
+        except Exception as e:
+            print(f"[Doc handler] {e}")
+            info = None
+        if not info or not info.get("quantity"):
+            # שלח טקסט שחולץ כדי לדעת מה יש בקובץ
+            debug_msg = f"לא הצלחתי לחלץ כמות.\nטקסט שנקרא:\n{extracted_text[:400] if extracted_text else '(ריק — PDF סרוק?)'}"
+            send_whatsapp_message(phone, debug_msg)
+            return JSONResponse({"status": "ok"})
+        # fill missing contact from customer
+        if not info.get("contact_name"):  info["contact_name"]  = customer["contact_name"]  or ""
+        if not info.get("contact_phone"): info["contact_phone"] = customer["contact_phone"] or ""
+        if not info.get("address"):       info["address"]       = customer["site_address"]  or ""
+        with get_db() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO conversation_state (phone, step, customer_id, pending_order_json) VALUES (?,?,?,?)",
+                (phone, "awaiting_order_confirmation", customer["id"], _json.dumps(info, ensure_ascii=False))
+            )
+        send_order_confirmation_card(phone, info)
+        return JSONResponse({"status": "ok"})
+
+    # אישור / ביטול הזמנה מקובץ
+    if step == "awaiting_order_confirmation":
+        import json as _json
+        if reply_id == "confirm_order":
+            raw = state["pending_order_json"] if state else None
+            if raw:
+                info = _json.loads(raw)
+                from datetime import date as _date, timedelta
+                order_date = info.get("delivery_date") or (_date.today() + timedelta(days=1)).isoformat()
+                qty_str    = str(info.get("quantity", "0–100"))
+                address    = info.get("address", "")
+                cname      = info.get("contact_name")  or customer["contact_name"]  or ""
+                cphone     = info.get("contact_phone") or customer["contact_phone"] or ""
+                city       = customer["area"] or "ירושלים"
+                with get_db() as conn:
+                    driver = assign_driver(conn, city, qty_str)
+                    driver_id = driver["id"] if driver else None
+                    conn.execute(
+                        """INSERT INTO orders
+                           (customer_id,customer_name,site_address,contact_name,contact_phone,
+                            quantity,driver_id,order_date,delivery_time)
+                           VALUES (?,?,?,?,?,?,?,?,?)""",
+                        (customer["id"], customer["name"], address, cname, cphone,
+                         qty_str, driver_id, order_date, "")
+                    )
+                    conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+                from datetime import datetime as _dt
+                try:
+                    d = _dt.strptime(order_date, "%Y-%m-%d")
+                    date_label = f"{d.day}/{d.month}/{d.year}"
+                except Exception:
+                    date_label = order_date
+                send_whatsapp_message(phone,
+                    f"ההזמנה אושרה! ✅\n\nכמות: {qty_str} ליטר\nתאריך: {date_label}\nכתובת: {address}\nנדאג לאספקה. תודה! 🙏")
+            return JSONResponse({"status": "ok"})
+        if reply_id == "cancel_order":
+            with get_db() as conn:
+                conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+            send_whatsapp_message(phone, "ההזמנה בוטלה.")
+            return JSONResponse({"status": "ok"})
+        return JSONResponse({"status": "ok"})
+
     # זיהוי כוונת הזמנה עצמאית ("אפשר לבצע הזמנה?" וכד')
     ORDER_KEYWORDS = ["הזמנה", "להזמין", "לבצע", "אפשר", "רוצה להזמין", "סולר", "דלק"]
     text_lower = text.strip().lower()
@@ -210,19 +380,25 @@ async def receive_message(request: Request):
     if step == "awaiting_date":
         from datetime import date as dt, timedelta
         if reply_id and reply_id.startswith("date_"):
-            order_date = reply_id[5:]  # "date_2026-05-30" → "2026-05-30"
+            order_date = reply_id[5:]
         else:
             order_date = (dt.today() + timedelta(days=1)).isoformat()
         with get_db() as conn:
             conn.execute(
                 "UPDATE conversation_state SET step=?, order_date=?, updated_at=datetime('now','localtime') WHERE phone=?",
-                ("awaiting_quantity", order_date, phone)
+                ("awaiting_area", order_date, phone)
             )
         from datetime import datetime
         d = datetime.strptime(order_date, "%Y-%m-%d")
         date_label = f"{d.day}/{d.month}/{d.year}"
         send_whatsapp_message(phone, f"מצוין! תאריך אספקה: {date_label} 📅")
-        send_quantity_list(phone)
+        send_area_list(phone)
+        return JSONResponse({"status": "ok"})
+
+    # שלב 0 — לקוח ענה "לא" להודעה היומית
+    negative = {"לא", "no", "0", "לא.", "לא,", "לא!"}
+    if step is None and text_lower in {r.lower() for r in negative}:
+        send_whatsapp_message(phone, f"תודה רבה {customer['name']} והמשך ערב טוב 😊")
         return JSONResponse({"status": "ok"})
 
     # שלב 0 — לקוח ענה "כן" להודעה היומית
@@ -233,12 +409,28 @@ async def receive_message(request: Request):
         with get_db() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO conversation_state (phone, step, customer_id, order_date) VALUES (?,?,?,?)",
-                (phone, "awaiting_quantity", customer["id"], tomorrow)
+                (phone, "awaiting_area", customer["id"], tomorrow)
+            )
+        send_area_list(phone)
+        return JSONResponse({"status": "ok"})
+
+    # שלב 1 — בחירת אזור
+    if step == "awaiting_area":
+        if reply_id not in AREA_DISPLAY:
+            send_whatsapp_message(phone, "אנא בחר אזור מהרשימה 👇")
+            send_area_list(phone)
+            return JSONResponse({"status": "ok"})
+        city_display = AREA_DISPLAY[reply_id]
+        driver_key   = AREA_DRIVER_KEY[reply_id]
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE conversation_state SET step=?, city=?, updated_at=datetime('now','localtime') WHERE phone=?",
+                ("awaiting_quantity", driver_key, phone)
             )
         send_quantity_list(phone)
         return JSONResponse({"status": "ok"})
 
-    # שלב 1 — בחירת כמות
+    # שלב 2 — בחירת כמות
     if step == "awaiting_quantity":
         if reply_id not in QUANTITY_MAP:
             send_whatsapp_message(phone, "אנא בחר כמות מהרשימה 👇")
@@ -246,28 +438,78 @@ async def receive_message(request: Request):
             return JSONResponse({"status": "ok"})
         quantity = QUANTITY_MAP[reply_id]
         with get_db() as conn:
-            conn.execute(
-                "UPDATE conversation_state SET step=?, quantity=?, updated_at=datetime('now','localtime') WHERE phone=?",
-                ("awaiting_area", quantity, phone)
-            )
-        send_whatsapp_message(phone, f"מצוין! {quantity} ליטר.")
-        send_area_list(phone)
+            row = conn.execute("SELECT city FROM conversation_state WHERE phone=?", (phone,)).fetchone()
+            city = row["city"] if row and row["city"] else None
+            if city:
+                sites = [dict(s) for s in conn.execute(
+                    "SELECT * FROM customer_sites WHERE customer_id=? AND city=? AND active=1",
+                    (customer["id"], city)
+                ).fetchall()]
+            else:
+                sites = [dict(s) for s in conn.execute(
+                    "SELECT * FROM customer_sites WHERE customer_id=? AND active=1",
+                    (customer["id"],)
+                ).fetchall()]
+        if sites:
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE conversation_state SET step=?, quantity=?, updated_at=datetime('now','localtime') WHERE phone=?",
+                    ("awaiting_site", quantity, phone)
+                )
+            send_whatsapp_message(phone, f"מצוין! {quantity} ליטר.")
+            send_site_list(phone, sites)
+        else:
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE conversation_state SET step=?, quantity=?, updated_at=datetime('now','localtime') WHERE phone=?",
+                    ("awaiting_address", quantity, phone)
+                )
+            send_whatsapp_message(phone, f"מצוין! {quantity} ליטר.\nמה הכתובת המדויקת?")
         return JSONResponse({"status": "ok"})
 
-    # שלב 2 — בחירת אזור
-    if step == "awaiting_area":
-        if reply_id not in AREA_DISPLAY:
-            send_whatsapp_message(phone, "אנא בחר אזור מהרשימה 👇")
-            send_area_list(phone)
+    # שלב 2.5 — בחירת אתר (ללקוחות עם אתרים מוגדרים)
+    if step == "awaiting_site":
+        if reply_id == "site_other":
+            with get_db() as conn:
+                row = conn.execute("SELECT city FROM conversation_state WHERE phone=?", (phone,)).fetchone()
+                city_name = row["city"] if row and row["city"] else ""
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE conversation_state SET step=?, updated_at=datetime('now','localtime') WHERE phone=?",
+                    ("awaiting_address", phone)
+                )
+            send_whatsapp_message(phone, f"מה הכתובת המדויקת?")
             return JSONResponse({"status": "ok"})
-        city       = AREA_DISPLAY[reply_id]
-        driver_key = AREA_DRIVER_KEY[reply_id]
+        if reply_id and reply_id.startswith("site_"):
+            try:
+                site_id = int(reply_id[5:])
+            except ValueError:
+                site_id = None
+            if site_id:
+                with get_db() as conn:
+                    site = conn.execute("SELECT * FROM customer_sites WHERE id=? AND active=1", (site_id,)).fetchone()
+                    if site:
+                        conn.execute(
+                            "UPDATE conversation_state SET step=?, city=?, address=?, updated_at=datetime('now','localtime') WHERE phone=?",
+                            ("awaiting_time", site["city"], site["address"], phone)
+                        )
+                        send_time_list(phone)
+                        return JSONResponse({"status": "ok"})
+        # תשובה לא תקינה — שלח רשימה מחדש
         with get_db() as conn:
-            conn.execute(
-                "UPDATE conversation_state SET step=?, city=?, updated_at=datetime('now','localtime') WHERE phone=?",
-                ("awaiting_address", driver_key, phone)
-            )
-        send_whatsapp_message(phone, f"מה הכתובת המדויקת ב{city}?")
+            row = conn.execute("SELECT city FROM conversation_state WHERE phone=?", (phone,)).fetchone()
+            city = row["city"] if row and row["city"] else None
+            if city:
+                sites = [dict(s) for s in conn.execute(
+                    "SELECT * FROM customer_sites WHERE customer_id=? AND city=? AND active=1",
+                    (customer["id"], city)
+                ).fetchall()]
+            else:
+                sites = [dict(s) for s in conn.execute(
+                    "SELECT * FROM customer_sites WHERE customer_id=? AND active=1",
+                    (customer["id"],)
+                ).fetchall()]
+        send_site_list(phone, sites)
         return JSONResponse({"status": "ok"})
 
     # שלב 3 — כתובת מדויקת
@@ -436,6 +678,74 @@ def delete_order(order_id: int):
     return {"ok": True}
 
 
+@app.get("/api/recurring-orders")
+def get_recurring_orders():
+    with get_db() as conn:
+        rows = conn.execute("SELECT * FROM recurring_orders ORDER BY created_at DESC").fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/recurring-orders")
+async def add_recurring_order(request: Request):
+    body = await request.json()
+    days_of_week = body.get("days_of_week") or [0, 1, 2, 3, 4]
+    days_str = ",".join(str(int(d)) for d in days_of_week)
+    with get_db() as conn:
+        customer_id = body.get("customer_id")
+        area = body.get("area", "")
+        if not area and customer_id:
+            c = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+            if c:
+                area = c["area"]
+        conn.execute(
+            """INSERT INTO recurring_orders
+               (customer_id, customer_name, site_address, contact_name, contact_phone,
+                quantity, area, days_of_week, start_date, end_date, active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
+            (customer_id, body["customer_name"], body["site_address"],
+             body.get("contact_name", ""), body.get("contact_phone", ""), body["quantity"],
+             area, days_str, body.get("start_date", ""), body.get("end_date", "")),
+        )
+    return {"ok": True}
+
+
+@app.put("/api/recurring-orders/{rid}")
+async def update_recurring_order(rid: int, request: Request):
+    body = await request.json()
+    with get_db() as conn:
+        if "active" in body:
+            conn.execute("UPDATE recurring_orders SET active = ? WHERE id = ?", (1 if body["active"] else 0, rid))
+        if "days_of_week" in body:
+            days_str = ",".join(str(int(d)) for d in body["days_of_week"])
+            conn.execute("UPDATE recurring_orders SET days_of_week = ? WHERE id = ?", (days_str, rid))
+        if "start_date" in body:
+            conn.execute("UPDATE recurring_orders SET start_date = ? WHERE id = ?", (body["start_date"], rid))
+        if "end_date" in body:
+            conn.execute("UPDATE recurring_orders SET end_date = ? WHERE id = ?", (body["end_date"], rid))
+    return {"ok": True}
+
+
+@app.delete("/api/recurring-orders/{rid}")
+def delete_recurring_order(rid: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM recurring_orders WHERE id = ?", (rid,))
+    return {"ok": True}
+
+
+@app.post("/api/recurring-orders/materialize")
+async def materialize_recurring_orders_endpoint(request: Request):
+    from datetime import date as dt, timedelta
+    from recurring import materialize_recurring_orders
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    target_date = body.get("target_date") or (dt.today() + timedelta(days=1)).isoformat()
+    created = materialize_recurring_orders(target_date)
+    return {"ok": True, "created": created, "target_date": target_date}
+
+
 @app.put("/api/orders/{order_id}/status")
 async def update_order_status(order_id: int, request: Request):
     body = await request.json()
@@ -483,6 +793,55 @@ async def update_customer(cid: int, request: Request):
 def delete_customer(cid: int):
     with get_db() as conn:
         conn.execute("UPDATE customers SET active = 0 WHERE id = ?", (cid,))
+    return {"ok": True}
+
+
+@app.post("/api/customers/{cid}/send-order-message")
+def send_order_message(cid: int):
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id=? AND active=1", (cid,)).fetchone()
+        if not customer:
+            raise HTTPException(status_code=404, detail="לקוח לא נמצא")
+        settings = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
+    template = settings.get("message_template", "שלום {name}, האם תצטרך הזמנת דלק סולר למחר?")
+    from whatsapp import send_daily_question
+    phone = customer["phone"].strip().replace(" ", "").replace("-", "")
+    if phone.startswith("0"):
+        phone = "972" + phone[1:]
+    send_daily_question(phone, customer["name"], template)
+    return {"ok": True}
+
+
+@app.get("/api/customers/{cid}/sites")
+def get_customer_sites(cid: int):
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM customer_sites WHERE customer_id=? AND active=1 ORDER BY id",
+            (cid,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/customers/{cid}/sites")
+async def add_customer_site(cid: int, request: Request):
+    body = await request.json()
+    name    = body.get("name", "").strip()
+    city    = body.get("city", "").strip()
+    address = body.get("address", "").strip()
+    if not name or not city or not address:
+        raise HTTPException(status_code=400, detail="name, city, address חובה")
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO customer_sites (customer_id, name, city, address) VALUES (?,?,?,?)",
+            (cid, name, city, address)
+        )
+    return {"ok": True}
+
+
+@app.delete("/api/customers/{cid}/sites/{sid}")
+def delete_customer_site(cid: int, sid: int):
+    with get_db() as conn:
+        conn.execute("UPDATE customer_sites SET active=0 WHERE id=? AND customer_id=?", (sid, cid))
     return {"ok": True}
 
 
@@ -642,10 +1001,26 @@ async def import_excel(request: Request):
 
 
 @app.get("/api/potential-customers")
-def get_potential_customers():
+def get_potential_customers(q: str = Query(default=""), limit: int = Query(default=50), offset: int = Query(default=0)):
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM potential_customers WHERE active=1 ORDER BY name").fetchall()
-    return [dict(r) for r in rows]
+        order = "ORDER BY (notes IS NOT NULL AND notes != '') DESC, name"
+        if q:
+            pattern = f"%{q}%"
+            total = conn.execute(
+                "SELECT COUNT(*) FROM potential_customers WHERE active=1 AND (name LIKE ? OR phone LIKE ? OR area LIKE ?)",
+                (pattern, pattern, pattern)
+            ).fetchone()[0]
+            rows = conn.execute(
+                f"SELECT * FROM potential_customers WHERE active=1 AND (name LIKE ? OR phone LIKE ? OR area LIKE ?) {order} LIMIT ? OFFSET ?",
+                (pattern, pattern, pattern, limit, offset)
+            ).fetchall()
+        else:
+            total = conn.execute("SELECT COUNT(*) FROM potential_customers WHERE active=1").fetchone()[0]
+            rows = conn.execute(
+                f"SELECT * FROM potential_customers WHERE active=1 {order} LIMIT ? OFFSET ?",
+                (limit, offset)
+            ).fetchall()
+    return {"items": [dict(r) for r in rows], "total": total}
 
 
 @app.post("/api/potential-customers")
@@ -789,9 +1164,9 @@ async def send_test_message(request: Request):
 
 @app.post("/api/send-daily-schedule")
 async def send_daily_schedule():
-    from datetime import date as dt
+    from datetime import date as dt, timedelta
     from whatsapp import send_order_card
-    target_date = dt.today().isoformat()
+    target_date = (dt.today() + timedelta(days=1)).isoformat()
 
     with get_db() as conn:
         settings    = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
@@ -840,25 +1215,104 @@ async def send_daily_schedule():
     return {"ok": True, "orders_sent": len(orders)}
 
 
-# ── WorkPlan persistence ─────────────────────────────────────────────────────
+# ── WorkPlan persistence + bidirectional sync ────────────────────────────────
+
+import json as _json
+import urllib.request as _urllib
+import threading as _threading
+import time as _time
 
 WORKPLAN_FILE = os.path.join(os.path.dirname(__file__), "workplan_data.json")
+PROD_URL = "https://vezot-fuel.com"
+
+
+def _fetch_prod():
+    """Fetch workplan from production server (server-to-server, no CORS)."""
+    try:
+        req = _urllib.Request(f"{PROD_URL}/api/workplan", headers={"Accept": "application/json"})
+        with _urllib.urlopen(req, timeout=8) as resp:
+            return _json.loads(resp.read().decode())
+    except Exception:
+        return None
+
+
+def _push_prod(data: dict):
+    """Push workplan to production server in a background thread."""
+    def _do():
+        try:
+            payload = _json.dumps(data, ensure_ascii=False).encode()
+            req = _urllib.Request(
+                f"{PROD_URL}/api/workplan",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            _urllib.urlopen(req, timeout=8)
+        except Exception:
+            pass
+    _threading.Thread(target=_do, daemon=True).start()
+
+
+def _load_local():
+    if not os.path.exists(WORKPLAN_FILE):
+        return None
+    try:
+        with open(WORKPLAN_FILE, "r", encoding="utf-8") as f:
+            return _json.load(f)
+    except Exception:
+        return None
+
+
+def _save_local(data: dict):
+    with open(WORKPLAN_FILE, "w", encoding="utf-8") as f:
+        _json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _startup_sync():
+    """On server start: always pull from production (source of truth).
+    Local changes are pushed to production on every save, so production
+    always has the most recent committed data."""
+    prod = _fetch_prod()
+    if not prod:
+        print("[sync] production unreachable — using local data")
+        return
+    _save_local(prod)
+    print("[sync] pulled data from production")
+
+
+# Run startup sync in background so server starts immediately
+_threading.Thread(target=_startup_sync, daemon=True).start()
+
 
 @app.get("/api/workplan")
 def get_workplan():
-    if not os.path.exists(WORKPLAN_FILE):
-        return JSONResponse(content=None)
-    with open(WORKPLAN_FILE, "r", encoding="utf-8") as f:
-        import json
-        return JSONResponse(content=json.load(f))
+    data = _load_local()
+    return JSONResponse(content=data)
+
 
 @app.post("/api/workplan")
 async def save_workplan(request: Request):
-    import json
     body = await request.json()
-    with open(WORKPLAN_FILE, "w", encoding="utf-8") as f:
-        json.dump(body, f, ensure_ascii=False, indent=2)
+    if "lastModified" not in body:
+        body["lastModified"] = int(_time.time() * 1000)
+    _save_local(body)
+    _push_prod(body)          # forward to production in background
     return {"ok": True}
+
+
+@app.post("/api/sync/pull")
+def sync_pull():
+    """Manually pull latest data from production."""
+    prod = _fetch_prod()
+    if not prod:
+        return {"ok": False, "error": "לא ניתן להגיע לשרת הייצור"}
+    local = _load_local()
+    prod_ts  = prod.get("lastModified", 0)
+    local_ts = local.get("lastModified", 0) if local else 0
+    if prod_ts >= local_ts:
+        _save_local(prod)
+        return {"ok": True, "action": "pulled", "ts": prod_ts}
+    return {"ok": True, "action": "already_newer", "ts": local_ts}
 
 
 # ── Run ───────────────────────────────────────────────────────────────────────

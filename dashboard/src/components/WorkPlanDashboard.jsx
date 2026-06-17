@@ -151,8 +151,8 @@ const PLRow = ({ label, value, pct, indent = false, bold = false, subtotal = fal
       }}>
         {label}
       </span>
-      <div style={{ display: 'flex', gap: 28, minWidth: 170, justifyContent: 'flex-end' }}>
-        <span style={{
+      <div className="pl-row-values" style={{ display: 'flex', gap: 28, minWidth: 170, justifyContent: 'flex-end' }}>
+        <span className="pl-row-amount" style={{
           fontSize: total ? 15 : 12.5,
           fontWeight: total ? 800 : bold || subtotal ? 700 : 500,
           color: textColor,
@@ -161,7 +161,7 @@ const PLRow = ({ label, value, pct, indent = false, bold = false, subtotal = fal
         }}>
           {negative ? `(${fmt(Math.abs(value))})` : fmt(value)}
         </span>
-        <span style={{
+        <span className="pl-row-pct" style={{
           fontSize: 11,
           color: negative ? 'var(--red)' : 'var(--text-3)',
           fontWeight: subtotal || total ? 600 : 400,
@@ -326,7 +326,7 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
       {/* KPI Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+      <div className="grid-4">
         {kpis.map((k, i) => (
           <div key={i} style={{
             background: k.bg,
@@ -340,7 +340,7 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
             <p style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3 }}>
               {k.label}
             </p>
-            <p style={{
+            <p className="kpi-val" style={{
               fontSize: 16,
               fontWeight: 700,
               color: '#ffffff',
@@ -358,7 +358,7 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
       </div>
 
       {/* Quick Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+      <div className="grid-3">
 
         {/* הכנסות לפי מקור */}
         <Card style={{ padding: '14px 16px' }}>
@@ -492,7 +492,7 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
       </Card>
 
       {/* 2-column: Revenue by client + Expense split */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
+      <div className="grid-2-1">
         <Card>
           <SectionTitle>הכנסות לפי לקוח</SectionTitle>
           <ResponsiveContainer width="100%" height={200}>
@@ -536,7 +536,7 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
       </div>
 
       {/* 2-column: Top expenses + Key ratios */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div className="grid-2">
         <Card>
           <SectionTitle>5 הוצאות הגדולות ביותר</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

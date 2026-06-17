@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DEFAULT_WORKPLAN } from './defaultWorkPlan';
 import { useExpenses } from './hooks/useExpenses';
 import Sidebar from './components/Sidebar';
@@ -57,6 +57,18 @@ const getAllMonths = (data) => {
 
 export default function App() {
   const [tab, setTab] = useState('workplan');
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handle = (e) => {
+      setIsMobile(e.matches);
+      if (!e.matches) setSidebarOpen(false);
+    };
+    mq.addEventListener('change', handle);
+    return () => mq.removeEventListener('change', handle);
+  }, []);
 
   const [workPlanData, setWorkPlanData] = useState(() => {
     try {
@@ -82,36 +94,50 @@ export default function App() {
 
   const { expenses, clearAllExpenses, importExpenses } = useExpenses();
 
+  const SERVER = (window.location.port === '5173' || window.location.port === '5174')
+    ? `http://${window.location.hostname}:8000`
+    : '';
+
   const saveToStorage = (data) => {
-    try { localStorage.setItem('workPlanData', JSON.stringify(data)); } catch {}
-    fetch('/api/workplan', {
+    const stamped = { ...data, lastModified: Date.now() };
+    try { localStorage.setItem('workPlanData', JSON.stringify(stamped)); } catch {}
+    fetch(`${SERVER}/api/workplan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify(stamped),
     }).catch(() => {});
   };
 
-  // טעינה מהשרת בעלייה — משלים את localStorage, לא דורס
+  // בטעינה: קח נתונים מהשרת המקומי (שכבר סונכרן עם ייצור בעת הפעלה)
   useEffect(() => {
-    fetch('/api/workplan')
+    fetch(`${SERVER}/api/workplan`)
       .then(r => r.json())
       .then(data => {
-        if (!data) return;
+        if (!data) {
+          try {
+            const ls = localStorage.getItem('workPlanData');
+            if (ls) {
+              fetch(`${SERVER}/api/workplan`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: ls,
+              }).catch(() => {});
+            }
+          } catch {}
+          return;
+        }
         const base = repairMonth(data, DEFAULT_WORKPLAN);
         setWorkPlanData(prev => ({
           ...base,
           obligo:            data.obligo            || {},
-          // אם השרת מחזיר ריק אבל ה-state הנוכחי (מ-localStorage) יש בו נתונים — שמור אותם
           additiveTypes:     (data.additiveTypes && Object.keys(data.additiveTypes).length > 0)
-            ? data.additiveTypes
-            : (prev?.additiveTypes || {}),
+            ? data.additiveTypes  : (prev?.additiveTypes     || {}),
           fuelCardCustomers: (Array.isArray(data.fuelCardCustomers) && data.fuelCardCustomers.length > 0)
-            ? data.fuelCardCustomers
-            : (prev?.fuelCardCustomers || []),
+            ? data.fuelCardCustomers : (prev?.fuelCardCustomers || []),
           currentMonthId:    data.currentMonthId    || '2026-05',
           currentMonthLabel: data.currentMonthLabel || 'מאי 2026',
           monthHistory:      data.monthHistory      || {},
+          lastModified:      data.lastModified,
         }));
+        try { localStorage.setItem('workPlanData', JSON.stringify(data)); } catch {}
       })
       .catch(() => {});
   }, []);
@@ -212,10 +238,18 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', direction: 'rtl' }}>
 
-      {!isOrders && <Sidebar tab={tab} onTab={t => setTab(t)} />}
+      {!isOrders && (
+        <Sidebar
+          tab={tab}
+          onTab={t => setTab(t)}
+          isMobile={isMobile}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+      )}
 
       <div style={{
-        marginRight: isOrders ? 0 : 'var(--sidebar-w)',
+        marginRight: isOrders || isMobile ? 0 : 'var(--sidebar-w)',
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
@@ -251,6 +285,13 @@ export default function App() {
             boxShadow: '0 1px 12px rgba(14,22,40,0.06)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {isMobile && (
+                <button
+                  className="hamburger-btn"
+                  onClick={() => setSidebarOpen(true)}
+                  aria-label="פתח תפריט"
+                >☰</button>
+              )}
               <div style={{
                 width: 4, height: 20, background: 'var(--red)',
                 borderRadius: 2, flexShrink: 0,
@@ -279,18 +320,42 @@ export default function App() {
         {/* Main content */}
         <main style={{
           flex: 1,
-          padding: isOrders ? 0 : '24px 28px',
+          padding: isOrders ? 0 : isMobile ? '14px 12px' : '24px 28px',
           display: 'flex',
           flexDirection: 'column',
           gap: isOrders ? 0 : 18,
         }}>
-          {tab === 'orders' && (
-            <iframe
-              src={`${window.location.port === '5173' || window.location.port === '5174' ? 'http://localhost:8000' : ''}/dashboard?v=${Date.now()}`}
-              style={{ width: '100%', height: '100vh', border: 'none', display: 'block' }}
-              title="מערכת ניהול — זאת הברכה דלקים"
-            />
-          )}
+          {tab === 'orders' && (() => {
+            const ordersUrl = `${(window.location.port === '5173' || window.location.port === '5174') ? `http://${window.location.hostname}:8000` : ''}/dashboard`;
+            if (isMobile) return (
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', flex: 1, gap: 20, padding: 32,
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 48 }}>📋</div>
+                <p style={{ fontSize: 16, color: 'var(--text-2)', lineHeight: 1.6 }}>
+                  מערכת ההזמנות מותאמת לחלון מלא.<br />לחץ כדי לפתוח אותה.
+                </p>
+                <a
+                  href={ordersUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                  style={{ fontSize: 16, padding: '14px 32px', textDecoration: 'none' }}
+                >
+                  פתח מערכת הזמנות ↗
+                </a>
+              </div>
+            );
+            return (
+              <iframe
+                src={`${ordersUrl}?v=${Date.now()}`}
+                style={{ width: '100%', height: '100vh', border: 'none', display: 'block' }}
+                title="מערכת ניהול — זאת הברכה דלקים"
+              />
+            );
+          })()}
           {tab === 'workplan' && (
             <WorkPlanDashboard data={workPlanData} monthLabel={monthLabel} />
           )}

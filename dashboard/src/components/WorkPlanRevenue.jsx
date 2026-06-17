@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList,
@@ -86,6 +86,7 @@ const parseQty = q => {
 };
 
 export default function WorkPlanRevenue({ data: externalData, onChange, monthId, monthLabel, allMonths = [], onMonthSwitch, onNewMonth }) {
+  const isMobile = window.innerWidth < 768;
   const clients            = externalData?.clients || DEFAULT_CLIENTS;
   const additiveTypes      = externalData?.additiveTypes || {};
   const [showForm,          setShowForm]          = useState(false);
@@ -434,7 +435,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
       <MonthSelector monthId={monthId} allMonths={allMonths} onMonthSwitch={onMonthSwitch} onNewMonth={onNewMonth} />
 
       {/* KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
+      <div className="grid-6">
         {[
           {
             label: 'סה"כ הכנסות', value: fmt(Math.round(totalInvoice)), sub: `${clients.length} לקוחות`,
@@ -478,14 +479,14 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
       </div>
 
       {/* Row 1: profit bar + pie */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 14 }}>
+      <div className="grid-3-2">
         <Card>
           <SectionTitle sub="ממוין מהגבוה לנמוך">רווח גולמי לפי לקוח</SectionTitle>
           <ResponsiveContainer width="100%" height={Math.max(200, sortedClients.length * 34)}>
             <BarChart data={sortedClients.map(c => ({ name: c.name, value: c._profit }))} layout="vertical" margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--surface-3)" />
               <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickFormatter={tickK} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" width={280} orientation="right" tick={{ fontSize: 11, fill: 'var(--text-2)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="name" width={isMobile ? 130 : 280} orientation="right" tick={{ fontSize: isMobile ? 9 : 11, fill: 'var(--text-2)', fontWeight: 600 }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(99,102,241,0.06)' }} />
               <Bar dataKey="value" name="רווח גולמי" radius={[0, 5, 5, 0]} maxBarSize={22}>
                 {sortedClients.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -518,7 +519,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
       </div>
 
       {/* Row 2: liters bar + pie */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 14 }}>
+      <div className="grid-3-2">
         <Card>
           <SectionTitle sub="בהיר = משוערך · כהה = בפועל">ליטרים לפי לקוח</SectionTitle>
           <ResponsiveContainer width="100%" height={Math.max(200, clients.length * 40)}>
@@ -532,7 +533,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
             >
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--surface-3)" />
               <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" width={280} orientation="right" tick={{ fontSize: 11, fill: 'var(--text-2)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="name" width={isMobile ? 130 : 280} orientation="right" tick={{ fontSize: isMobile ? 9 : 11, fill: 'var(--text-2)', fontWeight: 600 }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(14,165,233,0.06)' }} />
               <Legend iconSize={9} formatter={v => <span style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600 }}>{v}</span>} />
               <Bar dataKey="משוערך" fill="#bae6fd" radius={[0, 3, 3, 0]} maxBarSize={10} />
@@ -558,7 +559,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
 
       {/* Margin Analysis Charts */}
       {clients.some(c => c.salePrice > 0 && c.purchasePrice > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 14 }}>
+        <div className="grid-3-2">
           <Card>
             <SectionTitle sub="קניה · מכירה · מרווח לליטר">ניתוח מרווח שיווקי לפי לקוח</SectionTitle>
             <ResponsiveContainer width="100%" height={Math.max(200, clients.filter(c => c.salePrice > 0).length * 44)}>

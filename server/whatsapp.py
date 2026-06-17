@@ -76,6 +76,7 @@ def send_area_list(to_phone: str) -> bool:
                         {"id": "area_modiin",       "title": "מודיעין"},
                         {"id": "area_maale_adumim", "title": "מעלה אדומים"},
                         {"id": "area_beit_shemesh", "title": "בית שמש"},
+                        {"id": "area_other",        "title": "אחר"},
                     ],
                 }],
             },
@@ -130,6 +131,31 @@ def send_date_list(to_phone: str) -> bool:
     })
 
 
+def send_site_list(to_phone: str, sites: list) -> bool:
+    rows = [
+        {
+            "id": f"site_{s['id']}",
+            "title": s["name"][:24],
+            "description": f"{s['city']}, {s['address']}"[:72],
+        }
+        for s in sites[:9]
+    ]
+    rows.append({"id": "site_other", "title": "כתובת אחרת..."})
+    return _post(to_phone, {
+        "messaging_product": "whatsapp",
+        "to": to_phone,
+        "type": "interactive",
+        "interactive": {
+            "type": "list",
+            "body": {"text": "לאיזה אתר תרצה את האספקה?"},
+            "action": {
+                "button": "בחר אתר",
+                "sections": [{"title": "אתרי אספקה", "rows": rows}],
+            },
+        },
+    })
+
+
 def send_order_card(to_phone: str, order: dict) -> bool:
     """שולח פרטי הזמנה עם כפתור ביצוע לנהג."""
     o = order
@@ -160,6 +186,60 @@ def send_order_card(to_phone: str, order: dict) -> bool:
                     {"type": "reply", "reply": {"id": f"done_{o['id']}", "title": "✅ ביצוע"}},
                 ]
             },
+        },
+    })
+
+
+def download_whatsapp_media(media_id: str):
+    """Returns (bytes, mime_type) or raises"""
+    access_token = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+    phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+    resp = requests.get(
+        f"https://graph.facebook.com/v25.0/{media_id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    media_url = data["url"]
+    mime_type = data.get("mime_type", "application/octet-stream")
+    resp2 = requests.get(media_url, headers={"Authorization": f"Bearer {access_token}"}, timeout=30)
+    resp2.raise_for_status()
+    return resp2.content, mime_type
+
+
+def send_order_confirmation_card(to_phone: str, info: dict) -> bool:
+    qty   = info.get("quantity") or "?"
+    addr  = info.get("address") or "לא זוהה"
+    cname = info.get("contact_name") or ""
+    cphone = info.get("contact_phone") or ""
+    raw_date = info.get("delivery_date")
+    if raw_date:
+        try:
+            from datetime import datetime as _dt
+            d = _dt.strptime(raw_date, "%Y-%m-%d")
+            date_str = f"{d.day}/{d.month}/{d.year}"
+        except Exception:
+            date_str = raw_date
+    else:
+        date_str = "לא זוהה"
+
+    body = f"📋 *פרטי ההזמנה שחולצו:*\n\n🛢️ כמות: {qty} ליטר\n📅 תאריך: {date_str}\n📍 כתובת: {addr}"
+    if cname:  body += f"\n👤 {cname}"
+    if cphone: body += f"\n📞 {cphone}"
+    body += "\n\nהאם לאשר את ההזמנה?"
+
+    return _post(to_phone, {
+        "messaging_product": "whatsapp",
+        "to": to_phone,
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {"text": body},
+            "action": {"buttons": [
+                {"type": "reply", "reply": {"id": "confirm_order", "title": "✅ אשר הזמנה"}},
+                {"type": "reply", "reply": {"id": "cancel_order",  "title": "❌ בטל"}},
+            ]},
         },
     })
 

@@ -1,0 +1,26 @@
+{
+  "name": "זאת הברכה דלקים — ניהול",
+  "short_name": "זאת הברכה",
+  "description": "מערכת ניהול פיננסי — זאת הברכה דלקים ושמנים",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#d32f2f",
+  "orientation": "any",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -186,7 +186,7 @@ export default function WorkPlanObligo({ data: externalData, onChange, monthId }
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
       {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+      <div className="grid-5">
         {[
           {
             label: 'סה"כ מסגרת אשראי', value: fmt(totalLimit), sub: 'מסגרת כוללת',
@@ -286,7 +286,7 @@ export default function WorkPlanObligo({ data: externalData, onChange, monthId }
       {payment && (
         <Card>
           <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>רישום תשלום — יפחית מהחוב</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: 12, marginBottom: 12 }}>
+          <div className="grid-3-form" style={{ marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>לקוח</label>
               <select className="input" value={payForm.name} onChange={e => setPayForm(p => ({ ...p, name: e.target.value }))}>
@@ -329,7 +329,7 @@ export default function WorkPlanObligo({ data: externalData, onChange, monthId }
       {adding && (
         <Card>
           <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>לקוח חדש</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 12 }}>
+          <div className="grid-3-form" style={{ marginBottom: 12 }}>
             {[
               { label: 'שם לקוח', key: 'name', placeholder: 'שם...' },
               { label: 'מסגרת אשראי (₪)', key: 'creditLimit', type: 'number', placeholder: '0' },

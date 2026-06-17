@@ -267,7 +267,7 @@ export default function WorkPlanExpenses({ data: externalData, onChange, monthId
       </div>
 
       {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+      <div className="grid-3">
         {[
           {
             label: 'הוצאות תפעוליות', value: fmt(totalOpEx), sub: `${data.operationalExpenses.length} סעיפים`,
@@ -311,7 +311,7 @@ export default function WorkPlanExpenses({ data: externalData, onChange, monthId
       </div>
 
       {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
+      <div className="grid-2-1">
         <Card>
           <SectionTitle>הוצאות תפעוליות — {fmt(totalOpEx)}</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -363,7 +363,7 @@ export default function WorkPlanExpenses({ data: externalData, onChange, monthId
       {/* Salaries card */}
       <Card>
         <SectionTitle>משכורות — {fmt(totalSal)}</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 20, alignItems: 'start' }}>
+        <div className="grid-sidebar">
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie data={salaryPieData} cx="50%" cy="50%" innerRadius={40} outerRadius={72}

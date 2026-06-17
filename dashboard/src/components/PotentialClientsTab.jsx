@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-const API = window.location.port === '5173' || window.location.port === '5174' ? 'http://localhost:8000' : '';
+const API = (window.location.port === '5173' || window.location.port === '5174') ? `http://${window.location.hostname}:8000` : '';
 
 const inputStyle = {
   padding: '9px 12px', borderRadius: 8, border: '1px solid #e9ecef',

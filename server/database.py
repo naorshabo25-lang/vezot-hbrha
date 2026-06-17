@@ -98,6 +98,10 @@ def init_db():
             conn.execute("ALTER TABLE conversation_state ADD COLUMN contact_phone TEXT")
         except Exception:
             pass
+        try:
+            conn.execute("ALTER TABLE conversation_state ADD COLUMN pending_order_json TEXT DEFAULT NULL")
+        except Exception:
+            pass
         for col in ['site_address', 'contact_name', 'contact_phone', 'email',
                     'order_contact_name', 'order_contact_phone']:
             try:
@@ -109,6 +113,17 @@ def init_db():
                 conn.execute(f"ALTER TABLE customers ADD COLUMN {col}")
             except Exception:
                 pass
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS customer_sites (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER NOT NULL,
+                name        TEXT NOT NULL,
+                city        TEXT NOT NULL,
+                address     TEXT NOT NULL,
+                active      INTEGER DEFAULT 1,
+                FOREIGN KEY (customer_id) REFERENCES customers(id)
+            );
+        """)
         try:
             conn.execute("ALTER TABLE orders ADD COLUMN order_date TEXT DEFAULT (date('now', 'localtime'))")
         except Exception:
@@ -122,3 +137,20 @@ def init_db():
                 conn.execute(f"ALTER TABLE drivers ADD COLUMN {col}")
             except Exception:
                 pass
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS recurring_orders (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id   INTEGER,
+                customer_name TEXT NOT NULL,
+                site_address  TEXT NOT NULL,
+                contact_name  TEXT DEFAULT '',
+                contact_phone TEXT DEFAULT '',
+                quantity      TEXT NOT NULL,
+                area          TEXT DEFAULT '',
+                days_of_week  TEXT NOT NULL DEFAULT '0,1,2,3,4',
+                start_date    TEXT DEFAULT '',
+                end_date      TEXT DEFAULT '',
+                active        INTEGER DEFAULT 1,
+                created_at    TEXT DEFAULT (datetime('now', 'localtime'))
+            );
+        """)

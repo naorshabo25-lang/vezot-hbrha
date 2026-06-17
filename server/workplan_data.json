@@ -1,0 +1,1421 @@
+{
+  "operationalExpenses": [
+    {
+      "name": "שיווק",
+      "amount": 5771.18,
+      "note": ""
+    },
+    {
+      "name": "שכירות מגרש",
+      "amount": 9000,
+      "note": ""
+    }
+  ],
+  "salaries": [
+    {
+      "name": "משכורת נאור",
+      "amount": 25000,
+      "note": ""
+    },
+    {
+      "name": "משכורת ליאור",
+      "amount": 35000,
+      "note": ""
+    },
+    {
+      "name": "משכורת אפרת",
+      "amount": 7500,
+      "note": ""
+    },
+    {
+      "name": "משכורת נעמי",
+      "amount": 7500,
+      "note": ""
+    },
+    {
+      "name": "משכורת אסף",
+      "amount": 15000,
+      "note": ""
+    },
+    {
+      "name": "משכורת ישראל",
+      "amount": 16000,
+      "note": ""
+    },
+    {
+      "name": "משכורת אילן",
+      "amount": 9000,
+      "note": ""
+    },
+    {
+      "name": "משכורת רוסטי",
+      "amount": 15000,
+      "note": ""
+    }
+  ],
+  "fuelPurchases": [
+    {
+      "name": "אס או אס",
+      "amount": 514166,
+      "liters": 72012,
+      "pricePerLiter": 7.14,
+      "note": ""
+    },
+    {
+      "name": "טן",
+      "amount": 577327,
+      "liters": 82985,
+      "pricePerLiter": 6.957,
+      "note": ""
+    },
+    {
+      "name": "דלק",
+      "amount": 413721,
+      "liters": 60003,
+      "pricePerLiter": 6.895,
+      "note": ""
+    },
+    {
+      "name": "סלע",
+      "amount": 409480,
+      "liters": 58000,
+      "pricePerLiter": 7.06,
+      "note": ""
+    }
+  ],
+  "clients": [
+    {
+      "name": "דניה ח.ש עבודות עפר ותשתיות (2012)",
+      "liters": 40000,
+      "profit": 37080,
+      "purchasePrice": 7.02,
+      "salePrice": 7.947,
+      "actualLiters": 30741,
+      "additives": []
+    },
+    {
+      "name": "הנתיב החדש בטיחות בתנועה בע\"מ",
+      "liters": 1500,
+      "profit": 1316,
+      "purchasePrice": 7.02,
+      "salePrice": 7.897,
+      "actualLiters": 1500,
+      "additives": []
+    },
+    {
+      "name": "סי 4 החוצבים בע\"מ",
+      "liters": 5000,
+      "profit": 9135,
+      "purchasePrice": 7.02,
+      "salePrice": 8.847,
+      "actualLiters": 6371,
+      "additives": []
+    },
+    {
+      "name": "ב ש ביסוס והנדסה בע\"מ",
+      "liters": 40000,
+      "profit": 60324,
+      "purchasePrice": 7.002,
+      "salePrice": 8.5101,
+      "actualLiters": 37971.1,
+      "additives": []
+    },
+    {
+      "name": "איברהים סאלם - פרגולת הגג",
+      "liters": 1000,
+      "profit": 1737,
+      "purchasePrice": 7.02,
+      "salePrice": 8.757,
+      "actualLiters": 1139,
+      "additives": []
+    },
+    {
+      "name": "אבן עמי מחצבים בע\"מ",
+      "liters": 15000,
+      "profit": 13554,
+      "purchasePrice": 7.02,
+      "salePrice": 7.9236,
+      "actualLiters": 10693,
+      "additives": []
+    },
+    {
+      "name": "גשר חפירה וחציבה בע\"מ",
+      "liters": 5000,
+      "profit": 5480,
+      "purchasePrice": 7.02,
+      "salePrice": 8.116,
+      "actualLiters": 2315,
+      "additives": [
+        {
+          "type": "אוריאה",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "name": "אלישר הנדסה אזרחית בע\"מ",
+      "liters": 3000,
+      "profit": 3381,
+      "purchasePrice": 7.02,
+      "salePrice": 8.147,
+      "actualLiters": 2566,
+      "additives": [
+        {
+          "type": "הידראולי 68",
+          "qty": 2
+        }
+      ]
+    },
+    {
+      "name": "י.נ פתרונות תדלוק בע\"מ",
+      "liters": 5000,
+      "profit": 45,
+      "purchasePrice": 6.897,
+      "salePrice": 6.906,
+      "actualLiters": 18034,
+      "additives": []
+    },
+    {
+      "name": "ס.נ.ה הנדסה בע\"מ",
+      "liters": 2000,
+      "profit": 2254,
+      "purchasePrice": 7.02,
+      "salePrice": 8.147,
+      "actualLiters": 1766.6,
+      "additives": [
+        {
+          "type": "אוריאה",
+          "qty": 5
+        }
+      ]
+    },
+    {
+      "name": "אשד ש.ד.י. תשתיות וקידוח בע\"מ",
+      "liters": 7000,
+      "profit": 8939,
+      "purchasePrice": 7.02,
+      "salePrice": 8.297,
+      "actualLiters": 8852,
+      "additives": []
+    },
+    {
+      "name": "טן חברה לדלק בע\"מ",
+      "liters": 50000,
+      "profit": 22000,
+      "purchasePrice": 0,
+      "salePrice": 0.44,
+      "actualLiters": 73000,
+      "additives": []
+    },
+    {
+      "name": "יהודה רחמים חברה לבניין בע\"מ",
+      "liters": 500,
+      "profit": 590,
+      "purchasePrice": 7.02,
+      "salePrice": 8.2,
+      "actualLiters": 54,
+      "additives": []
+    },
+    {
+      "name": "נ.ש.ר עבודות קרקע והתזת בטון בע\"מ",
+      "liters": 3000,
+      "profit": 3231,
+      "purchasePrice": 7.02,
+      "salePrice": 8.097,
+      "actualLiters": 3781,
+      "additives": []
+    },
+    {
+      "name": "ברזאני אבני דרך ביצוע מגורים בע\"מ",
+      "liters": 2000,
+      "profit": 1750,
+      "purchasePrice": 7.02,
+      "salePrice": 7.895,
+      "actualLiters": 2154,
+      "additives": []
+    },
+    {
+      "name": "י.ד ברזאני בע\"מ",
+      "liters": 20000,
+      "profit": 17500,
+      "purchasePrice": 7.02,
+      "salePrice": 7.895,
+      "actualLiters": 20898,
+      "additives": []
+    },
+    {
+      "name": "בית הצעצוע בע\"מ",
+      "liters": 3000,
+      "profit": 2331,
+      "purchasePrice": 7.02,
+      "salePrice": 7.797,
+      "actualLiters": 6374,
+      "additives": [
+        {
+          "type": "הובלת מיכל סולר",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "name": "מאיר ודוד כהן בניין והשקעות בע\"מ",
+      "liters": 2000,
+      "profit": 2760,
+      "purchasePrice": 7.02,
+      "salePrice": 8.4,
+      "actualLiters": 148,
+      "additives": []
+    },
+    {
+      "name": "א.ג שאזו(2016)בע\"מ",
+      "liters": 1000,
+      "profit": 1527,
+      "purchasePrice": 7.02,
+      "salePrice": 8.547,
+      "actualLiters": 1049,
+      "additives": []
+    },
+    {
+      "name": "אור השבת(ע\"ר)",
+      "liters": 5000,
+      "profit": 4320,
+      "purchasePrice": 7.02,
+      "salePrice": 7.884,
+      "actualLiters": 9450,
+      "additives": []
+    },
+    {
+      "name": "אור עמיעד חברה לבניין בע\"מ",
+      "liters": 1000,
+      "profit": 1127,
+      "purchasePrice": 7.02,
+      "salePrice": 8.147,
+      "actualLiters": 398,
+      "additives": []
+    },
+    {
+      "name": "אורי זקן",
+      "liters": 500,
+      "profit": 490,
+      "purchasePrice": 7.02,
+      "salePrice": 7.999,
+      "actualLiters": 228,
+      "additives": []
+    },
+    {
+      "name": "אחים סארה בע\"מ",
+      "liters": 3000,
+      "profit": 3231,
+      "purchasePrice": 7.02,
+      "salePrice": 8.097,
+      "actualLiters": 4539,
+      "additives": []
+    },
+    {
+      "name": "אלפא מנהור והתזת בטון בע\"מ",
+      "liters": 2000,
+      "profit": 2254,
+      "purchasePrice": 7.02,
+      "salePrice": 8.147,
+      "actualLiters": 4665.78,
+      "additives": []
+    },
+    {
+      "name": "וזאת הברכה שירותי ביוב בע\"מ",
+      "liters": 1500,
+      "profit": 1316,
+      "purchasePrice": 7.02,
+      "salePrice": 7.897,
+      "actualLiters": 1368,
+      "additives": []
+    },
+    {
+      "name": "וחיד משאבות בטון בע\"מ",
+      "liters": 2000,
+      "profit": 2314,
+      "purchasePrice": 7.02,
+      "salePrice": 8.177,
+      "actualLiters": 3069,
+      "additives": []
+    },
+    {
+      "name": "טל בן אמור",
+      "liters": 500,
+      "profit": 591,
+      "purchasePrice": 7.02,
+      "salePrice": 8.202,
+      "actualLiters": 354,
+      "additives": []
+    },
+    {
+      "name": "י.י וזאנה בניה ויזמות בע\"מ",
+      "liters": 1000,
+      "profit": 1075,
+      "purchasePrice": 7.02,
+      "salePrice": 8.095,
+      "actualLiters": 465,
+      "additives": []
+    },
+    {
+      "name": "יקב עמק האלה בע\"מ",
+      "liters": 1000,
+      "profit": 977,
+      "purchasePrice": 7.02,
+      "salePrice": 7.997,
+      "actualLiters": 490,
+      "additives": []
+    },
+    {
+      "name": "להאליה(2020)בניה והשקעות בע\"מ",
+      "liters": 4000,
+      "profit": 4308,
+      "purchasePrice": 7.02,
+      "salePrice": 8.097,
+      "actualLiters": 3529,
+      "additives": []
+    },
+    {
+      "name": "מ.אברהם ושות בע\"מ",
+      "liters": 2000,
+      "profit": 2254,
+      "purchasePrice": 7.02,
+      "salePrice": 8.147,
+      "actualLiters": 2023,
+      "additives": []
+    },
+    {
+      "name": "מ.בראשי בע\"מ",
+      "liters": 5000,
+      "profit": 2785,
+      "purchasePrice": 7.02,
+      "salePrice": 7.577,
+      "actualLiters": 1727,
+      "additives": []
+    },
+    {
+      "name": "מ.ש משאבות בע\"מ",
+      "liters": 1000,
+      "profit": 1127,
+      "purchasePrice": 7.02,
+      "salePrice": 8.147,
+      "actualLiters": 704,
+      "additives": []
+    },
+    {
+      "name": "מובילי הרים(1998)עבודות עפר ופיתוח בע\"מ",
+      "liters": 1000,
+      "profit": 1127,
+      "purchasePrice": 7.02,
+      "salePrice": 8.147,
+      "actualLiters": 1286,
+      "additives": []
+    },
+    {
+      "name": "מוסך 2 האמנים בע\"מ",
+      "liters": 1500,
+      "profit": 1316,
+      "purchasePrice": 7.02,
+      "salePrice": 7.897,
+      "actualLiters": 2723,
+      "additives": []
+    },
+    {
+      "name": "ממילא רובע אלרובבע\"מ",
+      "liters": 500,
+      "profit": 539,
+      "purchasePrice": 7.02,
+      "salePrice": 8.097,
+      "actualLiters": 900,
+      "additives": []
+    },
+    {
+      "name": "מנדי יזום ובניה בע\"מ",
+      "liters": 2000,
+      "profit": 2254,
+      "purchasePrice": 7.02,
+      "salePrice": 8.147,
+      "actualLiters": 3079.5,
+      "additives": []
+    },
+    {
+      "name": "מרכז שירות ש.חדד בע\"מ",
+      "liters": 2000,
+      "profit": 1954,
+      "purchasePrice": 7.02,
+      "salePrice": 7.997,
+      "actualLiters": 1800,
+      "additives": []
+    },
+    {
+      "name": "מתן עבודות עפר",
+      "liters": 1000,
+      "profit": 1027,
+      "purchasePrice": 7.02,
+      "salePrice": 8.047,
+      "actualLiters": 3448,
+      "additives": [
+        {
+          "type": "אוריאה",
+          "qty": 12
+        }
+      ]
+    },
+    {
+      "name": "פלר עמיחי",
+      "liters": 1000,
+      "profit": 977,
+      "purchasePrice": 7.02,
+      "salePrice": 7.997,
+      "actualLiters": 149,
+      "additives": []
+    },
+    {
+      "name": "קהילת חניכי מודיעין(ע\"ר)",
+      "liters": 500,
+      "profit": 588,
+      "purchasePrice": 7.02,
+      "salePrice": 8.197,
+      "actualLiters": 500,
+      "additives": []
+    },
+    {
+      "name": "קינגדום הריסות מבנים וניסור בטון בע\"מ",
+      "liters": 500,
+      "profit": 457,
+      "purchasePrice": 7.02,
+      "salePrice": 7.934,
+      "actualLiters": 1055,
+      "additives": []
+    },
+    {
+      "name": "קפיטל אנרגי פריים בע\"מ",
+      "liters": 5000,
+      "profit": 545,
+      "purchasePrice": 6.897,
+      "salePrice": 7.006,
+      "actualLiters": 81818,
+      "additives": []
+    },
+    {
+      "name": "רן יוסף עבודות עפר בע\"מ",
+      "liters": 15000,
+      "profit": 15405,
+      "purchasePrice": 7.02,
+      "salePrice": 8.047,
+      "actualLiters": 16287,
+      "additives": [
+        {
+          "type": "אוריאה",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "name": "שדה בועז אגודה שיתופית חקלאית",
+      "liters": 500,
+      "profit": 457,
+      "purchasePrice": 7.02,
+      "salePrice": 7.9335,
+      "actualLiters": 354,
+      "additives": []
+    },
+    {
+      "name": "ערן י.ד בע\"מ",
+      "liters": 0,
+      "profit": 0,
+      "additives": [
+        {
+          "type": "אוריאה משטח (100 י\"ח)",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "name": "נוזל גנרטורים",
+      "liters": 5001,
+      "purchasePrice": 5.212,
+      "salePrice": 5.85,
+      "profit": 3191
+    },
+    {
+      "name": "רדיו צליל",
+      "liters": 500,
+      "profit": 390,
+      "purchasePrice": 7.02,
+      "salePrice": 7.7999,
+      "actualLiters": 758,
+      "additives": []
+    },
+    {
+      "name": "כולל נצח דוד(ע\"ר)",
+      "liters": 100,
+      "profit": 108,
+      "purchasePrice": 7.02,
+      "salePrice": 8.101,
+      "actualLiters": 150,
+      "additives": []
+    },
+    {
+      "name": "ב.צ.ו מערכות חשמל בקרה ובניה-דוד אלימלך",
+      "liters": 100,
+      "profit": 98,
+      "purchasePrice": 7.02,
+      "salePrice": 7.998,
+      "actualLiters": 345,
+      "additives": []
+    }
+  ],
+  "obligo": {
+    "א.ג שאזו(2016)בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "אבן עמי מחצבים בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "אור השבת(ע\"ר)": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "אור עמיעד חברה לבניין בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "אורי זקן": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "אחים סארה בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "איברהים פרגולות הגג": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "אלישר הנדסה אזרחית בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "אלפא מנהור והתזת בטון בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "אשד ש.ד.י תשתיות וקידוח בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "ב.ש ביסוס והנדסה בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "בית הצעצוע בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "גשר חפירה וחציבה בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "דניה ח.ש עבודות עפר ותשתיות 2012 בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "הנתיב החדש בתנועה בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "וזאת הברכה שירותי ביוב בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "וחיד משאבות בטון בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "טל בן אמור": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "טן-חברה לדלק בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "י.ד בראזני בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "י.י וזאנה בניה ויזמות בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "י.נ פתרונות תדלוק בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "יהודה רחמים חברה לבניין בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "יקב עמק האלה בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "להאליה(2020)בניה והשקעות בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "מ.אברהם ושות בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "מ.בראשי בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "מ.ש משאבות בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "מאיר ודוד כהן חברה לבניין בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "מובילי הרים(1998)עבודות עפר ופיתוח בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "מוסך 2 האמנים בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "ממילא רובע אלרובבע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "מנדי יזום ובניה בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "מרכז שירות ש.חדד בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "מתן עבודות עפר": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "נ.ש.ר התזת בטון בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "ס.נ.ה הנדסה בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "סי 4 החוצבים בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "פלר עמיחי": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "קהילת חניכי מודיעין(ע\"ר)": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "קינגדום הריסות מבנים וניסור בטון בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "קפיטל אנרגי פריים בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "רן יוסף עבודות עפר בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "ש.ש רובבשי בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "שדה בועז אגודה שיתופית חקלאית": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "ג'הלין (ע.כ.ג) עבודות עפר ושירותים כלליים בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "שוטף+45",
+      "note": ""
+    },
+    "רדיו צליל": {
+      "creditLimit": 5000,
+      "currentBalance": 0,
+      "paymentTerms": "מזומן",
+      "note": ""
+    },
+    "כולל נצח דוד(ע\"ר)": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "מזומן",
+      "note": ""
+    },
+    "ב.צ.ו מערכות חשמל בקרה ובניה-דוד אלימלך": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    },
+    "ראוד חוסיין": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "שוטף+",
+      "note": ""
+    },
+    "אנטרטיקה מיזוג ויותר": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "שוטף+",
+      "note": ""
+    },
+    "הובלות השועל בע\"מ": {
+      "creditLimit": 0,
+      "currentBalance": 0,
+      "paymentTerms": "",
+      "note": ""
+    }
+  },
+  "additiveTypes": {
+    "אוריאה": {
+      "purchasePrice": 23,
+      "salePrice": 33
+    },
+    "הידראולי 68": {
+      "purchasePrice": 110,
+      "salePrice": 130
+    },
+    "הידראולי 46": {
+      "purchasePrice": 0,
+      "salePrice": 0
+    },
+    "מנוע 15W40": {
+      "purchasePrice": 0,
+      "salePrice": 0
+    },
+    "אוריאה משטח (100 י\"ח)": {
+      "purchasePrice": 2300,
+      "salePrice": 2500
+    },
+    "הובלת מיכל סולר": {
+      "purchasePrice": 1,
+      "salePrice": 500
+    }
+  },
+  "fuelCardCustomers": [
+    {
+      "id": "1780932997039",
+      "name": "להאליה(2020)בניה והשקעות בע\"מ",
+      "type": "בנזין טן",
+      "liters": 2456,
+      "purchasePrice": 6.813,
+      "salePrice": 7.85
+    }
+  ],
+  "currentMonthId": "2026-05",
+  "currentMonthLabel": "מאי 2026",
+  "monthHistory": {
+    "2026-05": {
+      "label": "מאי 2026",
+      "operationalExpenses": [
+        {
+          "name": "שיווק",
+          "amount": 5771.18,
+          "note": ""
+        }
+      ],
+      "salaries": [
+        {
+          "name": "משכורת נאור",
+          "amount": 25000,
+          "note": ""
+        }
+      ],
+      "fuelPurchases": [
+        {
+          "name": "אס או אס",
+          "amount": 501200,
+          "liters": 70000,
+          "pricePerLiter": 7.16,
+          "note": ""
+        },
+        {
+          "name": "טן",
+          "amount": 560000,
+          "liters": 80000,
+          "pricePerLiter": 7,
+          "note": ""
+        },
+        {
+          "name": "דלק",
+          "amount": 345000,
+          "liters": 50000,
+          "pricePerLiter": 6.9,
+          "note": ""
+        },
+        {
+          "name": "סלע",
+          "amount": 350000,
+          "liters": 50000,
+          "pricePerLiter": 7,
+          "note": ""
+        }
+      ],
+      "clients": [
+        {
+          "name": "דניה ח.ש עבודות עפר ותשתיות (2012)",
+          "liters": 40000,
+          "profit": 37080,
+          "purchasePrice": 7.02,
+          "salePrice": 7.947,
+          "actualLiters": 30741,
+          "additives": []
+        },
+        {
+          "name": "הנתיב החדש בטיחות בתנועה בע\"מ",
+          "liters": 1500,
+          "profit": 1316,
+          "purchasePrice": 7.02,
+          "salePrice": 7.897,
+          "actualLiters": 1500,
+          "additives": []
+        },
+        {
+          "name": "סי 4 החוצבים בע\"מ",
+          "liters": 5000,
+          "profit": 9135,
+          "purchasePrice": 7.02,
+          "salePrice": 8.847,
+          "actualLiters": 6371,
+          "additives": []
+        },
+        {
+          "name": "ב ש ביסוס והנדסה בע\"מ",
+          "liters": 40000,
+          "profit": 60324,
+          "purchasePrice": 7.002,
+          "salePrice": 8.5101,
+          "actualLiters": 37971.1,
+          "additives": []
+        },
+        {
+          "name": "איברהים סאלם - פרגולת הגג",
+          "liters": 1000,
+          "profit": 1737,
+          "purchasePrice": 7.02,
+          "salePrice": 8.757,
+          "actualLiters": 1139,
+          "additives": []
+        },
+        {
+          "name": "אבן עמי מחצבים בע\"מ",
+          "liters": 15000,
+          "profit": 13554,
+          "purchasePrice": 7.02,
+          "salePrice": 7.9236,
+          "actualLiters": 10693,
+          "additives": []
+        },
+        {
+          "name": "גשר חפירה וחציבה בע\"מ",
+          "liters": 5000,
+          "profit": 5480,
+          "purchasePrice": 7.02,
+          "salePrice": 8.116,
+          "actualLiters": 2315,
+          "additives": []
+        },
+        {
+          "name": "אלישר הנדסה אזרחית בע\"מ",
+          "liters": 3000,
+          "profit": 3381,
+          "purchasePrice": 7.02,
+          "salePrice": 8.147,
+          "actualLiters": 2566,
+          "additives": []
+        },
+        {
+          "name": "י.נ פתרונות תדלוק בע\"מ",
+          "liters": 5000,
+          "profit": 45,
+          "purchasePrice": 6.897,
+          "salePrice": 6.906,
+          "actualLiters": 1002,
+          "additives": []
+        },
+        {
+          "name": "ס.נ.ה הנדסה בע\"מ",
+          "liters": 2000,
+          "profit": 2254,
+          "purchasePrice": 7.02,
+          "salePrice": 8.147,
+          "actualLiters": 1766.6,
+          "additives": []
+        },
+        {
+          "name": "אשד ש.ד.י. תשתיות וקידוח בע\"מ",
+          "liters": 7000,
+          "profit": 8939,
+          "purchasePrice": 7.02,
+          "salePrice": 8.297,
+          "actualLiters": 8852,
+          "additives": []
+        },
+        {
+          "name": "טן חברה לדלק בע\"מ",
+          "liters": 50000,
+          "profit": 22000,
+          "purchasePrice": 0,
+          "salePrice": 0.44,
+          "actualLiters": 73000,
+          "additives": []
+        },
+        {
+          "name": "יהודה רחמים חברה לבניין בע\"מ",
+          "liters": 500,
+          "profit": 590,
+          "purchasePrice": 7.02,
+          "salePrice": 8.2,
+          "actualLiters": 54,
+          "additives": []
+        },
+        {
+          "name": "נ.ש.ר עבודות קרקע והתזת בטון בע\"מ",
+          "liters": 3000,
+          "profit": 3231,
+          "purchasePrice": 7.02,
+          "salePrice": 8.097,
+          "actualLiters": 3781,
+          "additives": []
+        },
+        {
+          "name": "ברזאני אבני דרך ביצוע מגורים בע\"מ",
+          "liters": 2000,
+          "profit": 1750,
+          "purchasePrice": 7.02,
+          "salePrice": 7.895,
+          "actualLiters": 2154,
+          "additives": []
+        },
+        {
+          "name": "י.ד ברזאני בע\"מ",
+          "liters": 20000,
+          "profit": 17500,
+          "purchasePrice": 7.02,
+          "salePrice": 7.895,
+          "actualLiters": 20898,
+          "additives": []
+        },
+        {
+          "name": "בית הצעצוע בע\"מ",
+          "liters": 3000,
+          "profit": 2331,
+          "purchasePrice": 7.02,
+          "salePrice": 7.797,
+          "actualLiters": 6374,
+          "additives": []
+        },
+        {
+          "name": "מאיר ודוד כהן בניין והשקעות בע\"מ",
+          "liters": 2000,
+          "profit": 2760,
+          "purchasePrice": 7.02,
+          "salePrice": 8.4,
+          "actualLiters": 148,
+          "additives": []
+        },
+        {
+          "name": "א.ג שאזו(2016)בע\"מ",
+          "liters": 1000,
+          "profit": 1527,
+          "purchasePrice": 7.02,
+          "salePrice": 8.547,
+          "actualLiters": 1049,
+          "additives": []
+        },
+        {
+          "name": "אור השבת(ע\"ר)",
+          "liters": 5000,
+          "profit": 4320,
+          "purchasePrice": 7.02,
+          "salePrice": 7.884,
+          "actualLiters": 9450,
+          "additives": []
+        },
+        {
+          "name": "אור עמיעד חברה לבניין בע\"מ",
+          "liters": 1000,
+          "profit": 1127,
+          "purchasePrice": 7.02,
+          "salePrice": 8.147,
+          "actualLiters": 398,
+          "additives": []
+        },
+        {
+          "name": "אורי זקן",
+          "liters": 500,
+          "profit": 490,
+          "purchasePrice": 7.02,
+          "salePrice": 7.999,
+          "actualLiters": 228,
+          "additives": []
+        },
+        {
+          "name": "אחים סארה בע\"מ",
+          "liters": 3000,
+          "profit": 3231,
+          "purchasePrice": 7.02,
+          "salePrice": 8.097,
+          "actualLiters": 4539,
+          "additives": []
+        },
+        {
+          "name": "אלפא מנהור והתזת בטון בע\"מ",
+          "liters": 2000,
+          "profit": 2254,
+          "purchasePrice": 7.02,
+          "salePrice": 8.147,
+          "actualLiters": 4665.78,
+          "additives": []
+        },
+        {
+          "name": "וזאת הברכה שירותי ביוב בע\"מ",
+          "liters": 1500,
+          "profit": 1316,
+          "purchasePrice": 7.02,
+          "salePrice": 7.897,
+          "actualLiters": 1368,
+          "additives": []
+        },
+        {
+          "name": "וחיד משאבות בטון בע\"מ",
+          "liters": 2000,
+          "profit": 2314,
+          "purchasePrice": 7.02,
+          "salePrice": 8.177,
+          "actualLiters": 3069,
+          "additives": []
+        },
+        {
+          "name": "טל בן אמור",
+          "liters": 500,
+          "profit": 591,
+          "purchasePrice": 7.02,
+          "salePrice": 8.202,
+          "actualLiters": 354,
+          "additives": []
+        },
+        {
+          "name": "י.י וזאנה בניה ויזמות בע\"מ",
+          "liters": 1000,
+          "profit": 1075,
+          "purchasePrice": 7.02,
+          "salePrice": 8.095,
+          "actualLiters": 465,
+          "additives": []
+        },
+        {
+          "name": "יקב עמק האלה בע\"מ",
+          "liters": 1000,
+          "profit": 977,
+          "purchasePrice": 7.02,
+          "salePrice": 7.997,
+          "actualLiters": 490,
+          "additives": []
+        },
+        {
+          "name": "להאליה(2020)בניה והשקעות בע\"מ",
+          "liters": 4000,
+          "profit": 4308,
+          "purchasePrice": 7.02,
+          "salePrice": 8.097,
+          "actualLiters": 3529,
+          "additives": []
+        },
+        {
+          "name": "מ.אברהם ושות בע\"מ",
+          "liters": 2000,
+          "profit": 2254,
+          "purchasePrice": 7.02,
+          "salePrice": 8.147,
+          "actualLiters": 2023,
+          "additives": []
+        },
+        {
+          "name": "מ.בראשי בע\"מ",
+          "liters": 5000,
+          "profit": 2785,
+          "purchasePrice": 7.02,
+          "salePrice": 7.577,
+          "actualLiters": 1727,
+          "additives": []
+        },
+        {
+          "name": "מ.ש משאבות בע\"מ",
+          "liters": 1000,
+          "profit": 1127,
+          "purchasePrice": 7.02,
+          "salePrice": 8.147,
+          "actualLiters": 704,
+          "additives": []
+        },
+        {
+          "name": "מובילי הרים(1998)עבודות עפר ופיתוח בע\"מ",
+          "liters": 1000,
+          "profit": 1127,
+          "purchasePrice": 7.02,
+          "salePrice": 8.147,
+          "actualLiters": 1286,
+          "additives": []
+        },
+        {
+          "name": "מוסך 2 האמנים בע\"מ",
+          "liters": 1500,
+          "profit": 1316,
+          "purchasePrice": 7.02,
+          "salePrice": 7.897,
+          "actualLiters": 2723,
+          "additives": []
+        },
+        {
+          "name": "ממילא רובע אלרובבע\"מ",
+          "liters": 500,
+          "profit": 539,
+          "purchasePrice": 7.02,
+          "salePrice": 8.097,
+          "actualLiters": 900,
+          "additives": []
+        },
+        {
+          "name": "מנדי יזום ובניה בע\"מ",
+          "liters": 2000,
+          "profit": 2254,
+          "purchasePrice": 7.02,
+          "salePrice": 8.147,
+          "actualLiters": 3079.5,
+          "additives": []
+        },
+        {
+          "name": "מרכז שירות ש.חדד בע\"מ",
+          "liters": 2000,
+          "profit": 1954,
+          "purchasePrice": 7.02,
+          "salePrice": 7.997,
+          "actualLiters": 1800,
+          "additives": []
+        },
+        {
+          "name": "מתן עבודות עפר",
+          "liters": 1000,
+          "profit": 1027,
+          "purchasePrice": 7.02,
+          "salePrice": 8.047,
+          "actualLiters": 3448,
+          "additives": []
+        },
+        {
+          "name": "פלר עמיחי",
+          "liters": 1000,
+          "profit": 977,
+          "purchasePrice": 7.02,
+          "salePrice": 7.997,
+          "actualLiters": 149,
+          "additives": []
+        },
+        {
+          "name": "קהילת חניכי מודיעין(ע\"ר)",
+          "liters": 500,
+          "profit": 588,
+          "purchasePrice": 7.02,
+          "salePrice": 8.197,
+          "actualLiters": 500,
+          "additives": []
+        },
+        {
+          "name": "קינגדום הריסות מבנים וניסור בטון בע\"מ",
+          "liters": 500,
+          "profit": 457,
+          "purchasePrice": 7.02,
+          "salePrice": 7.934,
+          "actualLiters": 1055,
+          "additives": []
+        },
+        {
+          "name": "קפיטל אנרגי פריים בע\"מ",
+          "liters": 5000,
+          "profit": 545,
+          "purchasePrice": 6.897,
+          "salePrice": 7.006,
+          "actualLiters": 81818,
+          "additives": []
+        },
+        {
+          "name": "רן יוסף עבודות עפר בע\"מ",
+          "liters": 15000,
+          "profit": 15405,
+          "purchasePrice": 7.02,
+          "salePrice": 8.047,
+          "actualLiters": 16287,
+          "additives": []
+        },
+        {
+          "name": "שדה בועז אגודה שיתופית חקלאית",
+          "liters": 500,
+          "profit": 457,
+          "purchasePrice": 7.02,
+          "salePrice": 7.9335,
+          "actualLiters": 354,
+          "additives": []
+        },
+        {
+          "name": "נוזל גנרטורים",
+          "liters": 5001,
+          "purchasePrice": 5.212,
+          "salePrice": 5.85,
+          "profit": 3191
+        },
+        {
+          "name": "ערן י.ד בע\"מ",
+          "liters": 0,
+          "profit": 0,
+          "additives": [
+            {
+              "type": "אוריאה משטח (100 י\"ח)",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    "2026-06": {
+      "label": "יוני 2026",
+      "operationalExpenses": [
+        {
+          "name": "שיווק",
+          "amount": 5771.18,
+          "note": ""
+        }
+      ],
+      "salaries": [
+        {
+          "name": "משכורת נאור",
+          "amount": 25000,
+          "note": ""
+        }
+      ],
+      "fuelPurchases": [],
+      "clients": [
+        {
+          "name": "ג'הלין (ע.כ.ג) עבודות עפר ושירותים כלליים בע\"מ",
+          "liters": 5000,
+          "dailyLiters": 0,
+          "profit": 0
+        }
+      ]
+    }
+  },
+  "lastModified": 1781304612015
+}
