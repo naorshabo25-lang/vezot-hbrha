@@ -445,6 +445,11 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
         }),
       });
       if (!res.ok) throw new Error();
+      await fetch(`${API}/api/recurring-orders/materialize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_date: todayISO() }),
+      });
       await load();
       closeRecurringModal();
     } catch {
