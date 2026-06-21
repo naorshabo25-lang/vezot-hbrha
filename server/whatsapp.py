@@ -156,23 +156,25 @@ def send_site_list(to_phone: str, sites: list) -> bool:
     })
 
 
-def send_order_card(to_phone: str, order: dict) -> bool:
+def send_order_card(to_phone: str, order: dict, idx: int = None, total: int = None) -> bool:
     """שולח פרטי הזמנה עם כפתור ביצוע לנהג."""
     o = order
-    time_str    = f" | {o['delivery_time']}" if o.get('delivery_time') or o['delivery_time'] else ""
     contact_str = ""
-    if o.get('contact_name') or o['contact_name']:
+    if o.get('contact_name'):
         contact_str += f"\n👤 איש קשר: {o['contact_name']}"
-    if o.get('contact_phone') or o['contact_phone']:
+    if o.get('contact_phone'):
         contact_str += f"\n📞 טלפון: {o['contact_phone']}"
+    num_str = f"[{idx}/{total}] " if idx is not None else ""
+    extras_str = f"\n➕ {o['extras']}" if o.get('extras') else ""
 
     body = (
-        f"📦 הזמנה #{o['id']}\n"
+        f"📦 {num_str}הזמנה #{o['id']}\n"
         f"👥 לקוח: {o['customer_name']}\n"
         f"📍 כתובת: {o['site_address']}"
         f"{contact_str}\n"
-        f"⛽ כמות: {o['quantity']} ליטר\n"
-        f"🕐 שעה: {o.get('delivery_time') or o['delivery_time'] or '—'}"
+        f"⛽ כמות: {o['quantity']} ליטר"
+        f"{extras_str}\n"
+        f"🕐 שעה: {o.get('delivery_time') or '—'}"
     )
     return _post(to_phone, {
         "messaging_product": "whatsapp",

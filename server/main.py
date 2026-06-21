@@ -1237,8 +1237,8 @@ async def send_daily_schedule():
     send_whatsapp_message(admin_phone, f"📋 *סידור יומי — {target_date}*\nסה\"כ: {len(orders)} הזמנות")
     for driver_name, driver_orders in by_driver.items():
         send_whatsapp_message(admin_phone, f"🚛 *{driver_name}* — {len(driver_orders)} הזמנות")
-        for o in driver_orders:
-            send_order_card(admin_phone, o)
+        for i, o in enumerate(driver_orders, 1):
+            send_order_card(admin_phone, o, i, len(driver_orders))
 
     # שלח לכל נהג את ההזמנות שלו
     for driver_name, driver_orders in by_driver.items():
@@ -1248,8 +1248,8 @@ async def send_daily_schedule():
         if raw_phone.startswith("0"):
             raw_phone = "972" + raw_phone[1:]
         send_whatsapp_message(raw_phone, f"📋 *סידור יומי — {target_date}*\nיש לך {len(driver_orders)} הזמנות:")
-        for o in driver_orders:
-            send_order_card(raw_phone, o)
+        for i, o in enumerate(driver_orders, 1):
+            send_order_card(raw_phone, o, i, len(driver_orders))
 
     return {"ok": True, "orders_sent": len(orders)}
 
