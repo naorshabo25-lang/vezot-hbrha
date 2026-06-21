@@ -694,6 +694,58 @@
   </div>
 </div>
 
+<!-- ── מודל עריכת הזמנה ── -->
+<div id="edit-order-modal" onclick="if(event.target===this)closeEditModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
+  <div style="background:white;border-radius:16px;padding:30px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,0.15);position:relative">
+    <h2 style="color:#1f2937;margin-bottom:20px;font-size:1.05em;border-bottom:1px solid #f3f4f6;padding-bottom:12px">✏️ עריכת הזמנה <span id="edit-order-id-label" style="color:#94a3b8;font-size:0.85em"></span></h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">שם לקוח</label>
+        <input id="em-name" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">כתובת האתר</label>
+        <input id="em-site" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">שם איש קשר</label>
+        <input id="em-contact-name" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">טל' איש קשר</label>
+        <input id="em-contact-phone" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">כמות (ליטר)</label>
+        <input id="em-quantity" type="number" min="1" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">תאריך הזמנה</label>
+        <input id="em-date" type="date" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">אזור</label>
+        <select id="em-area" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937"><option value="">-- בחר אזור --</option></select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">מוצר נוסף</label>
+        <select id="em-extras" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937">
+          <option value="">-- ללא --</option>
+          <option value="גריקן אוריאה">גריקן אוריאה</option>
+          <option value="גריקן שמן הידראולי 68">גריקן שמן הידראולי 68</option>
+          <option value="גריקן שמן מנוע 15W40">גריקן שמן מנוע 15W40</option>
+          <option value="תוספים">תוספים</option>
+          <option value="נוזל שמשות">נוזל שמשות</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px">
+      <button class="btn" onclick="closeEditModal()" style="background:#f9fafb;color:#6b7280;border:1.5px solid #e5e7eb">ביטול</button>
+      <button class="btn btn-primary" onclick="saveEditOrder()">שמור שינויים</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── מודל הזמנה קבועה ── -->
 <div id="recurring-modal" onclick="if(event.target===this)closeRecurringModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
   <div style="background:white;border-radius:16px;padding:30px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,0.15);position:relative">
@@ -968,6 +1020,7 @@ function orderRowHtml(o, showStatus = true) {
       <td>${showStatus ? `<select class="status-select" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="badge badge-הושלם">הושלם</span>`}</td>
       <td style="color:#94a3b8;font-size:0.85em">${o.created_at ? o.created_at.slice(11,16) : ''}</td>
       <td style="white-space:nowrap;display:flex;gap:6px">
+        <button class="btn btn-sm" style="background:#f0fdf4;color:#166534" onclick='openEditOrder(${JSON.stringify(o).replace(/'/g,"&#39;")})'>✏️ ערוך</button>
         <button class="btn btn-sm" style="background:#eef2ff;color:#4338ca" onclick='openRecurringModal(${JSON.stringify(o).replace(/'/g,"&#39;")})'>🔁 קבוע</button>
         <button class="btn btn-danger" onclick="deleteOrder(${o.id})">מחק</button>
       </td>
@@ -1054,6 +1107,52 @@ async function updateStatus(id, status) {
   });
   loadOrders();
   if (document.getElementById('home').classList.contains('active')) loadHome();
+}
+
+// ── עריכת הזמנה ────────────────────────────────────────
+
+let _editOrderId = null;
+
+function openEditOrder(order) {
+  _editOrderId = order.id;
+  document.getElementById('edit-order-id-label').textContent = `#${order.id}`;
+  document.getElementById('em-name').value         = order.customer_name || '';
+  document.getElementById('em-site').value         = order.site_address  || '';
+  document.getElementById('em-contact-name').value = order.contact_name  || '';
+  document.getElementById('em-contact-phone').value= order.contact_phone || '';
+  document.getElementById('em-quantity').value     = order.quantity       || '';
+  document.getElementById('em-date').value         = order.order_date    || '';
+  document.getElementById('em-extras').value       = order.extras        || '';
+  // populate area options from drivers
+  const areaSel = document.getElementById('em-area');
+  const areas = [...new Set(_drivers.map(d => d.area).filter(Boolean))];
+  areaSel.innerHTML = '<option value="">-- בחר אזור --</option>' +
+    areas.map(a => `<option value="${a}" ${a === (order.area || '') ? 'selected' : ''}>${a}</option>`).join('');
+  document.getElementById('edit-order-modal').style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('edit-order-modal').style.display = 'none';
+}
+
+async function saveEditOrder() {
+  const body = {
+    customer_name: document.getElementById('em-name').value.trim(),
+    site_address:  document.getElementById('em-site').value.trim(),
+    contact_name:  document.getElementById('em-contact-name').value.trim(),
+    contact_phone: document.getElementById('em-contact-phone').value.trim(),
+    quantity:      document.getElementById('em-quantity').value.trim(),
+    order_date:    document.getElementById('em-date').value,
+    area:          document.getElementById('em-area').value,
+    extras:        document.getElementById('em-extras').value,
+  };
+  if (!body.customer_name || !body.site_address || !body.quantity) return alert('יש למלא שם לקוח, כתובת וכמות');
+  await fetch(`/api/orders/${_editOrderId}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  closeEditModal();
+  loadOrders();
 }
 
 // ── הזמנות קבועות ────────────────────────────────────────

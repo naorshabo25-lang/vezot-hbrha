@@ -756,6 +756,26 @@ async def update_order_status(order_id: int, request: Request):
     return {"ok": True}
 
 
+@app.put("/api/orders/{order_id}")
+async def update_order(order_id: int, request: Request):
+    body = await request.json()
+    area = body.get("area", "")
+    with get_db() as conn:
+        driver = conn.execute("SELECT id FROM drivers WHERE area = ? LIMIT 1", (area,)).fetchone()
+        driver_id = driver["id"] if driver else None
+        conn.execute(
+            """UPDATE orders SET
+               customer_name = ?, site_address = ?, contact_name = ?, contact_phone = ?,
+               quantity = ?, order_date = ?, driver_id = ?, extras = ?
+               WHERE id = ?""",
+            (body.get("customer_name"), body.get("site_address"),
+             body.get("contact_name", ""), body.get("contact_phone", ""),
+             body.get("quantity"), body.get("order_date"),
+             driver_id, body.get("extras", ""), order_id),
+        )
+    return {"ok": True}
+
+
 @app.get("/api/customers")
 def get_customers():
     with get_db() as conn:
