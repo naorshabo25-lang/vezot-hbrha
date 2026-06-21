@@ -1840,6 +1840,11 @@ function taskDrop(e) {
   var driverName = container.dataset.driverName;
   var newOrder = Array.from(rows).map(function(r) { return parseInt(r.dataset.orderId); });
   setTaskOrder(dateStr, driverName, newOrder);
+  fetch('/api/orders/reorder', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ids: newOrder})
+  });
   target.classList.remove('drag-over');
   return false;
 }

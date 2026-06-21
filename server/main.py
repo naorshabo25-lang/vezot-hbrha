@@ -672,6 +672,16 @@ async def add_order_manual(request: Request):
     return {"ok": True}
 
 
+@app.post("/api/orders/reorder")
+async def reorder_orders(request: Request):
+    body = await request.json()
+    ids = body.get("ids", [])
+    with get_db() as conn:
+        for i, order_id in enumerate(ids):
+            conn.execute("UPDATE orders SET sort_order = ? WHERE id = ?", (i, order_id))
+    return {"ok": True}
+
+
 @app.delete("/api/orders/{order_id}")
 def delete_order(order_id: int):
     with get_db() as conn:
@@ -1209,7 +1219,7 @@ async def send_daily_schedule():
             SELECT o.*, d.name as driver_name, d.phone as driver_phone
             FROM orders o LEFT JOIN drivers d ON o.driver_id = d.id
             WHERE o.order_date = ?
-            ORDER BY d.name, o.delivery_time
+            ORDER BY d.name, o.sort_order, o.delivery_time
         """, (target_date,)).fetchall()
         orders = [dict(o) for o in orders]
 

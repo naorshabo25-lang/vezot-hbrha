@@ -140,6 +140,10 @@ def init_db():
             conn.execute("ALTER TABLE orders ADD COLUMN extras TEXT DEFAULT ''")
         except Exception:
             pass
+        try:
+            conn.execute("ALTER TABLE orders ADD COLUMN sort_order INTEGER DEFAULT 0")
+        except Exception:
+            pass
         for col in ['tanker_volume TEXT DEFAULT ""', 'truck_number TEXT DEFAULT ""']:
             try:
                 conn.execute(f"ALTER TABLE drivers ADD COLUMN {col}")
