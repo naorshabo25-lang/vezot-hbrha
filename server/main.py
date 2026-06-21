@@ -661,12 +661,13 @@ async def add_order_manual(request: Request):
         driver_id = driver["id"] if driver else None
         from datetime import date as dt
         order_date = body.get("order_date") or dt.today().isoformat()
+        extras = body.get("extras", "")
         conn.execute(
             """INSERT INTO orders
-               (customer_id, customer_name, site_address, contact_name, contact_phone, quantity, driver_id, order_date)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+               (customer_id, customer_name, site_address, contact_name, contact_phone, quantity, driver_id, order_date, extras)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (customer_id, body["customer_name"], body["site_address"],
-             body["contact_name"], body["contact_phone"], body["quantity"], driver_id, order_date),
+             body["contact_name"], body["contact_phone"], body["quantity"], driver_id, order_date, extras),
         )
     return {"ok": True}
 

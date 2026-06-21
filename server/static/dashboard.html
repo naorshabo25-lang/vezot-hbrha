@@ -369,6 +369,14 @@
             <input id="o-contact-phone" placeholder="טל' איש קשר" />
             <input id="o-quantity" type="number" min="1" placeholder="כמות (ליטר)" />
             <input id="o-date" type="date" />
+            <select id="o-extras" style="flex:1;min-width:170px">
+              <option value="">-- מוצר נוסף --</option>
+              <option value="גריקן אוריאה">גריקן אוריאה</option>
+              <option value="גריקן שמן הידראולי 68">גריקן שמן הידראולי 68</option>
+              <option value="גריקן שמן מנוע 15W40">גריקן שמן מנוע 15W40</option>
+              <option value="תוספים">תוספים</option>
+              <option value="נוזל שמשות">נוזל שמשות</option>
+            </select>
           </div>
           <div class="form-row" style="align-items:center">
             <select id="o-area" onchange="previewDriver()" style="flex:1;min-width:160px"><option value="">-- אזור --</option></select>
@@ -1948,15 +1956,16 @@ async function addOrderManual() {
   const quantity      = document.getElementById('o-quantity').value.trim();
   const order_date    = document.getElementById('o-date').value;
   const area          = document.getElementById('o-area').value;
+  const extras        = document.getElementById('o-extras').value;
   if (!customer_name || !site_address || !quantity) return alert('יש למלא שם לקוח, כתובת וכמות');
-  if (!area) return alert('יש לבחור אזור כדי לשייך נהג');
   await fetch('/api/orders', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ customer_id, customer_name, site_address, contact_name, contact_phone, quantity, order_date, area })
+    body: JSON.stringify({ customer_id, customer_name, site_address, contact_name, contact_phone, quantity, order_date, area, extras })
   });
   ['o-name','o-site','o-contact-name','o-contact-phone','o-quantity','o-date'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('o-customer').value = '';
   document.getElementById('o-area').value = '';
+  document.getElementById('o-extras').value = '';
   document.getElementById('o-driver-preview').textContent = '';
   loadOrders();
 }
