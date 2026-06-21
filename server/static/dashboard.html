@@ -740,8 +740,8 @@
       </div>
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px">
-      <button class="btn" onclick="closeEditModal()" style="background:#f9fafb;color:#6b7280;border:1.5px solid #e5e7eb">ביטול</button>
-      <button class="btn btn-primary" onclick="saveEditOrder()">שמור שינויים</button>
+      <button type="button" class="btn" onclick="closeEditModal()" style="background:#f9fafb;color:#6b7280;border:1.5px solid #e5e7eb">ביטול</button>
+      <button type="button" class="btn btn-primary" onclick="saveEditOrder()">שמור שינויים</button>
     </div>
   </div>
 </div>
@@ -1135,8 +1135,8 @@ function closeEditModal() {
   document.getElementById('edit-order-modal').style.display = 'none';
 }
 
-async function saveEditOrder() {
-  const body = {
+function saveEditOrder() {
+  var body = {
     customer_name: document.getElementById('em-name').value.trim(),
     site_address:  document.getElementById('em-site').value.trim(),
     contact_name:  document.getElementById('em-contact-name').value.trim(),
@@ -1146,13 +1146,17 @@ async function saveEditOrder() {
     area:          document.getElementById('em-area').value,
     extras:        document.getElementById('em-extras').value,
   };
-  if (!body.customer_name || !body.site_address || !body.quantity) return alert('יש למלא שם לקוח, כתובת וכמות');
-  await fetch(`/api/orders/${_editOrderId}`, {
+  if (!body.customer_name || !body.site_address) return alert('יש למלא שם לקוח וכתובת');
+  fetch('/api/orders/' + _editOrderId, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
+  }).then(function(res) {
+    if (!res.ok) { alert('שגיאה בשמירה (סטטוס ' + res.status + ')'); return; }
+    closeEditModal();
+    loadOrders();
+  }).catch(function(e) {
+    alert('שגיאת רשת: ' + e.message);
   });
-  closeEditModal();
-  loadOrders();
 }
 
 // ── הזמנות קבועות ────────────────────────────────────────
