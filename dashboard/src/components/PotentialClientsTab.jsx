@@ -321,7 +321,7 @@ export default function PotentialClientsTab() {
         </Card>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {clients.map(pc => (
+          {[...clients].sort((a, b) => (b.notes ? 1 : 0) - (a.notes ? 1 : 0)).map(pc => (
             <Card key={pc.id} style={{ borderRight: '4px solid #7c3aed', padding: '16px 20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                 {/* Info */}
