@@ -155,8 +155,12 @@
       padding: 6px 0 4px; border-bottom: 1px solid #f3f4f6; margin: 12px 0 6px;
       letter-spacing: 0.05em; text-transform: uppercase;
     }
-    .task-row { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f9fafb; font-size: 0.87em; }
+    .task-row { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f9fafb; font-size: 0.87em; cursor: default; }
     .task-row:last-child { border-bottom: none; }
+    .task-row.dragging { opacity: 0.35; }
+    .task-row.drag-over { border-top: 2.5px solid #dc2626 !important; margin-top: -2px; }
+    .drag-handle { cursor: grab; color: #cbd5e1; padding: 0 2px 0 6px; font-size: 1.15em; user-select: none; flex-shrink: 0; }
+    .drag-handle:active { cursor: grabbing; color: #94a3b8; }
     .task-num { background: #fef2f2; color: #dc2626; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.78em; font-weight: 700; flex-shrink: 0; }
     .task-info { flex: 1; }
     .task-info strong { display: block; color: #1f2937; }
@@ -1781,6 +1785,65 @@ async function importPotentialExcel() {
 
 // ── Tasks ─────────────────────────────────────────────────
 
+function getTaskOrder(dateStr, driverName) {
+  try { return JSON.parse(localStorage.getItem('task_order_' + dateStr + '_' + driverName) || 'null'); }
+  catch(e) { return null; }
+}
+function setTaskOrder(dateStr, driverName, ids) {
+  localStorage.setItem('task_order_' + dateStr + '_' + driverName, JSON.stringify(ids));
+}
+
+var _dragSrcRow = null;
+
+function taskDragStart(e) {
+  _dragSrcRow = e.currentTarget;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(function() { if (_dragSrcRow) _dragSrcRow.classList.add('dragging'); }, 0);
+}
+
+function taskDragEnd(e) {
+  if (_dragSrcRow) _dragSrcRow.classList.remove('dragging');
+  document.querySelectorAll('.task-row.drag-over').forEach(function(r) { r.classList.remove('drag-over'); });
+  _dragSrcRow = null;
+}
+
+function taskDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if (e.currentTarget !== _dragSrcRow) {
+    document.querySelectorAll('.task-row.drag-over').forEach(function(r) { r.classList.remove('drag-over'); });
+    e.currentTarget.classList.add('drag-over');
+  }
+  return false;
+}
+
+function taskDrop(e) {
+  e.stopPropagation();
+  e.preventDefault();
+  var target = e.currentTarget;
+  if (!_dragSrcRow || _dragSrcRow === target) return false;
+  var container = target.closest('.task-rows-container');
+  if (!container) return false;
+  var srcTop = _dragSrcRow.getBoundingClientRect().top;
+  var tgtTop = target.getBoundingClientRect().top;
+  if (srcTop < tgtTop) {
+    container.insertBefore(_dragSrcRow, target.nextSibling);
+  } else {
+    container.insertBefore(_dragSrcRow, target);
+  }
+  var rows = container.querySelectorAll('.task-row');
+  rows.forEach(function(r, i) {
+    var num = r.querySelector('.task-num');
+    if (num) num.textContent = i + 1;
+  });
+  var dateStr = container.dataset.dateKey;
+  var driverName = container.dataset.driverName;
+  var newOrder = Array.from(rows).map(function(r) { return parseInt(r.dataset.orderId); });
+  setTaskOrder(dateStr, driverName, newOrder);
+  target.classList.remove('drag-over');
+  return false;
+}
+
 async function loadTasks() {
   const res = await fetch('/api/tasks/week');
   const drivers = await res.json();
@@ -1852,8 +1915,21 @@ async function loadTasks() {
       const label = dateStr === today
         ? 'היום'
         : `יום ${DAYS_HE[dateObj.getDay()]} — ${dateObj.getDate()} ${MONTHS_HE[dateObj.getMonth()]}`;
-      const rowsHtml = orders.map((o, idx) => `
-        <div class="task-row">
+      const saved = getTaskOrder(dateStr, d.name);
+      let sorted = [...orders];
+      if (saved && saved.length) {
+        const byId = {};
+        sorted.forEach(o => byId[o.id] = o);
+        const reordered = saved.map(id => byId[id]).filter(Boolean);
+        const savedSet = new Set(saved.map(Number));
+        sorted.filter(o => !savedSet.has(o.id)).forEach(o => reordered.push(o));
+        sorted = reordered;
+      }
+      const rowsHtml = sorted.map((o, idx) => `
+        <div class="task-row" draggable="true" data-order-id="${o.id}"
+             ondragstart="taskDragStart(event)" ondragover="taskDragOver(event)"
+             ondrop="taskDrop(event)" ondragend="taskDragEnd(event)">
+          <div class="drag-handle" title="גרור לסידור">⠿</div>
           <div class="task-num">${idx + 1}</div>
           <div class="task-info">
             <strong>${o.customer_name}</strong>
@@ -1865,7 +1941,8 @@ async function loadTasks() {
             ${STATUS_OPTIONS.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>`).join('');
-      return `<div class="task-day-header">${label} — ${orders.length} הזמנות</div>${rowsHtml}`;
+      return `<div class="task-day-header">${label} — ${sorted.length} הזמנות</div>
+              <div class="task-rows-container" data-date-key="${dateStr}" data-driver-name="${d.name}">${rowsHtml}</div>`;
     }).join('');
 
     return `
