@@ -233,8 +233,9 @@ export default function PotentialClientsTab() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes: noteDraft }),
     });
-    setClients(prev => prev.map(c => c.id === id ? { ...c, notes: noteDraft } : c));
     setEditingId(null); setNoteDraft(''); setSaving(false);
+    setPage(0);
+    await fetchClients(search, 0);
   };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
