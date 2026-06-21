@@ -304,7 +304,7 @@
         <!-- הזמנות היום -->
         <div class="card" style="margin-bottom:0;grid-column:1/3">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <h2 style="margin-bottom:0;border-bottom:none;padding-bottom:0">הזמנות היום</h2>
+            <h2 style="margin-bottom:0;border-bottom:none;padding-bottom:0">הזמנות מחר</h2>
             <button class="btn btn-sm" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0" onclick="showSectionByName('orders')">כל ההזמנות →</button>
           </div>
           <div id="home-today-orders"><div class="empty">טוען...</div></div>
@@ -528,7 +528,8 @@
         <div style="padding:0 16px 14px;border-top:1px solid #f1f5f9">
           <div class="form-row" style="margin-top:10px">
             <input id="d-name" placeholder="שם נהג" />
-            <input id="d-phone" placeholder="טלפון" />
+            <input id="d-phone" placeholder="טלפון קבוצה" />
+            <input id="d-personal-phone" placeholder="טלפון אישי (לכפתורי ביצוע)" />
             <input id="d-area" placeholder="אזור" />
           </div>
           <div class="form-row">
@@ -682,8 +683,10 @@
     <div style="display:flex;flex-direction:column;gap:10px">
       <label style="font-size:0.82em;font-weight:600;color:#6b7280">שם נהג</label>
       <input id="edit-name" style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
-      <label style="font-size:0.82em;font-weight:600;color:#6b7280">טלפון</label>
+      <label style="font-size:0.82em;font-weight:600;color:#6b7280">טלפון קבוצה</label>
       <input id="edit-phone" style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+      <label style="font-size:0.82em;font-weight:600;color:#6b7280">טלפון אישי (לכפתורי ביצוע)</label>
+      <input id="edit-personal-phone" style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
       <label style="font-size:0.82em;font-weight:600;color:#6b7280">אזור</label>
       <input id="edit-area" style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
       <label style="font-size:0.82em;font-weight:600;color:#6b7280">מס' משאית</label>
@@ -895,14 +898,15 @@ async function loadHome() {
       <div style="font-size:0.7em;color:rgba(255,255,255,0.7);font-weight:600;margin-top:7px;letter-spacing:0.3px">${s.label}</div>
     </div>`).join('');
 
-  // הזמנות היום
-  const today = new Date().toISOString().slice(0,10);
-  const todayOrders = orders.filter(o => (o.order_date || '').slice(0,10) === today);
+  // הזמנות מחר
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0,10);
+  const tomorrowOrders = orders.filter(o => (o.order_date || '').slice(0,10) === tomorrowStr);
   const todayEl = document.getElementById('home-today-orders');
-  if (todayOrders.length) {
+  if (tomorrowOrders.length) {
     todayEl.innerHTML = `<table>
       <thead><tr><th>#</th><th>לקוח</th><th>כתובת</th><th>כמות</th><th>נהג</th><th>שעה</th><th>סטטוס</th></tr></thead>
-      <tbody>${todayOrders.map(o => `<tr>
+      <tbody>${tomorrowOrders.map(o => `<tr>
         <td style="color:#94a3b8;font-size:0.82em">${o.id}</td>
         <td><strong>${o.customer_name}</strong></td>
         <td style="font-size:0.85em">${o.site_address}</td>
@@ -913,7 +917,7 @@ async function loadHome() {
       </tr>`).join('')}</tbody>
     </table>`;
   } else {
-    todayEl.innerHTML = '<div class="empty">אין הזמנות להיום</div>';
+    todayEl.innerHTML = '<div class="empty">אין הזמנות למחר</div>';
   }
 
   // חלוקה לפי נהגים
@@ -1307,7 +1311,7 @@ async function loadDrivers() {
             <button class="btn btn-sm" onclick="openIturan()" style="background:#1e293b;color:white;font-size:0.72em">איתורן</button>
             <button class="btn btn-sm" onclick="openCameras()" style="background:#374151;color:white;font-size:0.72em">מצלמות</button>
             ${waBtn(d.phone)}
-            <button class="btn btn-primary btn-sm" style="font-size:0.72em" onclick="openEditModal(${d.id},'${d.name}','${d.phone}','${d.area}','${d.truck_number||''}','${d.tanker_volume||''}')">ערוך</button>
+            <button class="btn btn-primary btn-sm" style="font-size:0.72em" onclick="openEditModal(${d.id},'${d.name}','${d.phone}','${d.area}','${d.truck_number||''}','${d.tanker_volume||''}','${d.personal_phone||''}')">ערוך</button>
             <button class="btn btn-danger" style="font-size:0.72em" onclick="deleteDriver(${d.id})">מחק</button>
           </div>
         </div>
@@ -1317,15 +1321,16 @@ async function loadDrivers() {
 async function addDriver() {
   const name = document.getElementById('d-name').value.trim();
   const phone = document.getElementById('d-phone').value.trim();
+  const personal_phone = document.getElementById('d-personal-phone').value.trim();
   const area = document.getElementById('d-area').value.trim();
   const truck_number = document.getElementById('d-truck').value.trim();
   const tanker_volume = document.getElementById('d-volume').value.trim();
   if (!name || !phone || !area) return alert('יש למלא שם, טלפון ואזור');
   await fetch('/api/drivers', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, phone, area, truck_number, tanker_volume })
+    body: JSON.stringify({ name, phone, personal_phone, area, truck_number, tanker_volume })
   });
-  ['d-name','d-phone','d-area','d-truck','d-volume'].forEach(id => document.getElementById(id).value = '');
+  ['d-name','d-phone','d-personal-phone','d-area','d-truck','d-volume'].forEach(id => document.getElementById(id).value = '');
   loadDrivers();
 }
 
@@ -1335,10 +1340,11 @@ async function deleteDriver(id) {
   loadDrivers();
 }
 
-function openEditModal(id, name, phone, area, truck, volume) {
+function openEditModal(id, name, phone, area, truck, volume, personal_phone) {
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-name').value = name;
   document.getElementById('edit-phone').value = phone;
+  document.getElementById('edit-personal-phone').value = personal_phone || '';
   document.getElementById('edit-area').value = area;
   document.getElementById('edit-truck').value = truck;
   document.getElementById('edit-volume').value = volume;
@@ -1353,13 +1359,14 @@ async function saveDriver() {
   const id = document.getElementById('edit-id').value;
   const name = document.getElementById('edit-name').value.trim();
   const phone = document.getElementById('edit-phone').value.trim();
+  const personal_phone = document.getElementById('edit-personal-phone').value.trim();
   const area = document.getElementById('edit-area').value.trim();
   const truck_number = document.getElementById('edit-truck').value.trim();
   const tanker_volume = document.getElementById('edit-volume').value.trim();
   if (!name || !phone || !area) return alert('יש למלא שם, טלפון ואזור');
   await fetch(`/api/drivers/${id}`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, phone, area, truck_number, tanker_volume })
+    body: JSON.stringify({ name, phone, personal_phone, area, truck_number, tanker_volume })
   });
   closeEditModal();
   loadDrivers();

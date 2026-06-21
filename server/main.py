@@ -888,9 +888,10 @@ async def add_driver(request: Request):
     body = await request.json()
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO drivers (name, phone, area, tanker_volume, truck_number) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO drivers (name, phone, area, tanker_volume, truck_number, personal_phone) VALUES (?, ?, ?, ?, ?, ?)",
             (body["name"], body["phone"], body["area"],
-             body.get("tanker_volume", ""), body.get("truck_number", "")),
+             body.get("tanker_volume", ""), body.get("truck_number", ""),
+             body.get("personal_phone", "")),
         )
     return {"ok": True}
 
@@ -913,9 +914,10 @@ async def update_driver(did: int, request: Request):
     body = await request.json()
     with get_db() as conn:
         conn.execute(
-            "UPDATE drivers SET name=?, phone=?, area=?, truck_number=?, tanker_volume=? WHERE id=?",
+            "UPDATE drivers SET name=?, phone=?, area=?, truck_number=?, tanker_volume=?, personal_phone=? WHERE id=?",
             (body["name"], body["phone"], body["area"],
-             body.get("truck_number", ""), body.get("tanker_volume", ""), did),
+             body.get("truck_number", ""), body.get("tanker_volume", ""),
+             body.get("personal_phone", ""), did),
         )
     return {"ok": True}
 
