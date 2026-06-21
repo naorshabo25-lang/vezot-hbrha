@@ -699,7 +699,7 @@
 </div>
 
 <!-- ── מודל עריכת הזמנה ── -->
-<div id="edit-order-modal" onclick="if(event.target===this)closeEditModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
+<div id="edit-order-modal" onclick="if(event.target===this)closeOrderModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
   <div style="background:white;border-radius:16px;padding:30px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,0.15);position:relative">
     <h2 style="color:#1f2937;margin-bottom:20px;font-size:1.05em;border-bottom:1px solid #f3f4f6;padding-bottom:12px">✏️ עריכת הזמנה <span id="edit-order-id-label" style="color:#94a3b8;font-size:0.85em"></span></h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -744,7 +744,7 @@
       </div>
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px">
-      <button type="button" class="btn" onclick="closeEditModal()" style="background:#f9fafb;color:#6b7280;border:1.5px solid #e5e7eb">ביטול</button>
+      <button type="button" class="btn" onclick="closeOrderModal()" style="background:#f9fafb;color:#6b7280;border:1.5px solid #e5e7eb">ביטול</button>
       <button type="button" class="btn btn-primary" onclick="saveEditOrder()">שמור שינויים</button>
     </div>
   </div>
@@ -1135,7 +1135,7 @@ function openEditOrder(order) {
   document.getElementById('edit-order-modal').style.display = 'flex';
 }
 
-function closeEditModal() {
+function closeOrderModal() {
   document.getElementById('edit-order-modal').style.display = 'none';
 }
 
@@ -1156,7 +1156,7 @@ function saveEditOrder() {
     body: JSON.stringify(body)
   }).then(function(res) {
     if (!res.ok) { alert('שגיאה בשמירה (סטטוס ' + res.status + ')'); return; }
-    closeEditModal();
+    closeOrderModal();
     loadOrders();
   }).catch(function(e) {
     alert('שגיאת רשת: ' + e.message);
