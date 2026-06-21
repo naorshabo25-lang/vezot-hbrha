@@ -1036,6 +1036,14 @@ async def add_potential_customer(request: Request):
     return {"ok": True}
 
 
+@app.put("/api/potential-customers/{cid}/notes")
+async def update_potential_customer_notes(cid: int, request: Request):
+    body = await request.json()
+    with get_db() as conn:
+        conn.execute("UPDATE potential_customers SET notes = ? WHERE id = ?", (body.get("notes", ""), cid))
+    return {"ok": True}
+
+
 @app.delete("/api/potential-customers/{cid}")
 def delete_potential_customer(cid: int):
     with get_db() as conn:
