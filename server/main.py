@@ -33,6 +33,9 @@ QUANTITY_MAP = {
     "qty_400_1000":  "400–1,000",
     "qty_1000_2000": "1,000–2,000",
 }
+
+# מניעת עיבוד כפול של אותו webhook
+_processed_msg_ids: set = set()
 TIME_MAP = {
     "time_07_09": "07:00–09:00",
     "time_09_11": "09:00–11:00",
@@ -228,8 +231,17 @@ async def receive_message(request: Request):
     try:
         entry   = data["entry"][0]["changes"][0]["value"]
         message = entry["messages"][0]
+        msg_id  = message.get("id", "")
         phone   = message["from"]
         msg_type = message.get("type", "text")
+
+        # מניעת עיבוד כפול
+        if msg_id and msg_id in _processed_msg_ids:
+            return JSONResponse({"status": "ok"})
+        if msg_id:
+            _processed_msg_ids.add(msg_id)
+            if len(_processed_msg_ids) > 500:
+                _processed_msg_ids.clear()
 
         # כפתור ביצוע מנהג — לפני כל בדיקה אחרת
         if msg_type == "interactive":
