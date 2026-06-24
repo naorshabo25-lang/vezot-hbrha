@@ -444,10 +444,29 @@ async def receive_message(request: Request):
             return JSONResponse({"status": "ok"})
         city_display = AREA_DISPLAY[reply_id]
         driver_key   = AREA_DRIVER_KEY[reply_id]
+        if reply_id == "area_other":
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE conversation_state SET step=?, city=?, updated_at=datetime('now','localtime') WHERE phone=?",
+                    ("awaiting_custom_area", driver_key, phone)
+                )
+            send_whatsapp_message(phone, "אוקיי, באיזה אזור תרצה את ההזמנה? 📍")
+            return JSONResponse({"status": "ok"})
         with get_db() as conn:
             conn.execute(
                 "UPDATE conversation_state SET step=?, city=?, updated_at=datetime('now','localtime') WHERE phone=?",
                 ("awaiting_quantity", driver_key, phone)
+            )
+        send_quantity_list(phone)
+        return JSONResponse({"status": "ok"})
+
+    # שלב 1.5 — הזנת אזור חופשי (לאחר בחירת "אחר")
+    if step == "awaiting_custom_area":
+        custom_area = text.strip()
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE conversation_state SET step=?, city=?, updated_at=datetime('now','localtime') WHERE phone=?",
+                ("awaiting_quantity", custom_area, phone)
             )
         send_quantity_list(phone)
         return JSONResponse({"status": "ok"})
