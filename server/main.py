@@ -425,7 +425,7 @@ async def receive_message(request: Request):
                 "INSERT OR REPLACE INTO conversation_state (phone, step, customer_id, order_date) VALUES (?,?,?,?)",
                 (phone, "awaiting_area", customer["id"], tomorrow)
             )
-        send_whatsapp_message(phone, f"אוקיי {customer['name']} בוא נתחיל בהזמנה 😊\nבאיזה אזור תרצה את האספקה?")
+        send_whatsapp_message(phone, f"אוקיי {customer['name']} בוא נתחיל בהזמנה 😊")
         send_area_list(phone)
         return JSONResponse({"status": "ok"})
 
