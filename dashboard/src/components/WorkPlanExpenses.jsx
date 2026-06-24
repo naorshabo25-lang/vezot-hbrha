@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DEFAULT_OP_EXPENSES, DEFAULT_SALARIES, DEFAULT_FUEL_PURCHASES } from '../defaultWorkPlan';
 import MonthSelector from './MonthSelector';
 
 const fmt = n => '₪' + Number(n).toLocaleString('he-IL');
 
-const PIE_COLORS = ['#d32f2f','#e62020','#ff5555','#990000','#ff7070','#b30000','#ff3333'];
+const BAR_COLORS = ['#d32f2f','#e62020','#b30000','#990000','#ff5555','#ff7070','#ff3333'];
 
 const DEFAULT_DATA = {
   operationalExpenses: DEFAULT_OP_EXPENSES,
@@ -22,15 +21,21 @@ const SectionTitle = ({ children }) => (
   <p className="section-title">{children}</p>
 );
 
-const pctLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-  if (percent < 0.05) return null;
-  const R = Math.PI / 180;
-  const r = innerRadius + (outerRadius - innerRadius) * 0.55;
+const HBar = ({ label, amount, total, color, sub }) => {
+  const pct = total > 0 ? (amount / total) * 100 : 0;
   return (
-    <text x={cx + r * Math.cos(-midAngle * R)} y={cy + r * Math.sin(-midAngle * R)}
-      fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={700}>
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-1)' }}>{label}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color, flexShrink: 0 }}>
+          {fmt(amount)} <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)' }}>({pct.toFixed(0)}%)</span>
+        </span>
+      </div>
+      <div style={{ height: 10, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.5s ease' }} />
+      </div>
+      {sub && <span style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2, display: 'block' }}>{sub}</span>}
+    </div>
   );
 };
 
@@ -161,13 +166,6 @@ export default function WorkPlanExpenses({ data: externalData, onChange, monthId
 
   const sortedFuel = [...data.fuelPurchases].map((item, i) => ({ ...item, _idx: i })).sort((a, b) => b.amount - a.amount);
   const sortedOp   = [...data.operationalExpenses].map((item, i) => ({ ...item, _idx: i })).sort((a, b) => b.amount - a.amount);
-
-  const expensePieData = [
-    { name: 'הוצאות תפעול', value: totalOpEx },
-    { name: 'רכישת דלקים',  value: totalFuel },
-    { name: 'משכורות',      value: totalSal  },
-  ];
-  const salaryPieData = data.salaries.map(s => ({ name: s.name, value: s.amount }));
 
   const actionBtn = (color) => ({
     background: 'none', border: 'none', cursor: 'pointer',
@@ -334,28 +332,16 @@ export default function WorkPlanExpenses({ data: externalData, onChange, monthId
         </Card>
 
         <Card>
-          <SectionTitle>הרכב הוצאות</SectionTitle>
-          <ResponsiveContainer width="100%" height={150}>
-            <PieChart>
-              <Pie data={expensePieData} cx="50%" cy="50%" innerRadius={38} outerRadius={62}
-                dataKey="value" paddingAngle={4} labelLine={false} label={pctLabel}>
-                <Cell fill="var(--red)" /><Cell fill="var(--orange)" /><Cell fill="#1e2d3d" />
-              </Pie>
-              <Tooltip formatter={v => fmt(v)} />
-              <Legend iconType="circle" iconSize={7} formatter={v => <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{v}</span>} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
-            {[
-              { label: 'תפעוליות',    amount: totalOpEx, color: 'var(--red)' },
-              { label: 'רכישת דלקים', amount: totalFuel, color: 'var(--orange)' },
-              { label: 'משכורות',     amount: totalSal,  color: '#1e2d3d' },
-            ].map((r, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 500 }}>{r.label}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: r.color }}>{fmt(r.amount)} ({((r.amount / totalEx) * 100).toFixed(0)}%)</span>
-              </div>
-            ))}
+          <SectionTitle>הרכב הוצאות — {fmt(totalEx)}</SectionTitle>
+          <HBar label="הוצאות תפעוליות" amount={totalOpEx} total={totalEx} color="var(--red)"
+            sub={`${data.operationalExpenses.length} סעיפים`} />
+          <HBar label="רכישת דלקים" amount={totalFuel} total={totalEx} color="var(--orange)"
+            sub={`${data.fuelPurchases.length} ספקים`} />
+          <HBar label="משכורות" amount={totalSal} total={totalEx} color="#7c3aed"
+            sub={`${data.salaries.length} עובדים`} />
+          <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)' }}>סה"כ</span>
+            <span style={{ fontSize: 14, fontWeight: 900, color: 'var(--text-1)' }}>{fmt(totalEx)}</span>
           </div>
         </Card>
       </div>
@@ -364,16 +350,12 @@ export default function WorkPlanExpenses({ data: externalData, onChange, monthId
       <Card>
         <SectionTitle>משכורות — {fmt(totalSal)}</SectionTitle>
         <div className="grid-sidebar">
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={salaryPieData} cx="50%" cy="50%" innerRadius={40} outerRadius={72}
-                dataKey="value" paddingAngle={3} labelLine={false} label={pctLabel}>
-                {salaryPieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-              </Pie>
-              <Tooltip formatter={v => fmt(v)} />
-              <Legend iconType="circle" iconSize={7} formatter={v => <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{v}</span>} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center' }}>
+            {data.salaries.map((s, i) => (
+              <HBar key={i} label={s.name} amount={s.amount} total={totalSal}
+                color={BAR_COLORS[i % BAR_COLORS.length]} />
+            ))}
+          </div>
           <table className="data-table">
             <thead>
               <tr>
