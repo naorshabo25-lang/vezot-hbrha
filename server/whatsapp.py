@@ -1,9 +1,8 @@
 import os
 import requests
-from datetime import datetime
-import pytz
+from datetime import datetime, timezone, timedelta
 
-_TZ = pytz.timezone("Asia/Jerusalem")
+_TZ = timezone(timedelta(hours=3))  # Israel Standard Time (UTC+3)
 
 
 def time_greeting() -> str:
