@@ -605,6 +605,16 @@ async def receive_message(request: Request):
         )
         return JSONResponse({"status": "ok"})
 
+    # ברירת מחדל — הודעה לא מוכרת
+    if step is None:
+        greeting = time_greeting()
+        send_whatsapp_message(
+            phone,
+            f"{greeting} {customer['name']} 😊\n"
+            f"זהו הבוט של וזאת הברכה דלקים.\n"
+            f"האם תרצה להזמין דלק סולר למחר?\n"
+            f"ענה *כן* או *לא*"
+        )
     return JSONResponse({"status": "ok"})
 
 
