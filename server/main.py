@@ -10,7 +10,8 @@ import uvicorn
 from database import init_db, get_db
 from whatsapp import (send_whatsapp_message, send_quantity_list, send_area_list,
                       send_time_list, send_date_list, send_site_list,
-                      download_whatsapp_media, send_order_confirmation_card)
+                      download_whatsapp_media, send_order_confirmation_card,
+                      time_greeting)
 from scheduler import start_scheduler, reschedule, reschedule_admin
 
 AREA_DISPLAY = {
@@ -410,7 +411,8 @@ async def receive_message(request: Request):
     # שלב 0 — לקוח ענה "לא" להודעה היומית
     negative = {"לא", "no", "0", "לא.", "לא,", "לא!"}
     if step is None and text_lower in {r.lower() for r in negative}:
-        send_whatsapp_message(phone, f"תודה רבה {customer['name']} והמשך ערב טוב 😊")
+        greeting = time_greeting()
+        send_whatsapp_message(phone, f"תודה רבה {customer['name']} וה{greeting} 😊")
         return JSONResponse({"status": "ok"})
 
     # שלב 0 — לקוח ענה "כן" להודעה היומית
@@ -423,6 +425,7 @@ async def receive_message(request: Request):
                 "INSERT OR REPLACE INTO conversation_state (phone, step, customer_id, order_date) VALUES (?,?,?,?)",
                 (phone, "awaiting_area", customer["id"], tomorrow)
             )
+        send_whatsapp_message(phone, f"אוקיי {customer['name']} בוא נתחיל בהזמנה 😊\nבאיזה אזור תרצה את האספקה?")
         send_area_list(phone)
         return JSONResponse({"status": "ok"})
 

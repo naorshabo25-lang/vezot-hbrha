@@ -1,5 +1,20 @@
 import os
 import requests
+from datetime import datetime
+import pytz
+
+_TZ = pytz.timezone("Asia/Jerusalem")
+
+
+def time_greeting() -> str:
+    hour = datetime.now(_TZ).hour
+    if 5 <= hour < 12:
+        return "בוקר טוב"
+    if 12 <= hour < 17:
+        return "צהריים טובים"
+    if 17 <= hour < 21:
+        return "ערב טוב"
+    return "לילה טוב"
 
 
 def _post(to_phone: str, payload: dict) -> bool:

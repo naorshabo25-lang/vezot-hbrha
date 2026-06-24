@@ -2,7 +2,7 @@ import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from database import get_db
-from whatsapp import send_daily_question, send_whatsapp_message, send_order_card
+from whatsapp import send_daily_question, send_whatsapp_message, send_order_card, time_greeting
 
 scheduler = BackgroundScheduler(timezone="Asia/Jerusalem")
 
@@ -11,10 +11,12 @@ def send_daily_messages():
     print("[Scheduler] שולח הודעות יומיות ללקוחות...")
     with get_db() as conn:
         settings  = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
-        template  = settings.get("message_template", "שלום {name}, האם תצטרך הזמנת דלק סולר למחר?")
+        template  = settings.get("message_template", "{greeting} {name}, האם תצטרך הזמנת דלק סולר למחר?")
         customers = conn.execute("SELECT * FROM customers WHERE active = 1").fetchall()
+    greeting = time_greeting()
+    resolved_template = template.replace("{greeting}", greeting)
     for customer in customers:
-        send_daily_question(customer["phone"], customer["name"], template)
+        send_daily_question(customer["phone"], customer["name"], resolved_template)
         print(f"[Scheduler] נשלחה הודעה ל{customer['name']} ({customer['phone']})")
 
 
