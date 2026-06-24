@@ -431,6 +431,13 @@ async def receive_message(request: Request):
 
     # שלב 1 — בחירת אזור
     if step == "awaiting_area":
+        if text_lower in {r.lower() for r in positive}:
+            # שלח "כן" שוב — מתחילים מחדש
+            with get_db() as conn:
+                conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+            send_whatsapp_message(phone, f"אוקיי {customer['name']} בוא נתחיל בהזמנה 😊")
+            send_area_list(phone)
+            return JSONResponse({"status": "ok"})
         if reply_id not in AREA_DISPLAY:
             send_whatsapp_message(phone, "אנא בחר אזור מהרשימה 👇")
             send_area_list(phone)
