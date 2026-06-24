@@ -349,14 +349,13 @@ export default function WorkPlanExpenses({ data: externalData, onChange, monthId
       {/* Salaries card */}
       <Card>
         <SectionTitle>משכורות — {fmt(totalSal)}</SectionTitle>
-        <div className="grid-sidebar">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center' }}>
-            {data.salaries.map((s, i) => (
-              <HBar key={i} label={s.name} amount={s.amount} total={totalSal}
-                color={BAR_COLORS[i % BAR_COLORS.length]} />
-            ))}
-          </div>
-          <table className="data-table">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '6px 24px', marginBottom: 20 }}>
+          {data.salaries.map((s, i) => (
+            <HBar key={i} label={s.name} amount={s.amount} total={totalSal}
+              color={BAR_COLORS[i % BAR_COLORS.length]} />
+          ))}
+        </div>
+        <table className="data-table">
             <thead>
               <tr>
                 {['שם', 'משכורת', 'תקציב / ניצול', '% משכר', 'הערה', ''].map(h => (
@@ -402,7 +401,6 @@ export default function WorkPlanExpenses({ data: externalData, onChange, monthId
               </tr>
             </tbody>
           </table>
-        </div>
       </Card>
 
       {/* Detailed table */}
