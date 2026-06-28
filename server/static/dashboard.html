@@ -1868,10 +1868,18 @@ function taskDrop(e) {
 
 async function loadTasks() {
   const res = await fetch('/api/tasks/week');
-  const drivers = await res.json();
+  const allDrivers = await res.json();
   const container = document.getElementById('tasks-container');
   const today = new Date().toISOString().slice(0,10);
-  if (!drivers.length) { container.innerHTML = '<div class="card"><p class="empty">אין נהגים רשומים</p></div>'; return; }
+  const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
+  const tomorrow = tomorrowD.toISOString().slice(0,10);
+
+  // רק נהגים עם הזמנות למחר
+  const drivers = allDrivers.filter(d =>
+    (d.orders_by_date[tomorrow] || []).some(o => o.status !== 'הושלם')
+  );
+
+  if (!drivers.length) { container.innerHTML = '<div class="card"><p class="empty">אין נהגים עם משימות למחר</p></div>'; return; }
 
   // אסוף את כל ההזמנות של היום לטבלת סיכום
   const allTodayOrders = [];
