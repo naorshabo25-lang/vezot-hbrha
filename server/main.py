@@ -1255,10 +1255,18 @@ async def send_test_message(request: Request):
 
 
 @app.post("/api/send-daily-schedule")
-async def send_daily_schedule():
+async def send_daily_schedule(request: Request):
     from datetime import date as dt, timedelta
     from whatsapp import send_order_card
     target_date = (dt.today() + timedelta(days=1)).isoformat()
+
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    # ordered_ids: [[id1, id2, ...], [id3, id4, ...], ...] — מהלקוח לפי נהג
+    ordered_ids: list = body.get("ordered_ids", [])
 
     with get_db() as conn:
         settings    = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
@@ -1268,19 +1276,29 @@ async def send_daily_schedule():
         if not admin_phone:
             return {"ok": False, "error": "לא הוגדר טלפון מנהל"}
 
-        orders = conn.execute("""
+        orders_raw = conn.execute("""
             SELECT o.*, d.name as driver_name, d.phone as driver_phone
             FROM orders o LEFT JOIN drivers d ON o.driver_id = d.id
             WHERE o.order_date = ?
-            ORDER BY d.name, o.sort_order, o.delivery_time
         """, (target_date,)).fetchall()
-        orders = [dict(o) for o in orders]
+        orders_by_id = {o["id"]: dict(o) for o in orders_raw}
 
-    if not orders:
+    if not orders_by_id:
         send_whatsapp_message(admin_phone, f"📋 סידור יומי — {target_date}\n\nאין הזמנות להיום.")
         return {"ok": True, "orders_sent": 0}
 
-    # קבץ לפי נהג
+    # אם הלקוח שלח סדר מפורש — השתמש בו; אחרת — sort_order מה-DB
+    if ordered_ids:
+        flat_ids = [oid for group in ordered_ids for oid in group]
+        orders = [orders_by_id[oid] for oid in flat_ids if oid in orders_by_id]
+        # הוסף הזמנות שלא נכללו בסדר (אם יש)
+        included = set(flat_ids)
+        orders += [o for o in orders_by_id.values() if o["id"] not in included]
+    else:
+        orders = sorted(orders_by_id.values(),
+                        key=lambda o: (o.get("driver_name") or "", o.get("sort_order") or 0))
+
+    # קבץ לפי נהג — תוך שמירת הסדר
     by_driver = {}
     for o in orders:
         name = o["driver_name"] or "ללא נהג"

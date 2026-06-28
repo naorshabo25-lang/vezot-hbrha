@@ -2002,26 +2002,25 @@ async function loadTasks() {
 }
 
 async function sendScheduleToAdminFromTasks(btn) {
-  btn.disabled = true; btn.textContent = 'שומר סדר...';
+  btn.disabled = true; btn.textContent = 'שולח...';
 
-  // שמור את סדר הגרירה הנוכחי ב-DB לפני השליחה
-  const savePromises = [];
+  // אסוף את הסדר המדויק של ההזמנות למחר מהמסך
+  const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
+  const tomorrow  = tomorrowD.toISOString().slice(0, 10);
+  const orderedIds = [];
   document.querySelectorAll('.task-rows-container').forEach(container => {
+    if (container.dataset.dateKey !== tomorrow) return;
     const ids = Array.from(container.querySelectorAll('.task-row'))
                      .map(r => parseInt(r.dataset.orderId));
-    if (ids.length) {
-      savePromises.push(fetch('/api/orders/reorder', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ids})
-      }));
-    }
+    if (ids.length) orderedIds.push(ids);
   });
-  await Promise.all(savePromises);
 
-  btn.textContent = 'שולח...';
   try {
-    const res  = await fetch('/api/send-daily-schedule', { method: 'POST' });
+    const res  = await fetch('/api/send-daily-schedule', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ ordered_ids: orderedIds })
+    });
     const data = await res.json();
     const result = document.getElementById('tasks-send-result');
     if (data.ok) {
