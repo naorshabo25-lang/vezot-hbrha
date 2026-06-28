@@ -1020,7 +1020,7 @@ def get_weekly_tasks():
             for date_str in week_dates:
                 rows = conn.execute("""
                     SELECT * FROM orders WHERE driver_id = ? AND order_date = ?
-                    ORDER BY created_at
+                    ORDER BY sort_order, delivery_time, created_at
                 """, (d["id"], date_str)).fetchall()
                 if rows:
                     orders_by_date[date_str] = [dict(r) for r in rows]
