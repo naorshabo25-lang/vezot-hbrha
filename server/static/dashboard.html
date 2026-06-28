@@ -2002,7 +2002,24 @@ async function loadTasks() {
 }
 
 async function sendScheduleToAdminFromTasks(btn) {
-  btn.disabled = true; btn.textContent = 'שולח...';
+  btn.disabled = true; btn.textContent = 'שומר סדר...';
+
+  // שמור את סדר הגרירה הנוכחי ב-DB לפני השליחה
+  const savePromises = [];
+  document.querySelectorAll('.task-rows-container').forEach(container => {
+    const ids = Array.from(container.querySelectorAll('.task-row'))
+                     .map(r => parseInt(r.dataset.orderId));
+    if (ids.length) {
+      savePromises.push(fetch('/api/orders/reorder', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids})
+      }));
+    }
+  });
+  await Promise.all(savePromises);
+
+  btn.textContent = 'שולח...';
   try {
     const res  = await fetch('/api/send-daily-schedule', { method: 'POST' });
     const data = await res.json();
