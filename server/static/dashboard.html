@@ -2223,7 +2223,7 @@ async function addOrderManual() {
   const area          = document.getElementById('o-area').value;
   const extrasSel    = document.getElementById('o-extras').value;
   const ureaQty      = document.getElementById('o-urea-qty').value;
-  const extras       = extrasSel === 'אוריאה' && ureaQty ? `אוריאה: ${ureaQty} ליטר` : extrasSel;
+  const extras       = extrasSel === 'אוריאה' && ureaQty ? `אוריאה: ${ureaQty} י"ח` : extrasSel;
   if (!customer_name || !site_address || !quantity) return alert('יש למלא שם לקוח, כתובת וכמות');
   await fetch('/api/orders', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
