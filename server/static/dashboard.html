@@ -379,14 +379,15 @@
             <input id="o-contact-phone" placeholder="טל' איש קשר" />
             <input id="o-quantity" type="number" min="1" placeholder="כמות (ליטר)" />
             <input id="o-date" type="date" />
-            <select id="o-extras" style="flex:1;min-width:170px">
+            <select id="o-extras" style="flex:1;min-width:170px" onchange="toggleUreaInput('o-urea-qty',this.value)">
               <option value="">-- מוצר נוסף --</option>
-              <option value="גריקן אוריאה">גריקן אוריאה</option>
+              <option value="אוריאה">אוריאה</option>
               <option value="גריקן שמן הידראולי 68">גריקן שמן הידראולי 68</option>
               <option value="גריקן שמן מנוע 15W40">גריקן שמן מנוע 15W40</option>
               <option value="תוספים">תוספים</option>
               <option value="נוזל שמשות">נוזל שמשות</option>
             </select>
+            <input id="o-urea-qty" type="number" min="1" placeholder="כמות אוריאה (ליטר)" style="display:none;flex:1;min-width:120px" />
           </div>
           <div class="form-row" style="align-items:center">
             <select id="o-area" onchange="previewDriver()" style="flex:1;min-width:160px"><option value="">-- אזור --</option></select>
@@ -742,14 +743,15 @@
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">
         <label style="font-size:0.82em;font-weight:600;color:#6b7280">מוצר נוסף</label>
-        <select id="em-extras" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937">
+        <select id="em-extras" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" onchange="toggleUreaInput('em-urea-qty',this.value)">
           <option value="">-- ללא --</option>
-          <option value="גריקן אוריאה">גריקן אוריאה</option>
+          <option value="אוריאה">אוריאה</option>
           <option value="גריקן שמן הידראולי 68">גריקן שמן הידראולי 68</option>
           <option value="גריקן שמן מנוע 15W40">גריקן שמן מנוע 15W40</option>
           <option value="תוספים">תוספים</option>
           <option value="נוזל שמשות">נוזל שמשות</option>
         </select>
+        <input id="em-urea-qty" type="number" min="1" placeholder="כמות אוריאה (ליטר)" style="display:none;margin-top:8px;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937;width:100%" />
       </div>
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px">
@@ -1131,6 +1133,13 @@ async function updateStatus(id, status) {
 
 let _editOrderId = null;
 
+function toggleUreaInput(inputId, value) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.style.display = value === 'אוריאה' ? '' : 'none';
+  if (value !== 'אוריאה') el.value = '';
+}
+
 function openEditOrder(order) {
   _editOrderId = order.id;
   document.getElementById('edit-order-id-label').textContent = `#${order.id}`;
@@ -1140,7 +1149,18 @@ function openEditOrder(order) {
   document.getElementById('em-contact-phone').value= order.contact_phone || '';
   document.getElementById('em-quantity').value     = order.quantity       || '';
   document.getElementById('em-date').value         = order.order_date    || '';
-  document.getElementById('em-extras').value       = order.extras        || '';
+  // parse urea extras: "אוריאה: X ליטר"
+  const extras = order.extras || '';
+  const ureaMatch = extras.match(/^אוריאה:\s*(\d+)\s*ליטר$/);
+  if (ureaMatch) {
+    document.getElementById('em-extras').value = 'אוריאה';
+    document.getElementById('em-urea-qty').value = ureaMatch[1];
+    document.getElementById('em-urea-qty').style.display = '';
+  } else {
+    document.getElementById('em-extras').value = extras;
+    document.getElementById('em-urea-qty').value = '';
+    document.getElementById('em-urea-qty').style.display = 'none';
+  }
   // populate area options from drivers
   const areaSel = document.getElementById('em-area');
   const areas = [...new Set(_drivers.map(d => d.area).filter(Boolean))];
@@ -1162,7 +1182,11 @@ function saveEditOrder() {
     quantity:      document.getElementById('em-quantity').value.trim(),
     order_date:    document.getElementById('em-date').value,
     area:          document.getElementById('em-area').value,
-    extras:        document.getElementById('em-extras').value,
+    extras:        (function() {
+      const sel = document.getElementById('em-extras').value;
+      const qty = document.getElementById('em-urea-qty').value;
+      return sel === 'אוריאה' && qty ? `אוריאה: ${qty} ליטר` : sel;
+    })(),
   };
   if (!body.customer_name || !body.site_address) return alert('יש למלא שם לקוח וכתובת');
   fetch('/api/orders/' + _editOrderId, {
@@ -2197,7 +2221,9 @@ async function addOrderManual() {
   const quantity      = document.getElementById('o-quantity').value.trim();
   const order_date    = document.getElementById('o-date').value;
   const area          = document.getElementById('o-area').value;
-  const extras        = document.getElementById('o-extras').value;
+  const extrasSel    = document.getElementById('o-extras').value;
+  const ureaQty      = document.getElementById('o-urea-qty').value;
+  const extras       = extrasSel === 'אוריאה' && ureaQty ? `אוריאה: ${ureaQty} ליטר` : extrasSel;
   if (!customer_name || !site_address || !quantity) return alert('יש למלא שם לקוח, כתובת וכמות');
   await fetch('/api/orders', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2207,6 +2233,8 @@ async function addOrderManual() {
   document.getElementById('o-customer').value = '';
   document.getElementById('o-area').value = '';
   document.getElementById('o-extras').value = '';
+  document.getElementById('o-urea-qty').value = '';
+  document.getElementById('o-urea-qty').style.display = 'none';
   document.getElementById('o-driver-preview').textContent = '';
   loadOrders();
 }
