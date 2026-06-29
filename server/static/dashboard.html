@@ -1215,9 +1215,24 @@ async function saveRecurringOrder() {
       end_date: document.getElementById('recurring-end').value,
     })
   });
+
+  // צור מייד הזמנה חדשה למחר אם מחר הוא אחד מהימים שנבחרו
+  const tomorrowDay = new Date();
+  tomorrowDay.setDate(tomorrowDay.getDate() + 1);
+  const tomorrowDayOfWeek = tomorrowDay.getDay(); // 0=ראשון ... 6=שבת
+  if (days.includes(tomorrowDayOfWeek)) {
+    const tomorrowStr = tomorrowDay.toISOString().slice(0, 10);
+    await fetch('/api/recurring-orders/materialize', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_date: tomorrowStr })
+    });
+  }
+
   closeRecurringModal();
   if (document.getElementById('recurring').classList.contains('active')) loadRecurringOrders();
-  alert('ההזמנה הוגדרה כקבועה');
+  if (document.getElementById('orders').classList.contains('active')) loadOrders();
+  if (document.getElementById('home').classList.contains('active')) loadHome();
+  alert('ההזמנה הוגדרה כקבועה' + (days.includes(new Date(new Date().setDate(new Date().getDate()+1)).getDay()) ? ' — נוצרה הזמנה חדשה למחר ✅' : ''));
 }
 
 async function loadRecurringOrders() {
