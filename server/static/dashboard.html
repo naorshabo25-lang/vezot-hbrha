@@ -387,7 +387,7 @@
               <option value="תוספים">תוספים</option>
               <option value="נוזל שמשות">נוזל שמשות</option>
             </select>
-            <input id="o-urea-qty" type="number" min="1" placeholder="כמות אוריאה (ליטר)" style="display:none;flex:1;min-width:120px" />
+            <input id="o-urea-qty" type="number" min="1" placeholder='כמות אוריאה (י"ח)' style="display:none;flex:1;min-width:120px" />
           </div>
           <div class="form-row" style="align-items:center">
             <select id="o-area" onchange="previewDriver()" style="flex:1;min-width:160px"><option value="">-- אזור --</option></select>
@@ -751,7 +751,7 @@
           <option value="תוספים">תוספים</option>
           <option value="נוזל שמשות">נוזל שמשות</option>
         </select>
-        <input id="em-urea-qty" type="number" min="1" placeholder="כמות אוריאה (ליטר)" style="display:none;margin-top:8px;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937;width:100%" />
+        <input id="em-urea-qty" type="number" min="1" placeholder='כמות אוריאה (י"ח)' style="display:none;margin-top:8px;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937;width:100%" />
       </div>
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px">
@@ -1151,7 +1151,7 @@ function openEditOrder(order) {
   document.getElementById('em-date').value         = order.order_date    || '';
   // parse urea extras: "אוריאה: X ליטר"
   const extras = order.extras || '';
-  const ureaMatch = extras.match(/^אוריאה:\s*(\d+)\s*ליטר$/);
+  const ureaMatch = extras.match(/^אוריאה:\s*(\d+)\s*(י"ח|יחידות|ליטר)?$/);
   if (ureaMatch) {
     document.getElementById('em-extras').value = 'אוריאה';
     document.getElementById('em-urea-qty').value = ureaMatch[1];
@@ -1185,7 +1185,7 @@ function saveEditOrder() {
     extras:        (function() {
       const sel = document.getElementById('em-extras').value;
       const qty = document.getElementById('em-urea-qty').value;
-      return sel === 'אוריאה' && qty ? `אוריאה: ${qty} ליטר` : sel;
+      return sel === 'אוריאה' && qty ? `אוריאה: ${qty} י"ח` : sel;
     })(),
   };
   if (!body.customer_name || !body.site_address) return alert('יש למלא שם לקוח וכתובת');
