@@ -119,6 +119,12 @@ def startup():
     admin_hour   = int(settings["admin_schedule_hour"])   if settings.get("admin_schedule_hour")   else None
     admin_minute = int(settings.get("admin_schedule_minute", 0))
     start_scheduler(hour, minute, admin_hour, admin_minute)
+    from recurring import materialize_recurring_orders
+    from datetime import date as _d, timedelta as _td
+    _tomorrow = (_d.today() + _td(days=1)).isoformat()
+    _n = materialize_recurring_orders(_tomorrow)
+    if _n:
+        print(f"[Startup] נוצרו {_n} הזמנות קבועות ל-{_tomorrow}")
 
 
 # ── Order document parsing ───────────────────────────────────────────────────
