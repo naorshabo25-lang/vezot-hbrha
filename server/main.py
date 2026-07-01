@@ -384,23 +384,12 @@ async def receive_message(request: Request):
     _not_simple = text_lower not in {"כן", "yes", "1", "כן!", "כן.", "כן,", "אישור", "לא", "no"}
     is_order_intent = any(kw in text_lower for kw in ORDER_KEYWORDS) and _not_simple
     if is_order_intent:
-        from datetime import date as dt, timedelta
-        if "מחר" in text_lower:
-            tomorrow = (dt.today() + timedelta(days=1)).isoformat()
-            with get_db() as conn:
-                conn.execute(
-                    "INSERT OR REPLACE INTO conversation_state (phone, step, customer_id, order_date) VALUES (?,?,?,?)",
-                    (phone, "awaiting_area", customer["id"], tomorrow)
-                )
-            send_whatsapp_message(phone, f"אוקיי {customer['name']} בוא נתחיל בהזמנה 😊")
-            send_area_list(phone)
-        else:
-            with get_db() as conn:
-                conn.execute(
-                    "INSERT OR REPLACE INTO conversation_state (phone, step, customer_id) VALUES (?,?,?)",
-                    (phone, "awaiting_date", customer["id"])
-                )
-            send_date_list(phone)
+        with get_db() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO conversation_state (phone, step, customer_id) VALUES (?,?,?)",
+                (phone, "awaiting_date", customer["id"])
+            )
+        send_date_list(phone)
         return JSONResponse({"status": "ok"})
 
     # שלב awaiting_date — לקוח בחר תאריך
