@@ -11,7 +11,7 @@ from database import init_db, get_db
 from whatsapp import (send_whatsapp_message, send_quantity_list, send_area_list,
                       send_time_list, send_date_list, send_site_list,
                       download_whatsapp_media, send_order_confirmation_card,
-                      time_greeting)
+                      send_contact_buttons, time_greeting)
 from scheduler import start_scheduler, reschedule, reschedule_admin
 
 AREA_DISPLAY = {
@@ -572,28 +572,102 @@ async def receive_message(request: Request):
         send_time_list(phone)
         return JSONResponse({"status": "ok"})
 
-    # שלב 4 — בחירת שעה → יצירת הזמנה
+    # שלב 4 — בחירת שעה → שאלת איש קשר
     if step == "awaiting_time":
-        from datetime import date as dt, timedelta
         delivery_time = TIME_MAP.get(reply_id, text) if reply_id else text
         with get_db() as conn:
-            row       = conn.execute("SELECT * FROM conversation_state WHERE phone=?", (phone,)).fetchone()
-            quantity      = row["quantity"]
-            city          = row["city"]
-            address       = row["address"]
-            contact_name  = customer["contact_name"]
-            contact_phone = customer["contact_phone"]
-            order_date    = row["order_date"] or (dt.today() + timedelta(days=1)).isoformat()
-            driver    = assign_driver(conn, city, quantity)
-            driver_id = driver["id"] if driver else None
+            conn.execute(
+                "UPDATE conversation_state SET step='awaiting_contact', delivery_time=?, updated_at=datetime('now','localtime') WHERE phone=?",
+                (delivery_time, phone)
+            )
+        send_contact_buttons(phone)
+        return JSONResponse({"status": "ok"})
+
+    # שלב 5 — בחירת איש קשר
+    if step == "awaiting_contact":
+        from datetime import date as dt, timedelta
+
+        def _create_order(cname, cphone):
+            with get_db() as conn:
+                row        = conn.execute("SELECT * FROM conversation_state WHERE phone=?", (phone,)).fetchone()
+                quantity   = row["quantity"]
+                city       = row["city"]
+                address    = row["address"]
+                order_date = row["order_date"] or (dt.today() + timedelta(days=1)).isoformat()
+                dtime      = row["delivery_time"] or ""
+                driver     = assign_driver(conn, city, quantity)
+                driver_id  = driver["id"] if driver else None
+                conn.execute(
+                    """INSERT INTO orders
+                       (customer_id, customer_name, site_address, contact_name, contact_phone,
+                        quantity, driver_id, order_date, delivery_time)
+                       VALUES (?,?,?,?,?,?,?,?,?)""",
+                    (customer["id"], customer["name"], f"{city}, {address}",
+                     cname, cphone, quantity, driver_id, order_date, dtime)
+                )
+                conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+            from datetime import datetime
+            d = datetime.strptime(order_date, "%Y-%m-%d")
+            date_label = f"{d.day}/{d.month}/{d.year}"
+            send_whatsapp_message(
+                phone,
+                f"ההזמנה התקבלה! ✅\n\n"
+                f"תאריך אספקה: {date_label}\n"
+                f"כמות: {quantity} ליטר\n"
+                f"כתובת: {city}, {address}\n"
+                f"איש קשר: {cname}\n"
+                f"טלפון נייד: {cphone}\n"
+                f"שעת אספקה: {dtime}\n\n"
+                f"נשתדל לעמוד בטווחי הזמנים.\n"
+                f"נדאג לאספקה. תודה! 🙏\n\n"
+                f"לכל בעיה נא לפנות לנאור - 0506877866"
+            )
+
+        if reply_id == "contact_self":
+            _create_order(customer["name"], customer["phone"])
+        elif reply_id == "contact_other":
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE conversation_state SET step='awaiting_contact_name', updated_at=datetime('now','localtime') WHERE phone=?",
+                    (phone,)
+                )
+            send_whatsapp_message(phone, "מה שם איש הקשר? ✍️")
+        else:
+            send_contact_buttons(phone)
+        return JSONResponse({"status": "ok"})
+
+    # שלב 5א — קבלת שם איש קשר
+    if step == "awaiting_contact_name":
+        contact_name = text.strip()
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE conversation_state SET step='awaiting_contact_phone', contact_name=?, updated_at=datetime('now','localtime') WHERE phone=?",
+                (contact_name, phone)
+            )
+        send_whatsapp_message(phone, "מה מספר הטלפון הנייד של איש הקשר? 📱")
+        return JSONResponse({"status": "ok"})
+
+    # שלב 5ב — קבלת טלפון איש קשר → יצירת הזמנה
+    if step == "awaiting_contact_phone":
+        from datetime import date as dt, timedelta
+        contact_phone = text.strip()
+        with get_db() as conn:
+            row        = conn.execute("SELECT * FROM conversation_state WHERE phone=?", (phone,)).fetchone()
+            quantity   = row["quantity"]
+            city       = row["city"]
+            address    = row["address"]
+            order_date = row["order_date"] or (dt.today() + timedelta(days=1)).isoformat()
+            dtime      = row["delivery_time"] or ""
+            cname      = row["contact_name"] or ""
+            driver     = assign_driver(conn, city, quantity)
+            driver_id  = driver["id"] if driver else None
             conn.execute(
                 """INSERT INTO orders
                    (customer_id, customer_name, site_address, contact_name, contact_phone,
                     quantity, driver_id, order_date, delivery_time)
                    VALUES (?,?,?,?,?,?,?,?,?)""",
                 (customer["id"], customer["name"], f"{city}, {address}",
-                 contact_name, contact_phone,
-                 quantity, driver_id, order_date, delivery_time)
+                 cname, contact_phone, quantity, driver_id, order_date, dtime)
             )
             conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
         from datetime import datetime
@@ -605,9 +679,9 @@ async def receive_message(request: Request):
             f"תאריך אספקה: {date_label}\n"
             f"כמות: {quantity} ליטר\n"
             f"כתובת: {city}, {address}\n"
-            f"איש קשר: {contact_name}\n"
+            f"איש קשר: {cname}\n"
             f"טלפון נייד: {contact_phone}\n"
-            f"שעת אספקה: {delivery_time}\n\n"
+            f"שעת אספקה: {dtime}\n\n"
             f"נשתדל לעמוד בטווחי הזמנים.\n"
             f"נדאג לאספקה. תודה! 🙏\n\n"
             f"לכל בעיה נא לפנות לנאור - 0506877866"

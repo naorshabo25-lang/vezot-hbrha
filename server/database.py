@@ -102,6 +102,10 @@ def init_db():
             conn.execute("ALTER TABLE conversation_state ADD COLUMN pending_order_json TEXT DEFAULT NULL")
         except Exception:
             pass
+        try:
+            conn.execute("ALTER TABLE conversation_state ADD COLUMN delivery_time TEXT DEFAULT ''")
+        except Exception:
+            pass
         for col in ['site_address', 'contact_name', 'contact_phone', 'email',
                     'order_contact_name', 'order_contact_phone']:
             try:

@@ -170,6 +170,22 @@ def send_site_list(to_phone: str, sites: list) -> bool:
     })
 
 
+def send_contact_buttons(to_phone: str) -> bool:
+    return _post(to_phone, {
+        "messaging_product": "whatsapp",
+        "to": to_phone,
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {"text": "מי איש הקשר באתר? 👤"},
+            "action": {"buttons": [
+                {"type": "reply", "reply": {"id": "contact_self",  "title": "אני"}},
+                {"type": "reply", "reply": {"id": "contact_other", "title": "אחר"}},
+            ]},
+        },
+    })
+
+
 def send_order_card(to_phone: str, order: dict, idx: int = None, total: int = None) -> bool:
     """שולח פרטי הזמנה עם כפתור ביצוע לנהג."""
     o = order
