@@ -395,18 +395,24 @@ async def receive_message(request: Request):
     # שלב awaiting_date — לקוח בחר תאריך
     if step == "awaiting_date":
         from datetime import date as dt, timedelta
-        if reply_id and reply_id.startswith("date_"):
+        if reply_id == "date_immediate":
+            order_date = dt.today().isoformat()
+            date_label = "היום — משלוח מיידי עד 3 שעות ⚡"
+        elif reply_id and reply_id.startswith("date_"):
             order_date = reply_id[5:]
+            from datetime import datetime
+            d = datetime.strptime(order_date, "%Y-%m-%d")
+            date_label = f"{d.day}/{d.month}/{d.year}"
         else:
             order_date = (dt.today() + timedelta(days=1)).isoformat()
+            from datetime import datetime
+            d = datetime.strptime(order_date, "%Y-%m-%d")
+            date_label = f"{d.day}/{d.month}/{d.year}"
         with get_db() as conn:
             conn.execute(
                 "UPDATE conversation_state SET step=?, order_date=?, updated_at=datetime('now','localtime') WHERE phone=?",
                 ("awaiting_area", order_date, phone)
             )
-        from datetime import datetime
-        d = datetime.strptime(order_date, "%Y-%m-%d")
-        date_label = f"{d.day}/{d.month}/{d.year}"
         send_whatsapp_message(phone, f"מצוין! תאריך אספקה: {date_label} 📅")
         send_area_list(phone)
         return JSONResponse({"status": "ok"})

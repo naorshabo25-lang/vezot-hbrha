@@ -125,10 +125,10 @@ def send_time_list(to_phone: str) -> bool:
 def send_date_list(to_phone: str) -> bool:
     from datetime import date, timedelta
     DAYS_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
-    rows = []
+    rows = [{"id": "date_immediate", "title": "⚡ מיידי — עד 3 שעות"}]
     for i in range(1, 4):
         d = date.today() + timedelta(days=i)
-        label = f"מחר — {d.day}/{d.month}" if i == 1 else f"יום {DAYS_HE[d.weekday() % 7 if False else d.isoweekday() % 7]} — {d.day}/{d.month}"
+        label = f"מחר — {d.day}/{d.month}" if i == 1 else f"יום {DAYS_HE[d.isoweekday() % 7]} — {d.day}/{d.month}"
         rows.append({"id": f"date_{d.isoformat()}", "title": label})
     return _post(to_phone, {
         "messaging_product": "whatsapp",
