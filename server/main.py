@@ -294,7 +294,37 @@ async def receive_message(request: Request):
         ).fetchone()
 
     if not customer:
-        send_whatsapp_message(phone, "מספר זה אינו רשום במערכת. אנא פנה למנהל.")
+        with get_db() as conn:
+            pend = conn.execute("SELECT * FROM pending_registrations WHERE phone=?", (phone,)).fetchone()
+            pend_state = conn.execute("SELECT * FROM conversation_state WHERE phone=? AND step='pending_awaiting_company'", (phone,)).fetchone()
+        if pend_state:
+            # לקוח לא מוכר השיב עם שם חברה
+            company_name = text.strip()
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE pending_registrations SET company_name=?, status='pending' WHERE phone=?",
+                    (company_name, phone)
+                )
+                conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+            send_whatsapp_message(phone, "תודה! נציג מאיתנו יצור איתך קשר בקרוב 😊")
+        elif not pend:
+            # מספר חדש לחלוטין — שמור ושאל שם חברה
+            with get_db() as conn:
+                conn.execute(
+                    "INSERT OR IGNORE INTO pending_registrations (phone) VALUES (?)", (phone,)
+                )
+                conn.execute(
+                    "INSERT OR REPLACE INTO conversation_state (phone, step) VALUES (?, 'pending_awaiting_company')",
+                    (phone,)
+                )
+            send_whatsapp_message(
+                phone,
+                "שלום! אנחנו *וזאת הברכה דלקים* 🛢️\n"
+                "מספרך אינו רשום במערכת.\n\n"
+                "מה שם החברה / העסק שלך?"
+            )
+        else:
+            send_whatsapp_message(phone, "תודה, נציג יצור איתך קשר בקרוב 😊")
         return JSONResponse({"status": "ok"})
 
     step = state["step"] if state else None
@@ -917,6 +947,45 @@ async def update_order(order_id: int, request: Request):
              body.get("quantity"), body.get("order_date"),
              driver_id, body.get("extras", ""), order_id),
         )
+    return {"ok": True}
+
+
+# ── רישומים ממתינים ────────────────────────────────────────────────────────
+
+@app.get("/api/pending-registrations")
+def get_pending_registrations():
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM pending_registrations WHERE status='pending' ORDER BY created_at DESC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+@app.post("/api/pending-registrations/{pid}/approve")
+async def approve_pending(pid: int, request: Request):
+    body = await request.json()
+    with get_db() as conn:
+        pend = conn.execute("SELECT * FROM pending_registrations WHERE id=?", (pid,)).fetchone()
+        if not pend:
+            raise HTTPException(status_code=404, detail="לא נמצא")
+        conn.execute(
+            "INSERT INTO customers (name, phone, area, site_address, contact_name, contact_phone) VALUES (?,?,?,?,?,?)",
+            (body.get("name", pend["company_name"]), pend["phone"],
+             body.get("area", ""), body.get("site_address", ""),
+             body.get("contact_name", ""), body.get("contact_phone", ""))
+        )
+        conn.execute("UPDATE pending_registrations SET status='approved' WHERE id=?", (pid,))
+    send_whatsapp_message(
+        pend["phone"],
+        f"שלום {body.get('name', pend['company_name'])}! 👋\n"
+        "נרשמת בהצלחה במערכת וזאת הברכה דלקים.\n"
+        "כעת תוכל להזמין דלק — פשוט שלח *הזמנה* 😊"
+    )
+    return {"ok": True}
+
+@app.delete("/api/pending-registrations/{pid}")
+def delete_pending(pid: int):
+    with get_db() as conn:
+        conn.execute("UPDATE pending_registrations SET status='rejected' WHERE id=?", (pid,))
     return {"ok": True}
 
 

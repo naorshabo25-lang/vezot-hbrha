@@ -352,6 +352,9 @@
         </div>
       </div>
 
+      <!-- ממתינים לרישום -->
+      <div id="pending-registrations-panel" style="margin-top:14px"></div>
+
       <!-- ליטרים לפי נהג -->
       <div style="margin-top:14px" id="home-driver-breakdown"></div>
 
@@ -960,6 +963,51 @@ async function loadHome() {
   } else {
     breakdownEl.innerHTML = '';
   }
+
+  // ממתינים לרישום
+  loadPendingRegistrations();
+}
+
+async function loadPendingRegistrations() {
+  const res = await fetch('/api/pending-registrations');
+  const list = await res.json();
+  const el = document.getElementById('pending-registrations-panel');
+  if (!el) return;
+  if (!list.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="card" style="border:2px solid #f59e0b;background:#fffbeb;margin-bottom:16px">
+      <h2 style="font-size:0.9em;color:#b45309;margin-bottom:12px">⏳ ממתינים לרישום (${list.length})</h2>
+      ${list.map(p => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #fde68a;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px">
+            <div style="font-weight:700">${p.company_name || '(שם לא הוזן)'}</div>
+            <div style="font-size:0.82em;color:#64748b">📞 ${p.phone}</div>
+            <div style="font-size:0.75em;color:#9ca3af">${p.created_at}</div>
+          </div>
+          <button onclick="approvePending(${p.id},'${p.phone}','${(p.company_name||'').replace(/'/g,"\\'")}',this)" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:0.85em">✅ רשום</button>
+          <button onclick="rejectPending(${p.id},this)" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:0.85em">✕ דחה</button>
+        </div>`).join('')}
+    </div>`;
+}
+
+async function approvePending(id, phone, companyName, btn) {
+  const name = prompt('שם הלקוח לרישום:', companyName);
+  if (!name) return;
+  const area = prompt('אזור (לשיוך נהג):', '');
+  btn.disabled = true;
+  await fetch(`/api/pending-registrations/${id}/approve`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name, area: area || '', site_address: '', contact_name: '', contact_phone: '' })
+  });
+  loadPendingRegistrations();
+  loadCustomerDropdown();
+}
+
+async function rejectPending(id, btn) {
+  if (!confirm('לדחות את הבקשה?')) return;
+  btn.disabled = true;
+  await fetch(`/api/pending-registrations/${id}`, { method: 'DELETE' });
+  loadPendingRegistrations();
 }
 
 // ── Orders ──────────────────────────────────────────────

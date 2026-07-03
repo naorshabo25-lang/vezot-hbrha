@@ -170,4 +170,12 @@ def init_db():
                 active        INTEGER DEFAULT 1,
                 created_at    TEXT DEFAULT (datetime('now', 'localtime'))
             );
+
+            CREATE TABLE IF NOT EXISTS pending_registrations (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                phone        TEXT NOT NULL UNIQUE,
+                company_name TEXT DEFAULT '',
+                status       TEXT DEFAULT 'pending',
+                created_at   TEXT DEFAULT (datetime('now', 'localtime'))
+            );
         """)
