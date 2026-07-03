@@ -1035,7 +1035,7 @@ async function loadPendingRegistrations() {
 
 let _pendingModal = null;
 
-function approvePending(id, phone, companyName) {
+async function approvePending(id, phone, companyName) {
   _pendingModal = { id, phone, companyName };
   document.getElementById('pm-company').textContent = companyName || '(שם לא הוזן)';
   document.getElementById('pm-phone').textContent = phone;
@@ -1043,11 +1043,18 @@ function approvePending(id, phone, companyName) {
   document.getElementById('pm-new-area').value = '';
   document.getElementById('pm-mode-new').checked = true;
   togglePendingMode('new');
-  // מלא רשימת לקוחות קיימים
+  // שלוף רשימת לקוחות עדכנית
   const sel = document.getElementById('pm-existing-customer');
-  sel.innerHTML = '<option value="">-- בחר לקוח --</option>' +
-    (_customers || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  sel.innerHTML = '<option value="">-- טוען לקוחות... --</option>';
   document.getElementById('pending-modal').style.display = 'flex';
+  try {
+    const res = await fetch('/api/customers');
+    const customers = await res.json();
+    sel.innerHTML = '<option value="">-- בחר לקוח --</option>' +
+      customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  } catch(e) {
+    sel.innerHTML = '<option value="">שגיאה בטעינת לקוחות</option>';
+  }
 }
 
 function togglePendingMode(mode) {
@@ -2373,6 +2380,8 @@ async function addOrderManual() {
 loadHome();
 loadCustomerDropdown();
 initCalendar();
+// רענון ממתינים לרישום כל 30 שניות
+setInterval(loadPendingRegistrations, 30000);
 </script>
 </body>
 </html>
