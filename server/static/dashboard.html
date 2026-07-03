@@ -732,20 +732,31 @@
     </div>
     <!-- לקוח חדש -->
     <div id="pm-section-new">
-      <div style="margin-bottom:12px">
-        <label style="font-size:0.82em;font-weight:600;color:#374151;display:block;margin-bottom:4px">שם הלקוח</label>
+      <div style="margin-bottom:10px">
+        <label style="font-size:0.82em;font-weight:600;color:#374151;display:block;margin-bottom:4px">שם החברה / לקוח</label>
         <input id="pm-new-name" type="text" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.93em;box-sizing:border-box" />
       </div>
-      <div style="margin-bottom:18px">
-        <label style="font-size:0.82em;font-weight:600;color:#374151;display:block;margin-bottom:4px">אזור</label>
-        <input id="pm-new-area" type="text" placeholder="לדוגמה: ירושלים" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.93em;box-sizing:border-box" />
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label style="font-size:0.82em;font-weight:600;color:#374151;display:block;margin-bottom:4px">שם איש קשר</label>
+          <input id="pm-new-contact-name" type="text" placeholder="שם פרטי ומשפחה" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.93em;box-sizing:border-box" />
+        </div>
+        <div>
+          <label style="font-size:0.82em;font-weight:600;color:#374151;display:block;margin-bottom:4px">אזור</label>
+          <input id="pm-new-area" type="text" placeholder="ירושלים..." style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.93em;box-sizing:border-box" />
+        </div>
       </div>
     </div>
     <!-- שיוך ללקוח קיים -->
     <div id="pm-section-existing" style="display:none;margin-bottom:18px">
-      <label style="font-size:0.82em;font-weight:600;color:#374151;display:block;margin-bottom:4px">בחר לקוח קיים</label>
-      <select id="pm-existing-customer" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.93em;box-sizing:border-box"></select>
-      <div style="font-size:0.78em;color:#6b7280;margin-top:6px">הטלפון יתווסף לרשימת הטלפונים של הלקוח הנבחר</div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:0.82em;font-weight:600;color:#374151;display:block;margin-bottom:4px">בחר לקוח קיים</label>
+        <select id="pm-existing-customer" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.93em;box-sizing:border-box"></select>
+      </div>
+      <div>
+        <label style="font-size:0.82em;font-weight:600;color:#374151;display:block;margin-bottom:4px">שם איש הקשר לטלפון זה</label>
+        <input id="pm-existing-contact-name" type="text" placeholder="שם פרטי ומשפחה" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.93em;box-sizing:border-box" />
+      </div>
     </div>
     <div style="display:flex;gap:10px">
       <button onclick="savePendingModal()" style="flex:1;background:#1d4ed8;color:white;border:none;border-radius:10px;padding:11px;font-size:0.95em;font-weight:600;cursor:pointer">✅ אשר רישום</button>
@@ -1040,7 +1051,9 @@ async function approvePending(id, phone, companyName) {
   document.getElementById('pm-company').textContent = companyName || '(שם לא הוזן)';
   document.getElementById('pm-phone').textContent = phone;
   document.getElementById('pm-new-name').value = companyName || '';
+  document.getElementById('pm-new-contact-name').value = '';
   document.getElementById('pm-new-area').value = '';
+  document.getElementById('pm-existing-contact-name').value = '';
   document.getElementById('pm-mode-new').checked = true;
   togglePendingMode('new');
   // שלוף רשימת לקוחות עדכנית
@@ -1075,17 +1088,19 @@ async function savePendingModal() {
   if (mode === 'new') {
     const name = document.getElementById('pm-new-name').value.trim();
     const area = document.getElementById('pm-new-area').value.trim();
+    const contact_name = document.getElementById('pm-new-contact-name').value.trim();
     if (!name) return alert('יש להזין שם לקוח');
     await fetch(`/api/pending-registrations/${id}/approve`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ name, area, site_address: '', contact_name: '', contact_phone: '' })
+      body: JSON.stringify({ name, area, site_address: '', contact_name, contact_phone: _pendingModal.phone })
     });
   } else {
     const customerId = document.getElementById('pm-existing-customer').value;
+    const contact_name = document.getElementById('pm-existing-contact-name').value.trim();
     if (!customerId) return alert('יש לבחור לקוח');
     await fetch(`/api/pending-registrations/${id}/link`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ customer_id: parseInt(customerId) })
+      body: JSON.stringify({ customer_id: parseInt(customerId), contact_name })
     });
   }
   closePendingModal();

@@ -995,19 +995,20 @@ async def link_pending(pid: int, request: Request):
         customer = conn.execute("SELECT * FROM customers WHERE id=?", (customer_id,)).fetchone()
         if not customer:
             raise HTTPException(status_code=404, detail="לקוח לא נמצא")
+        contact_name = body.get("contact_name", "")
         # הוסף את הטלפון החדש — אם שדה הטלפון הקיים ריק, מלא אותו; אחרת שמור כ-phone2
         if not customer["phone"]:
             conn.execute("UPDATE customers SET phone=? WHERE id=?", (pend["phone"], customer_id))
         else:
-            try:
-                conn.execute("ALTER TABLE customers ADD COLUMN phone2 TEXT DEFAULT ''")
-            except Exception:
-                pass
             conn.execute("UPDATE customers SET phone2=? WHERE id=?", (pend["phone"], customer_id))
+        # עדכן איש קשר אם הוזן
+        if contact_name:
+            conn.execute("UPDATE customers SET contact_name=? WHERE id=?", (contact_name, customer_id))
         conn.execute("UPDATE pending_registrations SET status='approved' WHERE id=?", (pid,))
+    greeting_name = contact_name or customer['name']
     send_whatsapp_message(
         pend["phone"],
-        f"שלום {customer['name']}! 👋\n"
+        f"שלום {greeting_name}! 👋\n"
         "מספרך שויך בהצלחה במערכת וזאת הברכה דלקים.\n"
         "כעת תוכל להזמין דלק — פשוט שלח *הזמנה* 😊"
     )
