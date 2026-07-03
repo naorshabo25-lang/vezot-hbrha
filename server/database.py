@@ -60,6 +60,7 @@ def init_db():
             INSERT OR IGNORE INTO settings (key, value) VALUES ('daily_minute', '0');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('message_template',
                 '{greeting} {name}, האם תצטרך הזמנת דלק סולר למחר?');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('message_days', '0,1,2,3,4');
         """)
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS potential_customers (

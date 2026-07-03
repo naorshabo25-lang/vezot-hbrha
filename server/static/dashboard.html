@@ -617,6 +617,19 @@
           <input id="s-minute" type="number" min="0" max="59" placeholder="דקות (0-59)" style="max-width:160px" />
           <button class="btn btn-primary btn-sm" onclick="saveTime()">שמור שעה</button>
         </div>
+        <div style="margin-top:16px">
+          <label style="font-size:0.85em;font-weight:600;color:#374151;display:block;margin-bottom:8px">ימי שליחה</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;cursor:pointer"><input type="checkbox" class="s-day-cb" value="0" /> יום א'</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;cursor:pointer"><input type="checkbox" class="s-day-cb" value="1" /> יום ב'</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;cursor:pointer"><input type="checkbox" class="s-day-cb" value="2" /> יום ג'</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;cursor:pointer"><input type="checkbox" class="s-day-cb" value="3" /> יום ד'</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;cursor:pointer"><input type="checkbox" class="s-day-cb" value="4" /> יום ה'</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;cursor:pointer"><input type="checkbox" class="s-day-cb" value="5" /> יום ו'</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;cursor:pointer"><input type="checkbox" class="s-day-cb" value="6" /> שבת</label>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveDays()" style="margin-top:10px">שמור ימים</button>
+        </div>
       </div>
       <div class="card">
         <h2>תבנית הודעה</h2>
@@ -1584,6 +1597,11 @@ async function loadSettings() {
   document.getElementById('s-hour').value = s.daily_hour || 14;
   document.getElementById('s-minute').value = s.daily_minute || 0;
   document.getElementById('s-template').value = s.message_template || '';
+  // ימי שליחה
+  const activeDays = (s.message_days || '0,1,2,3,4').split(',').map(Number);
+  document.querySelectorAll('.s-day-cb').forEach(cb => {
+    cb.checked = activeDays.includes(parseInt(cb.value));
+  });
   document.getElementById('s-ituran').value = s.ituran_url || '';
   _ituranUrl = s.ituran_url || '';
   document.getElementById('s-cameras').value = s.cameras_url || '';
@@ -1686,6 +1704,16 @@ async function saveCamerasUrl() {
   });
   _camerasUrl = url;
   alert('הקישור נשמר בהצלחה');
+}
+
+async function saveDays() {
+  const days = Array.from(document.querySelectorAll('.s-day-cb:checked')).map(cb => cb.value);
+  if (!days.length) return alert('יש לבחור לפחות יום אחד');
+  await fetch('/api/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message_days: days.join(',') })
+  });
+  alert('ימי השליחה עודכנו ✅');
 }
 
 async function saveTime() {

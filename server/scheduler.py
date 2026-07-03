@@ -8,11 +8,20 @@ scheduler = BackgroundScheduler(timezone="Asia/Jerusalem")
 
 
 def send_daily_messages():
-    print("[Scheduler] שולח הודעות יומיות ללקוחות...")
+    from datetime import date as _dt
     with get_db() as conn:
         settings  = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
         template  = settings.get("message_template", "{greeting} {name}, האם תצטרך הזמנת דלק סולר למחר?")
         customers = conn.execute("SELECT * FROM customers WHERE active = 1").fetchall()
+    # בדוק אם היום הוא יום שליחה מורשה (ישראלי: ראשון=0...שבת=6)
+    allowed_days_str = settings.get("message_days", "0,1,2,3,4")
+    allowed_days = [int(d) for d in allowed_days_str.split(",") if d.strip()]
+    today_isoweekday = _dt.today().isoweekday()  # Mon=1...Sun=7
+    today_il = today_isoweekday % 7              # ראשון=0...שבת=6
+    if today_il not in allowed_days:
+        print(f"[Scheduler] היום ({today_il}) אינו יום שליחה — מדלג")
+        return
+    print("[Scheduler] שולח הודעות יומיות ללקוחות...")
     greeting = time_greeting()
     resolved_template = template.replace("{greeting}", greeting)
     for customer in customers:
