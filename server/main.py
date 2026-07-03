@@ -282,12 +282,12 @@ async def receive_message(request: Request):
     except (KeyError, IndexError):
         return JSONResponse({"status": "ok"})
 
-    # מצא לקוח (תומך 0XXXXXXXX ו-972XXXXXXXX)
+    # מצא לקוח (תומך 0XXXXXXXX ו-972XXXXXXXX, וגם phone2)
     phone_alt = ("0" + phone[3:]) if phone.startswith("972") else ("972" + phone[1:])
     with get_db() as conn:
         customer = conn.execute(
-            "SELECT * FROM customers WHERE (phone=? OR phone=?) AND active=1",
-            (phone, phone_alt)
+            "SELECT * FROM customers WHERE (phone=? OR phone=? OR phone2=? OR phone2=?) AND active=1",
+            (phone, phone_alt, phone, phone_alt)
         ).fetchone()
         state = conn.execute(
             "SELECT * FROM conversation_state WHERE phone=?", (phone,)
@@ -978,6 +978,37 @@ async def approve_pending(pid: int, request: Request):
         pend["phone"],
         f"שלום {body.get('name', pend['company_name'])}! 👋\n"
         "נרשמת בהצלחה במערכת וזאת הברכה דלקים.\n"
+        "כעת תוכל להזמין דלק — פשוט שלח *הזמנה* 😊"
+    )
+    return {"ok": True}
+
+@app.post("/api/pending-registrations/{pid}/link")
+async def link_pending(pid: int, request: Request):
+    body = await request.json()
+    customer_id = body.get("customer_id")
+    if not customer_id:
+        raise HTTPException(status_code=400, detail="חסר customer_id")
+    with get_db() as conn:
+        pend = conn.execute("SELECT * FROM pending_registrations WHERE id=?", (pid,)).fetchone()
+        if not pend:
+            raise HTTPException(status_code=404, detail="לא נמצא")
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (customer_id,)).fetchone()
+        if not customer:
+            raise HTTPException(status_code=404, detail="לקוח לא נמצא")
+        # הוסף את הטלפון החדש — אם שדה הטלפון הקיים ריק, מלא אותו; אחרת שמור כ-phone2
+        if not customer["phone"]:
+            conn.execute("UPDATE customers SET phone=? WHERE id=?", (pend["phone"], customer_id))
+        else:
+            try:
+                conn.execute("ALTER TABLE customers ADD COLUMN phone2 TEXT DEFAULT ''")
+            except Exception:
+                pass
+            conn.execute("UPDATE customers SET phone2=? WHERE id=?", (pend["phone"], customer_id))
+        conn.execute("UPDATE pending_registrations SET status='approved' WHERE id=?", (pid,))
+    send_whatsapp_message(
+        pend["phone"],
+        f"שלום {customer['name']}! 👋\n"
+        "מספרך שויך בהצלחה במערכת וזאת הברכה דלקים.\n"
         "כעת תוכל להזמין דלק — פשוט שלח *הזמנה* 😊"
     )
     return {"ok": True}
