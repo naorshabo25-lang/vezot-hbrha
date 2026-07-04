@@ -423,7 +423,7 @@
       <div id="orders-subtab-active" class="orders-subtab-content">
         <div class="card" style="padding:14px 16px">
           <table>
-            <thead><tr><th>#</th><th>לקוח</th><th>כתובת</th><th>איש קשר</th><th>טלפון</th><th>כמות</th><th>נהג</th><th>סטטוס</th><th>שעה</th><th></th></tr></thead>
+            <thead><tr style="font-size:0.8em"><th style="padding:7px 8px">#</th><th style="padding:7px 8px">לקוח</th><th style="padding:7px 8px">כתובת</th><th style="padding:7px 8px">איש קשר</th><th style="padding:7px 8px">טלפון</th><th style="padding:7px 8px">כמות</th><th style="padding:7px 8px">נהג</th><th style="padding:7px 8px">סטטוס</th><th style="padding:7px 8px">שעת אספקה</th><th style="padding:7px 8px">פעולות</th></tr></thead>
             <tbody id="orders-body"></tbody>
           </table>
         </div>
@@ -432,7 +432,7 @@
       <div id="orders-subtab-completed" class="orders-subtab-content" style="display:none">
         <div class="card" style="padding:14px 16px">
           <table>
-            <thead><tr><th>#</th><th>לקוח</th><th>כתובת</th><th>איש קשר</th><th>טלפון</th><th>כמות</th><th>נהג</th><th>סטטוס</th><th>שעה</th><th></th></tr></thead>
+            <thead><tr style="font-size:0.8em"><th style="padding:7px 8px">#</th><th style="padding:7px 8px">לקוח</th><th style="padding:7px 8px">כתובת</th><th style="padding:7px 8px">איש קשר</th><th style="padding:7px 8px">טלפון</th><th style="padding:7px 8px">כמות</th><th style="padding:7px 8px">נהג</th><th style="padding:7px 8px">סטטוס</th><th style="padding:7px 8px">שעת אספקה</th><th style="padding:7px 8px">פעולות</th></tr></thead>
             <tbody id="completed-orders-body"></tbody>
           </table>
         </div>
@@ -1194,20 +1194,22 @@ function renderCurrentSubtab() {
 
 function orderRowHtml(o, showStatus = true) {
   return `
-    <tr>
-      <td style="color:#94a3b8;font-size:0.85em">${o.id}</td>
-      <td><strong>${o.customer_name}</strong></td>
-      <td>${o.site_address}</td>
-      <td>${o.contact_name || '—'}</td>
-      <td>${o.contact_phone || '—'}</td>
-      <td><strong>${o.quantity}</strong> ל'</td>
-      <td>${o.driver_name ? `<span class="tag">${o.driver_name}</span>` : '<span style="color:#94a3b8">—</span>'}</td>
-      <td>${showStatus ? `<select class="status-select" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="badge badge-הושלם">הושלם</span>`}</td>
-      <td style="color:#94a3b8;font-size:0.85em">${o.created_at ? o.created_at.slice(11,16) : ''}</td>
-      <td style="white-space:nowrap;display:flex;gap:6px">
-        <button class="btn btn-sm" style="background:#f0fdf4;color:#166534" onclick='openEditOrder(${JSON.stringify(o).replace(/'/g,"&#39;")})'>✏️ ערוך</button>
-        <button class="btn btn-sm" style="background:#eef2ff;color:#4338ca" onclick='openRecurringModal(${JSON.stringify(o).replace(/'/g,"&#39;")})'>🔁 קבוע</button>
-        <button class="btn btn-danger" onclick="deleteOrder(${o.id})">מחק</button>
+    <tr style="font-size:0.82em">
+      <td style="color:#94a3b8;font-size:0.9em;padding:6px 8px">${o.id}</td>
+      <td style="padding:6px 8px;font-weight:700;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.customer_name}</td>
+      <td style="padding:6px 8px;color:#475569;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.site_address}</td>
+      <td style="padding:6px 8px;color:#374151">${o.contact_name || '<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="padding:6px 8px;color:#374151;direction:ltr">${o.contact_phone || '<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="padding:6px 8px;font-weight:700;color:#0f172a">${o.quantity} ל'</td>
+      <td style="padding:6px 8px">${o.driver_name ? `<span class="tag" style="font-size:0.88em">${o.driver_name}</span>` : '<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="padding:6px 8px">${showStatus ? `<select class="status-select" style="font-size:0.82em;padding:3px 6px" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="badge badge-הושלם">הושלם</span>`}</td>
+      <td style="padding:6px 8px;color:#64748b;font-size:0.9em;white-space:nowrap">${o.delivery_time || '<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="padding:4px 6px;white-space:nowrap">
+        <div style="display:flex;gap:4px">
+          <button style="font-size:0.75em;padding:3px 8px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:5px;cursor:pointer" onclick='openEditOrder(${JSON.stringify(o).replace(/'/g,"&#39;")})'>✏️ ערוך</button>
+          <button style="font-size:0.75em;padding:3px 8px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;border-radius:5px;cursor:pointer" onclick='openRecurringModal(${JSON.stringify(o).replace(/'/g,"&#39;")})'>🔁 קבוע</button>
+          <button style="font-size:0.75em;padding:3px 8px;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:5px;cursor:pointer" onclick="deleteOrder(${o.id})">מחק</button>
+        </div>
       </td>
     </tr>`;
 }
