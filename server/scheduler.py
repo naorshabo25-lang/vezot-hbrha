@@ -54,7 +54,7 @@ def send_admin_schedule():
                    d.personal_phone as driver_personal_phone
             FROM orders o LEFT JOIN drivers d ON o.driver_id = d.id
             WHERE o.order_date = ?
-            ORDER BY d.name, o.sort_order, o.delivery_time
+            ORDER BY d.name, o.sort_order, o.delivery_time, o.created_at
         """, (target_date,)).fetchall()
 
     orders = [dict(o) for o in orders]

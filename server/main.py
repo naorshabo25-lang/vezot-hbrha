@@ -793,7 +793,7 @@ def get_orders(date: str = Query(default=None)):
                 SELECT o.*, d.name as driver_name
                 FROM orders o LEFT JOIN drivers d ON o.driver_id = d.id
                 WHERE o.order_date = ?
-                ORDER BY o.created_at DESC
+                ORDER BY d.name, o.sort_order, o.delivery_time, o.created_at
             """, (date,)).fetchall()
         else:
             rows = conn.execute("""
@@ -826,12 +826,17 @@ async def add_order_manual(request: Request):
         from datetime import date as dt
         order_date = body.get("order_date") or dt.today().isoformat()
         extras = body.get("extras", "")
+        max_sort = conn.execute(
+            "SELECT COALESCE(MAX(sort_order), -1) FROM orders WHERE driver_id IS ? AND order_date = ?",
+            (driver_id, order_date)
+        ).fetchone()[0]
+        new_sort = max_sort + 1
         conn.execute(
             """INSERT INTO orders
-               (customer_id, customer_name, site_address, contact_name, contact_phone, quantity, driver_id, order_date, extras)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (customer_id, customer_name, site_address, contact_name, contact_phone, quantity, driver_id, order_date, extras, sort_order)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (customer_id, body["customer_name"], body["site_address"],
-             body["contact_name"], body["contact_phone"], body["quantity"], driver_id, order_date, extras),
+             body["contact_name"], body["contact_phone"], body["quantity"], driver_id, order_date, extras, new_sort),
         )
     return {"ok": True}
 
@@ -1464,6 +1469,7 @@ async def send_daily_schedule(request: Request):
             SELECT o.*, d.name as driver_name, d.phone as driver_phone
             FROM orders o LEFT JOIN drivers d ON o.driver_id = d.id
             WHERE o.order_date = ?
+            ORDER BY d.name, o.sort_order, o.delivery_time, o.created_at
         """, (target_date,)).fetchall()
         orders_by_id = {o["id"]: dict(o) for o in orders_raw}
 
