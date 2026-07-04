@@ -1659,7 +1659,22 @@ async function sendScheduleToAdmin() {
   const btn = event.target;
   btn.disabled = true; btn.textContent = 'שולח...';
   try {
-    const res  = await fetch('/api/send-daily-schedule', { method: 'POST' });
+    // שלוף את הסדר הנוכחי מהשרת (לפי sort_order ב-DB)
+    const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
+    const tomorrow  = tomorrowD.toISOString().slice(0, 10);
+    const tasksRes  = await fetch('/api/tasks/week');
+    const allDrivers = await tasksRes.json();
+    const orderedIds = [];
+    allDrivers.forEach(d => {
+      const orders = (d.orders_by_date[tomorrow] || []).filter(o => o.status !== 'הושלם');
+      if (orders.length) orderedIds.push(orders.map(o => o.id));
+    });
+
+    const res  = await fetch('/api/send-daily-schedule', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ ordered_ids: orderedIds })
+    });
     const data = await res.json();
     const result = document.getElementById('admin-schedule-result');
     if (data.ok) {

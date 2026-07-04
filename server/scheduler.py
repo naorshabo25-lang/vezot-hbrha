@@ -69,12 +69,11 @@ def send_admin_schedule():
         by_driver.setdefault(name, []).append(o)
 
     # שלח למנהל — רשימת טקסט ממוספרת (ללא כרטיסים)
-    admin_lines = [f"📋 *סידור יומי — {target_date}*\nסה\"כ: {len(orders)} הזמנות\n"]
+    admin_lines = [f"📋 *{target_date}* — {len(orders)} הזמנות\n"]
     for driver_name, driver_orders in by_driver.items():
-        admin_lines.append(f"🚛 *{driver_name}* ({len(driver_orders)} הזמנות):")
+        admin_lines.append(f"*{driver_name}:*")
         for i, o in enumerate(driver_orders, 1):
-            extras_str = f" | {o['extras']}" if o.get("extras") else ""
-            admin_lines.append(f"  {i}. {o['customer_name']} — {o['site_address']}{extras_str}")
+            admin_lines.append(f"{i}. {o['customer_name']}")
         admin_lines.append("")
     send_whatsapp_message(admin_phone, "\n".join(admin_lines))
 
