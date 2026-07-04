@@ -1659,25 +1659,20 @@ async function sendScheduleToAdmin() {
   const btn = event.target;
   btn.disabled = true; btn.textContent = 'שולח...';
   try {
+    // טען את המשימות (כולל סדר localStorage) אם עוד לא נטענו
+    if (!document.querySelector('.task-rows-container')) {
+      await loadTasks();
+    }
+
+    // קרא את הסדר מה-DOM בדיוק כמו כפתור המשימות
     const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
     const tomorrow  = tomorrowD.toISOString().slice(0, 10);
-    const tasksRes  = await fetch('/api/tasks/week');
-    const allDrivers = await tasksRes.json();
     const orderedIds = [];
-    allDrivers.forEach(d => {
-      let orders = (d.orders_by_date[tomorrow] || []).filter(o => o.status !== 'הושלם');
-      if (!orders.length) return;
-      // החל סדר localStorage (אותו סדר שרואים בטאב משימות)
-      const saved = getTaskOrder(tomorrow, d.name);
-      if (saved && saved.length) {
-        const byId = {};
-        orders.forEach(o => byId[o.id] = o);
-        const reordered = saved.map(id => byId[id]).filter(Boolean);
-        const savedSet = new Set(saved.map(Number));
-        orders.filter(o => !savedSet.has(o.id)).forEach(o => reordered.push(o));
-        orders = reordered;
-      }
-      orderedIds.push(orders.map(o => o.id));
+    document.querySelectorAll('.task-rows-container').forEach(container => {
+      if (container.dataset.dateKey !== tomorrow) return;
+      const ids = Array.from(container.querySelectorAll('.task-row'))
+                       .map(r => parseInt(r.dataset.orderId));
+      if (ids.length) orderedIds.push(ids);
     });
 
     const res  = await fetch('/api/send-daily-schedule', {
