@@ -8,7 +8,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { overflow-x: hidden; }
-    body { font-family: 'Heebo', Arial, sans-serif; background: #d8e0ec; color: #1a1a2e; display: flex; min-height: 100vh; max-width: 100vw; overflow-x: hidden; }
+    body { font-family: 'Heebo', Arial, sans-serif; font-size: 13px; background: #d8e0ec; color: #1a1a2e; display: flex; min-height: 100vh; max-width: 100vw; overflow-x: hidden; }
 
     /* ── Sidebar ── */
     .sidebar {
@@ -47,7 +47,7 @@
     .topbar-right { display: flex; align-items: center; gap: 16px; }
     .topbar-clock { font-size: 1.15em; font-weight: 700; color: #dc2626; font-variant-numeric: tabular-nums; }
     .topbar-date-str { font-size: 0.82em; color: #9ca3af; }
-    .container { padding: 24px 28px; flex: 1; }
+    .container { padding: 18px 22px; flex: 1; }
 
     /* ── Sections ── */
     .section { display: none; }
@@ -55,14 +55,14 @@
 
     /* ── Cards ── */
     .card {
-      background: white; border-radius: 16px; padding: 22px 24px;
-      margin-bottom: 20px;
+      background: white; border-radius: 14px; padding: 16px 20px;
+      margin-bottom: 16px;
       border: 1px solid #cdd5e0;
       box-shadow: 0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
     }
     .card h2 {
-      font-size: 0.95em; font-weight: 700; color: #374151;
-      margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #eef0f3;
+      font-size: 0.88em; font-weight: 700; color: #374151;
+      margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #eef0f3;
       display: flex; align-items: center; gap: 8px;
     }
     .card h2::before {
@@ -82,28 +82,28 @@
     .stat-card .label { font-size: 0.78em; color: #9ca3af; font-weight: 500; margin-top: 5px; }
 
     /* ── Tables ── */
-    table { width: 100%; border-collapse: collapse; font-size: 0.89em; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.84em; }
     th {
-      background: #fafafa; text-align: right; padding: 10px 14px;
-      font-weight: 600; color: #6b7280; font-size: 0.8em;
-      letter-spacing: 0.03em; border-bottom: 1px solid #f0f0f0;
+      background: #f8fafc; text-align: right; padding: 8px 10px;
+      font-weight: 600; color: #6b7280; font-size: 0.78em;
+      letter-spacing: 0.03em; border-bottom: 2px solid #e5e7eb;
     }
-    td { padding: 11px 14px; border-bottom: 1px solid #f9fafb; color: #4b5563; vertical-align: middle; }
+    td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; color: #4b5563; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     tbody tr:hover td { background: #fef9f9; }
     td strong { color: #1f2937; }
 
     /* ── Buttons ── */
     .btn {
-      padding: 6px 13px; border-radius: 7px; border: none;
-      cursor: pointer; font-size: 0.83em; font-weight: 600;
+      padding: 5px 12px; border-radius: 7px; border: none;
+      cursor: pointer; font-size: 0.8em; font-weight: 600;
       font-family: inherit; transition: all 0.18s;
     }
     .btn-primary { background: #dc2626; color: white; }
     .btn-primary:hover { background: #b91c1c; box-shadow: 0 3px 10px rgba(220,38,38,0.25); transform: translateY(-1px); }
-    .btn-danger { background: #fef2f2; color: #dc2626; font-size: 0.78em; padding: 4px 9px; border-radius: 5px; border: none; }
+    .btn-danger { background: #fef2f2; color: #dc2626; font-size: 0.76em; padding: 3px 8px; border-radius: 5px; border: none; }
     .btn-danger:hover { background: #fee2e2; }
-    .btn-sm { font-size: 0.78em; padding: 4px 10px; }
+    .btn-sm { font-size: 0.76em; padding: 3px 9px; }
     #settings .btn { font-size: 0.76em; padding: 4px 11px; border-radius: 6px; }
     #settings .form-row input, #settings .form-row select { padding: 7px 10px; font-size: 0.88em; }
     #settings .card h2 { font-size: 0.78em; }
