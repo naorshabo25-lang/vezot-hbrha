@@ -1499,7 +1499,7 @@ async def send_daily_schedule(request: Request):
     for driver_name, driver_orders in by_driver.items():
         admin_lines.append(f"*{driver_name}:*")
         for i, o in enumerate(driver_orders, 1):
-            admin_lines.append(f"{i}. {o['customer_name']}")
+            admin_lines.append(f"{i}. {o['customer_name']} — {o['site_address']}")
         admin_lines.append("")
     send_whatsapp_message(admin_phone, "\n".join(admin_lines))
 
