@@ -604,6 +604,11 @@
 
     <!-- ── משימות ── -->
     <div id="tasks" class="section">
+      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px;gap:10px">
+        <span id="tasks-send-result" style="font-size:0.88em;color:#15803d"></span>
+        <button class="btn btn-primary" style="background:#1e40af;font-size:0.9em;padding:8px 18px"
+          onclick="sendScheduleToAdminFromTasks(this)">📋 שלח סידור לוואטסאפ</button>
+      </div>
       <div id="tasks-container"></div>
       <div id="tasks-summary"></div>
     </div>
