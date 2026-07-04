@@ -68,11 +68,15 @@ def send_admin_schedule():
         name = o["driver_name"] or "ללא נהג"
         by_driver.setdefault(name, []).append(o)
 
-    send_whatsapp_message(admin_phone, f"📋 *סידור יומי — {target_date}*\nסה\"כ: {len(orders)} הזמנות")
+    # שלח למנהל — רשימת טקסט ממוספרת (ללא כרטיסים)
+    admin_lines = [f"📋 *סידור יומי — {target_date}*\nסה\"כ: {len(orders)} הזמנות\n"]
     for driver_name, driver_orders in by_driver.items():
-        send_whatsapp_message(admin_phone, f"🚛 *{driver_name}* — {len(driver_orders)} הזמנות")
+        admin_lines.append(f"🚛 *{driver_name}* ({len(driver_orders)} הזמנות):")
         for i, o in enumerate(driver_orders, 1):
-            send_order_card(admin_phone, o, i, len(driver_orders))
+            extras_str = f" | {o['extras']}" if o.get("extras") else ""
+            admin_lines.append(f"  {i}. {o['customer_name']} — {o['site_address']}{extras_str}")
+        admin_lines.append("")
+    send_whatsapp_message(admin_phone, "\n".join(admin_lines))
 
     for driver_name, driver_orders in by_driver.items():
         raw_phone = (driver_orders[0].get("driver_phone") or "").strip().replace(" ", "").replace("-", "")
