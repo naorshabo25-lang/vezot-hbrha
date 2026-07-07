@@ -2461,14 +2461,23 @@ async function sendScheduleToAdminFromTasks(btn) {
     const data = await res.json();
     const result = document.getElementById('tasks-send-result');
     if (data.ok) {
-      result.textContent = data.orders_sent > 0
-        ? `✓ נשלח! ${data.orders_sent} הזמנות נשלחו לוואטסאפ`
-        : '✓ נשלח — אין הזמנות למחר';
-      result.style.color = '#15803d';
+      const drivers = data.drivers || [];
+      const okDrivers  = drivers.filter(d => d.ok);
+      const failDrivers = drivers.filter(d => !d.ok);
+      let html = data.orders_sent > 0
+        ? `✅ נשלח! ${data.orders_sent} הזמנות`
+        : '✅ נשלח — אין הזמנות למחר';
+      if (drivers.length) {
+        html += '<br><span style="font-size:0.85em">';
+        okDrivers.forEach(d  => { html += `✓ ${d.name} (${d.orders} הזמנות) `; });
+        failDrivers.forEach(d => { html += `<span style="color:#b91c1c">✗ ${d.name} — ${d.reason || 'שגיאה'}</span> `; });
+        html += '</span>';
+      }
+      result.innerHTML = html;
+      result.style.color = failDrivers.length ? '#b45309' : '#15803d';
     } else {
       result.textContent = `❌ ${data.error || 'ודא שהוגדר טלפון מנהל בהגדרות'}`;
       result.style.color = '#b91c1c';
-      console.error('[Schedule] שגיאה:', data);
     }
   } catch(e) {
     const result = document.getElementById('tasks-send-result');

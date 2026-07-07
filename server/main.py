@@ -1802,17 +1802,48 @@ async def send_daily_schedule(request: Request):
                 "error": f"וואטסאפ נכשל בשליחה למנהל ({admin_phone}) — בדוק WHATSAPP_ACCESS_TOKEN ומספר הטלפון בהגדרות"}
 
     # שלח לכל נהג את ההזמנות שלו
+    driver_results = []
+    with get_db() as conn:
+        drivers_map = {d["id"]: dict(d) for d in conn.execute("SELECT * FROM drivers").fetchall()}
+
     for driver_name, driver_orders in by_driver.items():
-        raw_phone = (driver_orders[0].get("driver_phone") or "").strip().replace(" ", "").replace("-", "")
-        if not raw_phone:
+        first = driver_orders[0]
+        raw_phone = (first.get("driver_phone") or "").strip().replace(" ", "").replace("-", "")
+        raw_personal = (first.get("driver_personal_phone") or "").strip().replace(" ", "").replace("-", "")
+        if not raw_phone and not raw_personal:
+            driver_results.append({"name": driver_name, "ok": False, "reason": "אין טלפון"})
             continue
         if raw_phone.startswith("0"):
             raw_phone = "972" + raw_phone[1:]
-        send_whatsapp_message(raw_phone, f"📋 *סידור יומי — {target_date}*\nיש לך {len(driver_orders)} הזמנות:")
-        for i, o in enumerate(driver_orders, 1):
-            send_order_card(raw_phone, o, i, len(driver_orders))
+        if raw_personal.startswith("0"):
+            raw_personal = "972" + raw_personal[1:]
 
-    return {"ok": True, "orders_sent": len(orders)}
+        header = f"📋 *סידור יומי — {target_date}*\nיש לך {len(driver_orders)} הזמנות:"
+        ok = True
+        if raw_personal:
+            # לקבוצה — טקסט בלבד; למספר האישי — כרטיסי ביצוע
+            send_whatsapp_message(raw_phone, header)
+            for o in driver_orders:
+                t = (f"📦 הזמנה #{o['id']}\n👥 {o['customer_name']}\n📍 {o['site_address']}"
+                     f"\n⛽ {o['quantity']} ליטר\n🕐 {o.get('delivery_time') or '—'}")
+                send_whatsapp_message(raw_phone, t)
+            ok_h = send_whatsapp_message(raw_personal, header)
+            for i, o in enumerate(driver_orders, 1):
+                send_order_card(raw_personal, o, i, len(driver_orders))
+            ok = ok_h
+        else:
+            ok_h = send_whatsapp_message(raw_phone, header)
+            for i, o in enumerate(driver_orders, 1):
+                send_order_card(raw_phone, o, i, len(driver_orders))
+            ok = ok_h
+
+        phone_display = raw_personal or raw_phone
+        driver_results.append({"name": driver_name, "ok": ok, "orders": len(driver_orders),
+                                "phone": phone_display,
+                                "reason": None if ok else "שגיאת וואטסאפ"})
+        print(f"[Schedule] {driver_name} ({phone_display}): {'✓' if ok else '✗'}")
+
+    return {"ok": True, "orders_sent": len(orders), "drivers": driver_results}
 
 
 # ── WorkPlan persistence + bidirectional sync ────────────────────────────────
