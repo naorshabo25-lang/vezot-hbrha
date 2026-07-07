@@ -1707,8 +1707,9 @@ async def send_daily_schedule(request: Request):
         orders_by_id = {o["id"]: dict(o) for o in orders_raw}
 
     if not orders_by_id:
-        send_whatsapp_message(admin_phone, f"📋 סידור יומי — {target_date}\n\nאין הזמנות להיום.")
-        return {"ok": True, "orders_sent": 0}
+        wa_ok = send_whatsapp_message(admin_phone, f"📋 סידור יומי — {target_date}\n\nאין הזמנות למחר.")
+        return {"ok": wa_ok, "orders_sent": 0,
+                "error": None if wa_ok else f"וואטסאפ נכשל — בדוק token ומספר מנהל ({admin_phone})"}
 
     # אם הלקוח שלח סדר מפורש — השתמש בו; אחרת — sort_order מה-DB
     if ordered_ids:
@@ -1734,7 +1735,12 @@ async def send_daily_schedule(request: Request):
         for i, o in enumerate(driver_orders, 1):
             admin_lines.append(f"{i}. {o['customer_name']} — {o['site_address']}")
         admin_lines.append("")
-    send_whatsapp_message(admin_phone, "\n".join(admin_lines))
+    admin_ok = send_whatsapp_message(admin_phone, "\n".join(admin_lines))
+    print(f"[Schedule] שליחה למנהל ({admin_phone}): {'✓' if admin_ok else '✗ נכשל'}")
+
+    if not admin_ok:
+        return {"ok": False, "orders_sent": 0,
+                "error": f"וואטסאפ נכשל בשליחה למנהל ({admin_phone}) — בדוק WHATSAPP_ACCESS_TOKEN ומספר הטלפון בהגדרות"}
 
     # שלח לכל נהג את ההזמנות שלו
     for driver_name, driver_orders in by_driver.items():

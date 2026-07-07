@@ -1190,28 +1190,6 @@ function showOrdersSubtab(tab, btn) {
   renderCurrentSubtab();
 }
 
-async function sendScheduleToAdmin() {
-  if (!confirm('לשלוח את הסידור היומי אליך בוואטסאפ לבדיקה?')) return;
-  const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = 'שולח...';
-  try {
-    const res  = await fetch('/api/send-daily-schedule', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ send_to_admin: true })
-    });
-    const data = await res.json();
-    if (data.ok) alert(`הסידור נשלח! ${data.orders_sent} הזמנות נשלחו אליך.`);
-    else alert('שגיאה בשליחה — ודא שהוגדר טלפון מנהל בהגדרות');
-  } catch(e) {
-    alert('שגיאה: השרת לא זמין');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '📋 שלח סידור לבדיקת מנהל';
-  }
-}
-
 async function loadOrders() {
   const url = selectedDate ? `/api/orders?date=${selectedDate}` : '/api/orders';
   const res = await fetch(url);
@@ -1828,14 +1806,19 @@ async function sendScheduleToAdmin() {
     const data = await res.json();
     const result = document.getElementById('admin-schedule-result');
     if (data.ok) {
-      result.textContent = `✓ נשלח! ${data.orders_sent} הזמנות נשלחו לוואטסאפ שלך`;
+      result.textContent = data.orders_sent > 0
+        ? `✓ נשלח! ${data.orders_sent} הזמנות נשלחו לוואטסאפ`
+        : '✓ נשלח — אין הזמנות למחר';
       result.style.color = '#15803d';
     } else {
-      result.textContent = `שגיאה: ${data.error || 'ודא שהוגדר טלפון מנהל'}`;
+      result.textContent = `❌ ${data.error || 'ודא שהוגדר טלפון מנהל'}`;
       result.style.color = '#b91c1c';
+      console.error('[Schedule] שגיאה:', data);
     }
   } catch(e) {
-    alert('שגיאה: השרת לא זמין');
+    const result = document.getElementById('admin-schedule-result');
+    result.textContent = `❌ שגיאת רשת: ${e.message}`;
+    result.style.color = '#b91c1c';
   } finally {
     btn.disabled = false; btn.textContent = '📋 שלח עכשיו';
   }
@@ -2461,16 +2444,21 @@ async function sendScheduleToAdminFromTasks(btn) {
     const data = await res.json();
     const result = document.getElementById('tasks-send-result');
     if (data.ok) {
-      result.textContent = `✓ נשלח! ${data.orders_sent} הזמנות נשלחו לוואטסאפ שלך`;
+      result.textContent = data.orders_sent > 0
+        ? `✓ נשלח! ${data.orders_sent} הזמנות נשלחו לוואטסאפ`
+        : '✓ נשלח — אין הזמנות למחר';
       result.style.color = '#15803d';
     } else {
-      result.textContent = `שגיאה: ${data.error || 'ודא שהוגדר טלפון מנהל בהגדרות'}`;
+      result.textContent = `❌ ${data.error || 'ודא שהוגדר טלפון מנהל בהגדרות'}`;
       result.style.color = '#b91c1c';
+      console.error('[Schedule] שגיאה:', data);
     }
   } catch(e) {
-    alert('שגיאה: השרת לא זמין');
+    const result = document.getElementById('tasks-send-result');
+    result.textContent = `❌ שגיאת רשת: ${e.message}`;
+    result.style.color = '#b91c1c';
   } finally {
-    btn.disabled = false; btn.textContent = '📋 שלח סידור לבדיקת מנהל';
+    btn.disabled = false; btn.textContent = '📋 שלח סידור לוואטסאפ';
   }
 }
 
