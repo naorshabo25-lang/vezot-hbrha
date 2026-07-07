@@ -574,7 +574,9 @@
               <input id="email-subject" placeholder="נושא המייל" style="flex:2" />
             </div>
             <textarea id="email-content" placeholder="תוכן המייל... (השתמש ב-{name} לשם הלקוח)" style="margin-bottom:10px;min-height:80px"></textarea>
-            <div style="display:flex;align-items:center;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <input id="email-test-addr" type="email" placeholder="מייל בדיקה (לך בלבד)" style="max-width:220px;padding:5px 9px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:0.84em;font-family:inherit" />
+              <button class="btn btn-sm" style="background:#f1f5f9;color:#374151" onclick="sendTestEmail()">📤 שלח בדיקה</button>
               <button class="btn btn-primary btn-sm" onclick="sendEmails()">שלח לכולם</button>
               <span id="email-count" style="font-size:0.82em;color:#94a3b8"></span>
             </div>
@@ -582,6 +584,8 @@
           </div>
         </div>
       </details>
+
+      <div id="email-campaigns-panel" class="card" style="padding:14px 16px;margin-bottom:10px"></div>
 
       <div class="card" style="padding:14px 16px">
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
@@ -667,6 +671,22 @@
           <input id="s-admin-phone" placeholder="05XXXXXXXX או 972XXXXXXXXX" style="max-width:260px" />
           <button class="btn btn-primary btn-sm" onclick="saveAdminPhone()">שמור מספר</button>
           <span id="admin-phone-result" style="font-size:0.88em;color:#15803d"></span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>הגדרות Gmail לשליחת מיילים</h2>
+        <p style="font-size:0.87em;color:#64748b;margin-bottom:12px">כתובת Gmail ממנה יישלחו הקמפיינים. הסיסמה חייבת להיות <strong>סיסמת אפליקציה</strong> (לא סיסמה רגילה) — <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:#b71c1c">צור כאן</a>.</p>
+        <div class="form-row" style="flex-direction:column;gap:8px;align-items:stretch">
+          <div class="form-row">
+            <input id="s-gmail-user" type="email" placeholder="your@gmail.com" style="flex:2" />
+            <input id="s-gmail-pass" type="password" placeholder="סיסמת אפליקציה (16 תווים)" style="flex:2" />
+            <button class="btn btn-primary btn-sm" onclick="saveGmail()">שמור</button>
+            <span id="gmail-result" style="font-size:0.88em;color:#15803d"></span>
+          </div>
+          <div class="form-row">
+            <input id="s-app-url" placeholder="כתובת השרת למעקב פתיחות, לדוג׳: https://yourdomain.com" style="flex:3;font-size:0.84em" />
+            <button class="btn btn-primary btn-sm" onclick="saveGmail()">שמור כתובת</button>
+          </div>
         </div>
       </div>
       <div class="card">
@@ -1624,6 +1644,25 @@ async function loadSettings() {
       `שליחה אוטומטית מוגדרת לשעה ${String(h).padStart(2,'0')}:${String(m||0).padStart(2,'0')}`;
     document.getElementById('admin-schedule-result').style.color = '#15803d';
   }
+  document.getElementById('s-gmail-user').value = s.gmail_user || '';
+  document.getElementById('s-gmail-pass').value = s.gmail_app_password ? '••••••••••••••••' : '';
+  document.getElementById('s-app-url').value    = s.app_url || '';
+}
+
+async function saveGmail() {
+  const user = document.getElementById('s-gmail-user').value.trim();
+  const pass = document.getElementById('s-gmail-pass').value.trim();
+  const url  = document.getElementById('s-app-url').value.trim();
+  const payload = {};
+  if (user) payload.gmail_user = user;
+  if (pass && pass !== '••••••••••••••••') payload.gmail_app_password = pass;
+  if (url !== undefined) payload.app_url = url;
+  await fetch('/api/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const el = document.getElementById('gmail-result');
+  el.textContent = '✓ נשמר'; setTimeout(() => el.textContent = '', 3000);
 }
 
 async function saveBizInfoUrl() {
@@ -1788,6 +1827,7 @@ let _emailFilterText = '';
 let _emailFilterArea = '';
 
 async function loadEmailSection() {
+  loadEmailCampaigns();
   const [res1, res2] = await Promise.all([fetch('/api/customers'), fetch('/api/potential-customers')]);
   const [regular, potential] = await Promise.all([res1.json(), res2.json()]);
   const list = [...regular, ...potential];
@@ -1887,6 +1927,23 @@ async function importExcel() {
   }
 }
 
+async function sendTestEmail() {
+  const subject = document.getElementById('email-subject').value.trim();
+  const content = document.getElementById('email-content').value.trim();
+  const testAddr = document.getElementById('email-test-addr').value.trim();
+  if (!subject || !content) return alert('יש למלא נושא ותוכן לפני שליחת בדיקה');
+  if (!testAddr) return alert('יש להזין כתובת מייל לבדיקה');
+  const result = document.getElementById('email-result');
+  result.style.color = '#94a3b8'; result.textContent = 'שולח מייל בדיקה...';
+  const res = await fetch('/api/send-email', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subject, content, recipients: [], test_email: testAddr })
+  });
+  const data = await res.json();
+  result.style.color = data.ok ? '#15803d' : '#b71c1c';
+  result.textContent = data.ok ? `✓ מייל בדיקה נשלח ל-${testAddr}` : `שגיאה: ${data.detail || 'בדוק הגדרות Gmail'}`;
+}
+
 async function sendEmails() {
   const subject = document.getElementById('email-subject').value.trim();
   const content = document.getElementById('email-content').value.trim();
@@ -1897,13 +1954,46 @@ async function sendEmails() {
   result.style.color = '#94a3b8'; result.textContent = 'שולח...';
   const res = await fetch('/api/send-email', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subject, content, recipients: _emailCustomers.map(c => ({ email: c.email, name: c.name })) })
+    body: JSON.stringify({ subject, content, recipients: _emailCustomers.map(c => ({ email: c.email, name: c.name, customer_id: c.id })) })
   });
   const data = await res.json();
   result.style.color = data.ok ? '#15803d' : '#b71c1c';
   result.textContent = data.ok
-    ? `נשלח ל-${data.sent} לקוחות${data.failed ? ` | נכשל: ${data.failed}` : ''}`
-    : `שגיאה: ${data.detail || 'בדוק פרטי Gmail ב-.env'}`;
+    ? `✓ נשלח ל-${data.sent} לקוחות${data.failed ? ` | נכשל: ${data.failed}` : ''}`
+    : `שגיאה: ${data.detail || 'בדוק הגדרות Gmail בלשונית הגדרות'}`;
+  if (data.ok) loadEmailCampaigns();
+}
+
+async function loadEmailCampaigns() {
+  const panel = document.getElementById('email-campaigns-panel');
+  if (!panel) return;
+  const res = await fetch('/api/email-campaigns');
+  const campaigns = await res.json();
+  if (!campaigns.length) { panel.innerHTML = ''; return; }
+  const rows = campaigns.map(c => {
+    const openPct = c.total_sent ? Math.round(c.total_opened / c.total_sent * 100) : 0;
+    const detail = c.recipients.map(r =>
+      `<div style="display:flex;gap:10px;font-size:0.8em;padding:3px 0;border-bottom:1px solid #f1f5f9">
+        <span style="flex:2">${r.name}</span>
+        <span style="flex:2;color:#64748b">${r.email}</span>
+        <span style="color:${r.status==='opened'?'#15803d':r.status==='failed'?'#dc2626':'#94a3b8'}">
+          ${r.status==='opened'?'✓ נפתח':r.status==='failed'?'✗ נכשל':'נשלח'}
+          ${r.opened_at ? ' · ' + r.opened_at.slice(0,16) : ''}
+        </span>
+      </div>`
+    ).join('');
+    return `<details style="margin-bottom:8px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+      <summary style="padding:10px 14px;cursor:pointer;background:#f8fafc;font-size:0.85em;display:flex;gap:12px;align-items:center;list-style:none">
+        <span style="font-weight:700;flex:3">${c.subject}</span>
+        <span style="color:#64748b">${c.sent_at.slice(0,16)}</span>
+        <span style="color:#1e40af">✉ ${c.total_sent}</span>
+        <span style="color:#15803d">👁 ${c.total_opened} (${openPct}%)</span>
+        ${c.total_failed ? `<span style="color:#dc2626">✗ ${c.total_failed}</span>` : ''}
+      </summary>
+      <div style="padding:10px 14px;max-height:300px;overflow-y:auto">${detail}</div>
+    </details>`;
+  }).join('');
+  panel.innerHTML = `<h2 style="margin-bottom:12px">היסטוריית קמפיינים</h2>${rows}`;
 }
 
 // ── Potential Customers ──────────────────────────────────

@@ -1390,40 +1390,120 @@ async def send_mass_email(request: Request):
     subject    = body.get("subject", "")
     content    = body.get("content", "")
     recipients = body.get("recipients", [])
+    test_only  = body.get("test_email", "")  # אם מוגדר — שלח רק אליו
 
-    GMAIL_USER = os.getenv("GMAIL_USER", "")
-    GMAIL_PASS = os.getenv("GMAIL_APP_PASSWORD", "")
+    with get_db() as conn:
+        s = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
+
+    GMAIL_USER = s.get("gmail_user", "") or os.getenv("GMAIL_USER", "")
+    GMAIL_PASS = s.get("gmail_app_password", "") or os.getenv("GMAIL_APP_PASSWORD", "")
+    APP_URL    = (s.get("app_url", "") or "").rstrip("/")
 
     if not GMAIL_USER or not GMAIL_PASS:
-        raise HTTPException(status_code=500, detail="חסרים פרטי Gmail ב-.env")
+        raise HTTPException(status_code=500, detail="חסרים פרטי Gmail — הגדר בלשונית הגדרות")
+
+    if test_only:
+        recipients = [{"email": test_only, "name": "בדיקה", "customer_id": None}]
 
     if not recipients:
         raise HTTPException(status_code=400, detail="אין לקוחות עם כתובת מייל")
 
+    # צור רשומת קמפיין
+    with get_db() as conn:
+        cur = conn.execute(
+            "INSERT INTO email_campaigns (subject, content) VALUES (?, ?)",
+            (subject, content)
+        )
+        campaign_id = cur.lastrowid
+        for r in recipients:
+            conn.execute(
+                "INSERT INTO email_campaign_recipients (campaign_id, customer_id, name, email) VALUES (?,?,?,?)",
+                (campaign_id, r.get("customer_id"), r.get("name", ""), r["email"])
+            )
+
+    # שלוף את מזהי הנמענים
+    with get_db() as conn:
+        rec_rows = conn.execute(
+            "SELECT id, email, name FROM email_campaign_recipients WHERE campaign_id=?",
+            (campaign_id,)
+        ).fetchall()
+
     sent, failed = 0, 0
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(GMAIL_USER, GMAIL_PASS)
+        smtp = smtplib.SMTP("smtp.gmail.com", 587)
+        smtp.starttls()
+        smtp.login(GMAIL_USER, GMAIL_PASS)
 
-        for r in recipients:
+        for rec in rec_rows:
             try:
                 msg = MIMEMultipart("alternative")
                 msg["Subject"] = subject
                 msg["From"]    = GMAIL_USER
-                msg["To"]      = r["email"]
-                personal = content.replace("{name}", r.get("name", ""))
+                msg["To"]      = rec["email"]
+                personal = content.replace("{name}", rec["name"])
+
+                # HTML עם pixel מעקב
+                pixel = ""
+                if APP_URL and not test_only:
+                    pixel = f'<img src="{APP_URL}/api/email-track/{campaign_id}/{rec["id"]}" width="1" height="1" style="display:none">'
+                html_body = personal.replace("\n", "<br>") + pixel
                 msg.attach(MIMEText(personal, "plain", "utf-8"))
-                server.sendmail(GMAIL_USER, r["email"], msg.as_string())
+                msg.attach(MIMEText(f"<html><body>{html_body}</body></html>", "html", "utf-8"))
+
+                smtp.sendmail(GMAIL_USER, rec["email"], msg.as_string())
                 sent += 1
             except Exception:
+                with get_db() as conn:
+                    conn.execute(
+                        "UPDATE email_campaign_recipients SET status='failed' WHERE id=?",
+                        (rec["id"],)
+                    )
                 failed += 1
 
-        server.quit()
+        smtp.quit()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"שגיאת Gmail: {e}")
 
-    return {"ok": True, "sent": sent, "failed": failed}
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE email_campaigns SET total_sent=?, total_failed=? WHERE id=?",
+            (sent, failed, campaign_id)
+        )
+
+    return {"ok": True, "sent": sent, "failed": failed, "campaign_id": campaign_id}
+
+
+@app.get("/api/email-track/{campaign_id}/{recipient_id}")
+def track_email_open(campaign_id: int, recipient_id: int):
+    from fastapi.responses import Response
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE email_campaign_recipients SET status='opened', opened_at=datetime('now','localtime') WHERE id=? AND status='sent'",
+            (recipient_id,)
+        )
+        conn.execute(
+            "UPDATE email_campaigns SET total_opened = total_opened + 1 WHERE id=? AND EXISTS (SELECT 1 FROM email_campaign_recipients WHERE id=? AND status='opened' AND opened_at IS NOT NULL)",
+            (campaign_id, recipient_id)
+        )
+    # 1x1 שקוף GIF
+    gif = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+    return Response(content=gif, media_type="image/gif")
+
+
+@app.get("/api/email-campaigns")
+def get_email_campaigns():
+    with get_db() as conn:
+        campaigns = conn.execute(
+            "SELECT * FROM email_campaigns ORDER BY sent_at DESC LIMIT 20"
+        ).fetchall()
+        result = []
+        for c in campaigns:
+            recs = conn.execute(
+                "SELECT name, email, status, opened_at FROM email_campaign_recipients WHERE campaign_id=?",
+                (c["id"],)
+            ).fetchall()
+            result.append({**dict(c), "recipients": [dict(r) for r in recs]})
+    return result
 
 
 @app.post("/api/test-message")

@@ -61,6 +61,9 @@ def init_db():
             INSERT OR IGNORE INTO settings (key, value) VALUES ('message_template',
                 '{greeting} {name}, האם תצטרך הזמנת דלק סולר למחר?');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('message_days', '0,1,2,3,4');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('gmail_user', '');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('gmail_app_password', '');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('app_url', '');
         """)
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS potential_customers (
@@ -178,5 +181,26 @@ def init_db():
                 company_name TEXT DEFAULT '',
                 status       TEXT DEFAULT 'pending',
                 created_at   TEXT DEFAULT (datetime('now', 'localtime'))
+            );
+
+            CREATE TABLE IF NOT EXISTS email_campaigns (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                subject      TEXT NOT NULL,
+                content      TEXT NOT NULL,
+                total_sent   INTEGER DEFAULT 0,
+                total_failed INTEGER DEFAULT 0,
+                total_opened INTEGER DEFAULT 0,
+                sent_at      TEXT DEFAULT (datetime('now', 'localtime'))
+            );
+
+            CREATE TABLE IF NOT EXISTS email_campaign_recipients (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                campaign_id INTEGER NOT NULL,
+                customer_id INTEGER,
+                name        TEXT NOT NULL,
+                email       TEXT NOT NULL,
+                status      TEXT DEFAULT 'sent',
+                opened_at   TEXT DEFAULT NULL,
+                FOREIGN KEY (campaign_id) REFERENCES email_campaigns(id)
             );
         """)
