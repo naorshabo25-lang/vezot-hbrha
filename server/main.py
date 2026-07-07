@@ -1438,8 +1438,7 @@ async def send_campaign(request: Request, background_tasks=None):
 
     def _send_all():
         try:
-            smtp = smtplib.SMTP("smtp.gmail.com", 587, timeout=30)
-            smtp.starttls()
+            smtp = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30)
             smtp.login(GMAIL_USER, GMAIL_PASS)
             for rec in rec_rows:
                 try:
@@ -1526,8 +1525,7 @@ async def send_mass_email(request: Request):
 
     sent, failed = 0, 0
     try:
-        smtp = smtplib.SMTP("smtp.gmail.com", 587)
-        smtp.starttls()
+        smtp = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30)
         smtp.login(GMAIL_USER, GMAIL_PASS)
 
         for rec in rec_rows:
