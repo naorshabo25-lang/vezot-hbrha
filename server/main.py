@@ -320,8 +320,39 @@ async def receive_message(request: Request):
     except (KeyError, IndexError):
         return JSONResponse({"status": "ok"})
 
-    # מצא לקוח (תומך 0XXXXXXXX ו-972XXXXXXXX, phone/phone2/contact_phone/order_contact_phone/customer_contacts)
+    # ── זהה נהג ──────────────────────────────────────────────────────────────
     phone_alt = ("0" + phone[3:]) if phone.startswith("972") else ("972" + phone[1:])
+    with get_db() as conn:
+        driver_row = conn.execute(
+            "SELECT * FROM drivers WHERE phone=? OR phone=? OR personal_phone=? OR personal_phone=?",
+            (phone, phone_alt, phone, phone_alt)
+        ).fetchone()
+
+    if driver_row:
+        drv = dict(driver_row)
+        # נהג ביקש את הסידור שלו
+        if msg_type == "text" and text.strip() in ("סידור", "שלח סידור", "schedule"):
+            from datetime import date as _d2, timedelta as _td2
+            from whatsapp import send_order_card as _soc2
+            _target2 = (_d2.today() + _td2(days=1)).isoformat()
+            with get_db() as conn:
+                _drv_orders = conn.execute("""
+                    SELECT o.* FROM orders o
+                    WHERE o.driver_id=? AND o.order_date=?
+                    ORDER BY o.sort_order, o.delivery_time, o.created_at
+                """, (drv["id"], _target2)).fetchall()
+            _drv_orders = [dict(o) for o in _drv_orders]
+            if not _drv_orders:
+                send_whatsapp_message(phone, f"📋 {_target2}\nאין לך הזמנות למחר.")
+            else:
+                send_whatsapp_message(phone, f"📋 *סידור יומי — {_target2}*\nיש לך {len(_drv_orders)} הזמנות:")
+                for _i2, _o2 in enumerate(_drv_orders, 1):
+                    _soc2(phone, _o2, _i2, len(_drv_orders))
+        # נהג לחץ כפתור ביצוע — כבר טופל למעלה, כאן לא נגיע
+        # כל שאר ההודעות מנהג — מתעלמים (לא מוסיפים לממתינים)
+        return JSONResponse({"status": "ok"})
+
+    # מצא לקוח (תומך 0XXXXXXXX ו-972XXXXXXXX, phone/phone2/contact_phone/order_contact_phone/customer_contacts)
     with get_db() as conn:
         customer = conn.execute("""
             SELECT * FROM customers WHERE active=1 AND (
