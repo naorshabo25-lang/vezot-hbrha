@@ -697,6 +697,7 @@
           <input id="s-admin-schedule-minute" type="number" min="0" max="59" placeholder="דקות" style="max-width:100px" />
           <button class="btn btn-primary btn-sm" onclick="saveAdminScheduleTime()">שמור שעה אוטומטית</button>
           <button class="btn btn-primary btn-sm" style="background:#1e40af" onclick="sendScheduleToAdmin()">📋 שלח עכשיו</button>
+          <button class="btn btn-sm" style="background:#f1f5f9;color:#374151;border:1px solid #e2e8f0" onclick="debugSchedule()">🔍 בדוק מה יישלח</button>
         </div>
         <div id="admin-schedule-result" style="margin-top:10px;font-size:0.88em"></div>
       </div>
@@ -1763,6 +1764,22 @@ async function saveAdminPhone() {
     body: JSON.stringify({ admin_phone: phone })
   });
   document.getElementById('admin-phone-result').textContent = '✓ נשמר';
+}
+
+async function debugSchedule() {
+  const result = document.getElementById('admin-schedule-result');
+  result.textContent = 'בודק...'; result.style.color = '#64748b';
+  const d = await fetch('/api/debug-schedule').then(r => r.json());
+  const lines = [
+    `📱 מספר שמור: ${d.admin_phone_stored || '(לא הוגדר)'}`,
+    `📱 מספר שיישלח: ${d.admin_phone_formatted || '(ריק)'}`,
+    `📅 תאריך: ${d.target_date}`,
+    `📦 הזמנות למחר: ${d.orders_count}`,
+  ];
+  if (!d.phone_ok) lines.push('⚠️ מספר מנהל לא הוגדר — הגדר בשדה "טלפון מנהל" למעלה');
+  if (d.orders_count === 0) lines.push('⚠️ אין הזמנות למחר — הסידור יהיה ריק');
+  result.innerHTML = lines.join('<br>');
+  result.style.color = (!d.phone_ok || d.orders_count === 0) ? '#b45309' : '#1d4ed8';
 }
 
 async function saveAdminScheduleTime() {

@@ -1676,6 +1676,27 @@ async def send_test_message(request: Request):
     return {"ok": success, "message": text}
 
 
+@app.get("/api/debug-schedule")
+def debug_schedule():
+    """מידע אבחון: מספר מנהל + כמות הזמנות למחר (ללא שליחה)."""
+    from datetime import date as dt, timedelta
+    target_date = (dt.today() + timedelta(days=1)).isoformat()
+    with get_db() as conn:
+        settings    = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
+        admin_phone_raw = settings.get("admin_phone", "")
+        count = conn.execute("SELECT COUNT(*) FROM orders WHERE order_date=?", (target_date,)).fetchone()[0]
+    phone = admin_phone_raw.strip().replace(" ", "").replace("-", "")
+    if phone.startswith("0"):
+        phone = "972" + phone[1:]
+    return {
+        "admin_phone_stored": admin_phone_raw,
+        "admin_phone_formatted": phone,
+        "target_date": target_date,
+        "orders_count": count,
+        "phone_ok": bool(phone),
+    }
+
+
 @app.post("/api/send-daily-schedule")
 async def send_daily_schedule(request: Request):
     from datetime import date as dt, timedelta
