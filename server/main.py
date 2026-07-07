@@ -282,12 +282,24 @@ async def receive_message(request: Request):
     except (KeyError, IndexError):
         return JSONResponse({"status": "ok"})
 
-    # מצא לקוח (תומך 0XXXXXXXX ו-972XXXXXXXX, וגם phone2)
+    # מצא לקוח (תומך 0XXXXXXXX ו-972XXXXXXXX, phone/phone2/contact_phone/order_contact_phone/customer_contacts)
     phone_alt = ("0" + phone[3:]) if phone.startswith("972") else ("972" + phone[1:])
     with get_db() as conn:
-        customer = conn.execute(
-            "SELECT * FROM customers WHERE (phone=? OR phone=? OR phone2=? OR phone2=?) AND active=1",
-            (phone, phone_alt, phone, phone_alt)
+        customer = conn.execute("""
+            SELECT * FROM customers WHERE active=1 AND (
+                phone=? OR phone=? OR phone2=? OR phone2=?
+                OR contact_phone=? OR contact_phone=?
+                OR order_contact_phone=? OR order_contact_phone=?
+            )
+            UNION
+            SELECT c.* FROM customers c
+            JOIN customer_contacts cc ON cc.customer_id=c.id
+            WHERE cc.active=1 AND c.active=1
+              AND (cc.phone=? OR cc.phone=?)
+            LIMIT 1
+        """, (phone, phone_alt, phone, phone_alt,
+              phone, phone_alt, phone, phone_alt,
+              phone, phone_alt)
         ).fetchone()
         state = conn.execute(
             "SELECT * FROM conversation_state WHERE phone=?", (phone,)
@@ -1598,6 +1610,53 @@ def get_email_campaigns():
             ).fetchall()
             result.append({**dict(c), "recipients": [dict(r) for r in recs]})
     return result
+
+
+@app.get("/api/customers/{cid}/contacts")
+def get_customer_contacts(cid: int):
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM customer_contacts WHERE customer_id=? AND active=1 ORDER BY created_at",
+            (cid,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/customers/{cid}/contacts")
+async def add_customer_contact(cid: int, request: Request):
+    body = await request.json()
+    name  = body.get("name", "").strip()
+    phone = body.get("phone", "").strip().replace("-", "").replace(" ", "")
+    send_invite = body.get("send_invite", False)
+    if not name or not phone:
+        raise HTTPException(status_code=400, detail="שם וטלפון חובה")
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (cid,)).fetchone()
+        if not customer:
+            raise HTTPException(status_code=404, detail="לקוח לא נמצא")
+        conn.execute(
+            "INSERT INTO customer_contacts (customer_id, name, phone) VALUES (?,?,?)",
+            (cid, name, phone)
+        )
+    if send_invite:
+        wa_phone = ("972" + phone[1:]) if phone.startswith("0") else phone
+        send_whatsapp_message(
+            wa_phone,
+            f"שלום {name}! 👋\n"
+            f"כעת אתה מורשה להזמין דלק עבור *{customer['name']}* דרך הבוט שלנו.\n\n"
+            f"פשוט שלח *הזמנה* ואנחנו נטפל בשאר 😊"
+        )
+    return {"ok": True}
+
+
+@app.delete("/api/customers/{cid}/contacts/{contact_id}")
+def delete_customer_contact(cid: int, contact_id: int):
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE customer_contacts SET active=0 WHERE id=? AND customer_id=?",
+            (contact_id, cid)
+        )
+    return {"ok": True}
 
 
 @app.post("/api/test-message")

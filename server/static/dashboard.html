@@ -856,6 +856,30 @@
   </div>
 </div>
 
+<!-- ── מודל אנשי קשר מורשים ── -->
+<div id="contacts-modal" onclick="if(event.target===this)closeContactsModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
+  <div style="background:white;border-radius:16px;padding:26px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.15);position:relative">
+    <button onclick="closeContactsModal()" style="position:absolute;top:14px;left:16px;background:none;border:none;font-size:1.4em;cursor:pointer;color:#9ca3af;line-height:1">✕</button>
+    <h2 id="contacts-modal-title" style="color:#1f2937;margin-bottom:4px;font-size:1em;border-bottom:1px solid #f3f4f6;padding-bottom:10px">👥 אנשי קשר מורשים להזמנה</h2>
+    <p style="font-size:0.82em;color:#6b7280;margin-bottom:14px">אנשים אלו יוכלו להזמין דלק דרך הבוט בשם הלקוח.</p>
+    <div id="contacts-list" style="margin-bottom:16px;display:flex;flex-direction:column;gap:6px"></div>
+    <div style="border-top:1px solid #f3f4f6;padding-top:14px">
+      <div style="font-size:0.82em;font-weight:700;color:#374151;margin-bottom:8px">➕ הוסף איש קשר חדש</div>
+      <div class="form-row" style="gap:8px">
+        <input id="new-contact-name" placeholder="שם" style="flex:2;padding:8px 11px;border:1.5px solid #e5e7eb;border-radius:7px;font-family:inherit;font-size:0.88em" />
+        <input id="new-contact-phone" placeholder="טלפון (05XXXXXXXX)" style="flex:2;padding:8px 11px;border:1.5px solid #e5e7eb;border-radius:7px;font-family:inherit;font-size:0.88em" />
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.84em;color:#374151;cursor:pointer">
+          <input type="checkbox" id="new-contact-invite" checked /> שלח הזמנה בוואטסאפ
+        </label>
+        <button class="btn btn-primary btn-sm" onclick="addContact()" style="margin-right:auto">הוסף</button>
+      </div>
+      <div id="contacts-add-result" style="margin-top:8px;font-size:0.84em"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ── מודל הזמנה קבועה ── -->
 <div id="recurring-modal" onclick="if(event.target===this)closeRecurringModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
   <div style="background:white;border-radius:16px;padding:30px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,0.15);position:relative">
@@ -1503,7 +1527,10 @@ async function loadCustomers() {
       <td>${c.contact_name || '—'}${c.order_contact_name && c.order_contact_name !== c.contact_name ? `<br><span style="font-size:0.82em;color:#0891b2">🚚 ${c.order_contact_name}</span>` : ''}</td>
       <td>${c.contact_phone || '—'}${c.order_contact_phone && c.order_contact_phone !== c.contact_phone ? `<br><span style="font-size:0.82em;color:#0891b2">${c.order_contact_phone}</span>` : ''}</td>
       <td>${waBtn(c.order_contact_phone || c.contact_phone)}</td>
-      <td><button class="btn btn-danger" onclick="deleteCustomer(${c.id})">מחק</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" style="background:#eff6ff;color:#1d4ed8;margin-left:4px" onclick="openContactsModal(${c.id},'${c.name.replace(/'/g,"\\'")}')">👥 אנשי קשר</button>
+        <button class="btn btn-danger" onclick="deleteCustomer(${c.id})">מחק</button>
+      </td>
     </tr>`).join('');
 }
 
@@ -1527,6 +1554,80 @@ async function deleteCustomer(id) {
   if (!confirm('למחוק לקוח זה?')) return;
   await fetch(`/api/customers/${id}`, { method: 'DELETE' });
   loadCustomers();
+}
+
+// ── Customer Contacts ──────────────────────────────────────────────
+
+let _contactsCustomerId = null;
+
+async function openContactsModal(cid, customerName) {
+  _contactsCustomerId = cid;
+  document.getElementById('contacts-modal-title').textContent = `👥 אנשי קשר מורשים — ${customerName}`;
+  document.getElementById('new-contact-name').value = '';
+  document.getElementById('new-contact-phone').value = '';
+  document.getElementById('new-contact-invite').checked = true;
+  document.getElementById('contacts-add-result').textContent = '';
+  const modal = document.getElementById('contacts-modal');
+  modal.style.display = 'flex';
+  await refreshContactsList();
+}
+
+function closeContactsModal() {
+  document.getElementById('contacts-modal').style.display = 'none';
+  _contactsCustomerId = null;
+}
+
+async function refreshContactsList() {
+  const cid = _contactsCustomerId;
+  if (!cid) return;
+  const res = await fetch(`/api/customers/${cid}/contacts`);
+  const contacts = await res.json();
+  const list = document.getElementById('contacts-list');
+  if (!contacts.length) {
+    list.innerHTML = '<div style="color:#9ca3af;font-size:0.85em;text-align:center;padding:8px">אין אנשי קשר מורשים עדיין</div>';
+    return;
+  }
+  list.innerHTML = contacts.map(c => `
+    <div style="display:flex;align-items:center;justify-content:space-between;background:#f9fafb;border-radius:8px;padding:8px 12px;gap:10px">
+      <div>
+        <div style="font-weight:600;font-size:0.88em;color:#1f2937">${c.name}</div>
+        <div style="font-size:0.82em;color:#6b7280">${c.phone}</div>
+      </div>
+      <button onclick="deleteContact(${c.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:1.1em;padding:2px 6px" title="מחק">🗑️</button>
+    </div>`).join('');
+}
+
+async function addContact() {
+  const name = document.getElementById('new-contact-name').value.trim();
+  const phone = document.getElementById('new-contact-phone').value.trim();
+  const send_invite = document.getElementById('new-contact-invite').checked;
+  const resultEl = document.getElementById('contacts-add-result');
+  if (!name || !phone) { resultEl.textContent = 'יש למלא שם וטלפון'; resultEl.style.color = '#ef4444'; return; }
+  const cid = _contactsCustomerId;
+  resultEl.textContent = 'שומר...'; resultEl.style.color = '#6b7280';
+  const res = await fetch(`/api/customers/${cid}/contacts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, phone, send_invite })
+  });
+  if (res.ok) {
+    resultEl.textContent = send_invite ? '✅ נוסף ונשלחה הזמנה בוואטסאפ' : '✅ נוסף בהצלחה';
+    resultEl.style.color = '#15803d';
+    document.getElementById('new-contact-name').value = '';
+    document.getElementById('new-contact-phone').value = '';
+    await refreshContactsList();
+  } else {
+    const err = await res.json().catch(() => ({}));
+    resultEl.textContent = `שגיאה: ${err.detail || res.status}`;
+    resultEl.style.color = '#ef4444';
+  }
+}
+
+async function deleteContact(contactId) {
+  if (!confirm('למחוק איש קשר זה?')) return;
+  const cid = _contactsCustomerId;
+  await fetch(`/api/customers/${cid}/contacts/${contactId}`, { method: 'DELETE' });
+  await refreshContactsList();
 }
 
 // ── Drivers ──────────────────────────────────────────────

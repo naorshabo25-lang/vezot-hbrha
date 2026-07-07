@@ -183,6 +183,16 @@ def init_db():
                 created_at   TEXT DEFAULT (datetime('now', 'localtime'))
             );
 
+            CREATE TABLE IF NOT EXISTS customer_contacts (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER NOT NULL,
+                name        TEXT NOT NULL,
+                phone       TEXT NOT NULL,
+                active      INTEGER DEFAULT 1,
+                created_at  TEXT DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY (customer_id) REFERENCES customers(id)
+            );
+
             CREATE TABLE IF NOT EXISTS email_campaigns (
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
                 subject      TEXT NOT NULL,
