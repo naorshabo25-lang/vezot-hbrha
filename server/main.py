@@ -1438,7 +1438,7 @@ async def send_campaign(request: Request, background_tasks=None):
 
     def _send_all():
         try:
-            smtp = smtplib.SMTP("smtp.gmail.com", 587)
+            smtp = smtplib.SMTP("smtp.gmail.com", 587, timeout=30)
             smtp.starttls()
             smtp.login(GMAIL_USER, GMAIL_PASS)
             for rec in rec_rows:
@@ -1463,7 +1463,8 @@ async def send_campaign(request: Request, background_tasks=None):
                         conn.execute("UPDATE email_campaign_recipients SET status='failed' WHERE id=?", (rec["id"],))
             smtp.quit()
         except Exception as e:
-            _campaign_status["errors"].append(str(e))
+            _campaign_status["errors"].append(f"שגיאת SMTP: {e}")
+            _campaign_status["failed"] = _campaign_status["total"] - _campaign_status["sent"]
         finally:
             with get_db() as conn:
                 conn.execute("UPDATE email_campaigns SET total_sent=?, total_failed=? WHERE id=?",
