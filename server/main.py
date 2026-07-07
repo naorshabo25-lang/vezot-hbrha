@@ -1380,6 +1380,101 @@ async def import_potential_excel(request: Request):
             "mapped_columns": list(col_idx.keys())}
 
 
+_campaign_status: dict = {"running": False, "sent": 0, "failed": 0, "total": 0, "done": True, "errors": []}
+
+
+@app.get("/api/campaign-status")
+def campaign_status():
+    return _campaign_status
+
+
+@app.post("/api/send-campaign")
+async def send_campaign(request: Request, background_tasks=None):
+    import smtplib, threading
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    body = await request.json()
+    subject   = body.get("subject", "")
+    content   = body.get("body", "")
+    test_email = body.get("test_email", "").strip()
+
+    with get_db() as conn:
+        s = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
+
+    GMAIL_USER = s.get("gmail_user", "") or os.getenv("GMAIL_USER", "")
+    GMAIL_PASS = s.get("gmail_app_password", "") or os.getenv("GMAIL_APP_PASSWORD", "")
+    APP_URL    = (s.get("app_url", "") or "").rstrip("/")
+
+    if not GMAIL_USER or not GMAIL_PASS:
+        return {"ok": False, "error": "חסרים פרטי Gmail — הגדר בלשונית הגדרות"}
+
+    if test_email:
+        recipients = [{"email": test_email, "name": "בדיקה", "customer_id": None}]
+    else:
+        with get_db() as conn:
+            cust  = conn.execute("SELECT id, name, email FROM customers WHERE active=1 AND email != '' AND email IS NOT NULL").fetchall()
+            pcust = conn.execute("SELECT id, name, email FROM potential_customers WHERE active=1 AND email != '' AND email IS NOT NULL").fetchall()
+        recipients = [{"email": r["email"], "name": r["name"], "customer_id": r["id"]} for r in list(cust) + list(pcust)]
+
+    if not recipients:
+        return {"ok": False, "error": "אין לקוחות עם כתובת מייל"}
+
+    with get_db() as conn:
+        cur = conn.execute("INSERT INTO email_campaigns (subject, content) VALUES (?, ?)", (subject, content))
+        campaign_id = cur.lastrowid
+        for r in recipients:
+            conn.execute(
+                "INSERT INTO email_campaign_recipients (campaign_id, customer_id, name, email) VALUES (?,?,?,?)",
+                (campaign_id, r.get("customer_id"), r.get("name", ""), r["email"])
+            )
+
+    with get_db() as conn:
+        rec_rows = [dict(r) for r in conn.execute(
+            "SELECT id, email, name FROM email_campaign_recipients WHERE campaign_id=?", (campaign_id,)
+        ).fetchall()]
+
+    _campaign_status.update({"running": True, "sent": 0, "failed": 0, "total": len(rec_rows), "done": False, "errors": []})
+
+    def _send_all():
+        try:
+            smtp = smtplib.SMTP("smtp.gmail.com", 587)
+            smtp.starttls()
+            smtp.login(GMAIL_USER, GMAIL_PASS)
+            for rec in rec_rows:
+                try:
+                    msg = MIMEMultipart("alternative")
+                    msg["Subject"] = subject
+                    msg["From"]    = GMAIL_USER
+                    msg["To"]      = rec["email"]
+                    personal = content.replace("{name}", rec["name"])
+                    pixel = ""
+                    if APP_URL and not test_email:
+                        pixel = f'<img src="{APP_URL}/api/email-track/{campaign_id}/{rec["id"]}" width="1" height="1" style="display:none">'
+                    html_body = personal.replace("\n", "<br>") + pixel
+                    msg.attach(MIMEText(personal, "plain", "utf-8"))
+                    msg.attach(MIMEText(f"<html><body>{html_body}</body></html>", "html", "utf-8"))
+                    smtp.sendmail(GMAIL_USER, rec["email"], msg.as_string())
+                    _campaign_status["sent"] += 1
+                except Exception as e:
+                    _campaign_status["failed"] += 1
+                    _campaign_status["errors"].append(rec["email"])
+                    with get_db() as conn:
+                        conn.execute("UPDATE email_campaign_recipients SET status='failed' WHERE id=?", (rec["id"],))
+            smtp.quit()
+        except Exception as e:
+            _campaign_status["errors"].append(str(e))
+        finally:
+            with get_db() as conn:
+                conn.execute("UPDATE email_campaigns SET total_sent=?, total_failed=? WHERE id=?",
+                             (_campaign_status["sent"], _campaign_status["failed"], campaign_id))
+            _campaign_status["running"] = False
+            _campaign_status["done"]    = True
+
+    threading.Thread(target=_send_all, daemon=True).start()
+    return {"ok": True, "total": len(rec_rows), "campaign_id": campaign_id}
+
+
 @app.post("/api/send-email")
 async def send_mass_email(request: Request):
     import smtplib
