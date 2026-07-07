@@ -250,7 +250,45 @@ async def receive_message(request: Request):
             if len(_processed_msg_ids) > 500:
                 _processed_msg_ids.clear()
 
-        # כפתור ביצוע מנהג — לפני כל בדיקה אחרת
+        # ── פקודות מנהל ──────────────────────────────────────────────────────
+        if msg_type == "text":
+            _raw_text = message["text"]["body"].strip()
+            if _raw_text in ("סידור", "שלח סידור", "schedule"):
+                with get_db() as conn:
+                    _s = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM settings").fetchall()}
+                _admin_p = _s.get("admin_phone", "").strip().replace(" ", "").replace("-", "")
+                if _admin_p.startswith("0"):
+                    _admin_p = "972" + _admin_p[1:]
+                _phone_alt = ("0" + phone[3:]) if phone.startswith("972") else ("972" + phone[1:])
+                if phone == _admin_p or _phone_alt == _admin_p:
+                    from datetime import date as _d, timedelta as _td
+                    from whatsapp import send_order_card as _soc
+                    _target = (_d.today() + _td(days=1)).isoformat()
+                    with get_db() as conn:
+                        _orders = conn.execute("""
+                            SELECT o.*, d.name as driver_name, d.phone as driver_phone,
+                                   d.personal_phone as driver_personal_phone
+                            FROM orders o LEFT JOIN drivers d ON o.driver_id=d.id
+                            WHERE o.order_date=?
+                            ORDER BY d.name, o.sort_order, o.delivery_time, o.created_at
+                        """, (_target,)).fetchall()
+                    _orders = [dict(o) for o in _orders]
+                    if not _orders:
+                        send_whatsapp_message(phone, f"📋 סידור יומי — {_target}\n\nאין הזמנות למחר.")
+                    else:
+                        _by_drv = {}
+                        for _o in _orders:
+                            _by_drv.setdefault(_o["driver_name"] or "ללא נהג", []).append(_o)
+                        _lines = [f"📋 *{_target}* — {len(_orders)} הזמנות\n"]
+                        for _dn, _dos in _by_drv.items():
+                            _lines.append(f"*{_dn}:*")
+                            for _i, _o in enumerate(_dos, 1):
+                                _lines.append(f"{_i}. {_o['customer_name']} — {_o['site_address']}")
+                            _lines.append("")
+                        send_whatsapp_message(phone, "\n".join(_lines))
+                    return JSONResponse({"status": "ok"})
+
+        # כפתור ביצוע נהג — לפני כל בדיקה אחרת
         if msg_type == "interactive":
             inter = message["interactive"]
             if inter.get("type") == "button_reply":
