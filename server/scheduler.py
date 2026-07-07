@@ -13,6 +13,10 @@ def send_daily_messages():
         settings  = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
         template  = settings.get("message_template", "{greeting} {name}, האם תצטרך הזמנת דלק סולר למחר?")
         customers = conn.execute("SELECT * FROM customers WHERE active = 1").fetchall()
+        contacts  = conn.execute(
+            "SELECT cc.phone, cc.name, c.name as customer_name FROM customer_contacts cc "
+            "JOIN customers c ON c.id = cc.customer_id WHERE cc.active=1 AND c.active=1"
+        ).fetchall()
     # בדוק אם היום הוא יום שליחה מורשה (ישראלי: ראשון=0...שבת=6)
     allowed_days_str = settings.get("message_days", "0,1,2,3,4")
     allowed_days = [int(d) for d in allowed_days_str.split(",") if d.strip()]
@@ -27,6 +31,9 @@ def send_daily_messages():
     for customer in customers:
         send_daily_question(customer["phone"], customer["name"], resolved_template)
         print(f"[Scheduler] נשלחה הודעה ל{customer['name']} ({customer['phone']})")
+    for contact in contacts:
+        send_daily_question(contact["phone"], contact["name"], resolved_template)
+        print(f"[Scheduler] נשלחה הודעה לאיש קשר {contact['name']} ({contact['phone']}) של {contact['customer_name']}")
 
 
 def materialize_tomorrow():
