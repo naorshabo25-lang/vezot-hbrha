@@ -31,12 +31,17 @@ def materialize_recurring_orders(target_date: str) -> int:
                 continue
             driver = conn.execute("SELECT * FROM drivers WHERE area = ?", (t["area"],)).fetchone()
             driver_id = driver["id"] if driver else None
+            max_sort = conn.execute(
+                "SELECT COALESCE(MAX(sort_order), -1) FROM orders WHERE driver_id IS ? AND order_date = ?",
+                (driver_id, target_date)
+            ).fetchone()[0]
             conn.execute(
                 """INSERT INTO orders
-                   (customer_id, customer_name, site_address, contact_name, contact_phone, quantity, driver_id, order_date)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (customer_id, customer_name, site_address, contact_name, contact_phone,
+                    quantity, driver_id, order_date, sort_order)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (t["customer_id"], t["customer_name"], t["site_address"], t["contact_name"],
-                 t["contact_phone"], t["quantity"], driver_id, target_date),
+                 t["contact_phone"], t["quantity"], driver_id, target_date, max_sort + 1),
             )
             created += 1
     return created

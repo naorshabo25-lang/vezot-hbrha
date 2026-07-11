@@ -948,6 +948,8 @@ def get_recurring_orders():
 
 @app.post("/api/recurring-orders")
 async def add_recurring_order(request: Request):
+    from datetime import date as _dr, timedelta as _tdr
+    from recurring import materialize_recurring_orders as _mat
     body = await request.json()
     days_of_week = body.get("days_of_week") or [0, 1, 2, 3, 4]
     days_str = ",".join(str(int(d)) for d in days_of_week)
@@ -967,6 +969,10 @@ async def add_recurring_order(request: Request):
              body.get("contact_name", ""), body.get("contact_phone", ""), body["quantity"],
              area, days_str, body.get("start_date", ""), body.get("end_date", "")),
         )
+    # מיד ממש הזמנות למחר (ואם צריך גם להיום) כדי שיופיעו במשימות
+    for _offset in (0, 1):
+        _d = (_dr.today() + _tdr(days=_offset)).isoformat()
+        _mat(_d)
     return {"ok": True}
 
 
