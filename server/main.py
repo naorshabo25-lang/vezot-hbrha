@@ -1008,9 +1008,13 @@ async def materialize_recurring_orders_endpoint(request: Request):
         body = await request.json()
     except Exception:
         pass
-    target_date = body.get("target_date") or (dt.today() + timedelta(days=1)).isoformat()
-    created = materialize_recurring_orders(target_date)
-    return {"ok": True, "created": created, "target_date": target_date}
+    if body.get("target_date"):
+        created = materialize_recurring_orders(body["target_date"])
+    else:
+        created = 0
+        for offset in (0, 1, 2):
+            created += materialize_recurring_orders((dt.today() + timedelta(days=offset)).isoformat())
+    return {"ok": True, "created": created}
 
 
 @app.put("/api/orders/{order_id}/status")

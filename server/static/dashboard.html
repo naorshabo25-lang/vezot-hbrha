@@ -2389,8 +2389,10 @@ async function loadTasks() {
     const todayOrders = (d.orders_by_date[today] || []).filter(o => o.status !== 'הושלם').length;
 
     const daysHtml = Object.keys(d.orders_by_date).sort().map(dateStr => {
-      const orders = d.orders_by_date[dateStr].filter(o => o.status !== 'הושלם');
-      if (!orders.length) return '';
+      const allDay   = d.orders_by_date[dateStr];
+      const orders   = allDay.filter(o => o.status !== 'הושלם');
+      const doneOrds = allDay.filter(o => o.status === 'הושלם');
+      if (!orders.length && !doneOrds.length) return '';
       const dateObj = new Date(dateStr + 'T00:00:00');
       const label = dateStr === today
         ? 'היום'
@@ -2421,8 +2423,24 @@ async function loadTasks() {
             ${STATUS_OPTIONS.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>`).join('');
-      return `<div class="task-day-header">${label} — ${sorted.length} הזמנות</div>
-              <div class="task-rows-container" data-date-key="${dateStr}" data-driver-name="${d.name}">${rowsHtml}</div>`;
+
+      const doneHtml = doneOrds.length ? `
+        <div style="margin-top:6px">
+          ${doneOrds.map(o => `
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:#f0fdf4;border-radius:6px;margin-bottom:4px;font-size:0.83em;color:#6b7280">
+              <span style="color:#16a34a">✓</span>
+              <span style="flex:1"><strong>${o.customer_name}</strong> — ${o.site_address}</span>
+              <span style="color:#9ca3af">${o.quantity} ל'</span>
+              <button onclick='copyOrderToTomorrow(${JSON.stringify({customer_id:o.customer_id,customer_name:o.customer_name,site_address:o.site_address,contact_name:o.contact_name,contact_phone:o.contact_phone,quantity:o.quantity,driver_id:o.driver_id})})'
+                style="background:#dbeafe;color:#1d4ed8;border:none;border-radius:5px;padding:3px 9px;font-size:0.85em;cursor:pointer;white-space:nowrap">
+                ➕ הכנס למחר
+              </button>
+            </div>`).join('')}
+        </div>` : '';
+
+      return `<div class="task-day-header">${label}${orders.length ? ` — ${sorted.length} הזמנות` : ''}${doneOrds.length ? ` · ${doneOrds.length} הושלמו ✓` : ''}</div>
+              <div class="task-rows-container" data-date-key="${dateStr}" data-driver-name="${d.name}">${rowsHtml}</div>
+              ${doneHtml}`;
     }).join('');
 
     return `
@@ -2498,6 +2516,21 @@ async function sendScheduleToAdminFromTasks(btn) {
     result.style.color = '#b91c1c';
   } finally {
     btn.disabled = false; btn.textContent = '📋 שלח סידור לוואטסאפ';
+  }
+}
+
+async function copyOrderToTomorrow(order) {
+  const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
+  const tomorrow = tomorrowD.toISOString().slice(0, 10);
+  const res = await fetch('/api/orders', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ ...order, order_date: tomorrow, status: 'ממתין' })
+  });
+  if (res.ok) {
+    await loadTasks();
+  } else {
+    alert('שגיאה ביצירת ההזמנה');
   }
 }
 
