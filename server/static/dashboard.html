@@ -2418,7 +2418,10 @@ async function loadTasks() {
             <span>${o.site_address}</span>
             ${o.contact_name ? `<span> · ${o.contact_name}${o.contact_phone ? ' · ' + o.contact_phone : ''}</span>` : ''}
           </div>
-          <div class="task-qty">${o.quantity} ל'</div>
+          <div class="task-qty">
+            ${o.quantity} ל'
+            ${o.actual_quantity ? `<span style="color:#16a34a;font-size:0.82em;display:block">בפועל: ${o.actual_quantity}</span>` : ''}
+          </div>
           <select class="status-pill s-${o.status}" onchange="updateTaskStatus(${o.id}, this.value, this)">
             ${STATUS_OPTIONS.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
           </select>

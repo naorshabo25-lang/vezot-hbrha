@@ -294,10 +294,33 @@ async def receive_message(request: Request):
             if inter.get("type") == "button_reply":
                 btn_id = inter["button_reply"]["id"]
                 if btn_id.startswith("done_"):
+                    import json as _json_done
                     order_id = int(btn_id.split("_")[1])
+                    _pa = ("0" + phone[3:]) if phone.startswith("972") else ("972" + phone[1:])
                     with get_db() as conn:
-                        conn.execute("UPDATE orders SET status='הושלם' WHERE id=?", (order_id,))
-                    send_whatsapp_message(phone, f"✅ הזמנה #{order_id} סומנה כהושלם!")
+                        _is_drv = conn.execute(
+                            "SELECT id FROM drivers WHERE phone=? OR phone=? OR personal_phone=? OR personal_phone=?",
+                            (phone, _pa, phone, _pa)
+                        ).fetchone()
+                        _ord = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+                        if _is_drv:
+                            # שמור מצב "ממתין לכמות בפועל"
+                            conn.execute(
+                                "INSERT OR REPLACE INTO conversation_state "
+                                "(phone, step, pending_order_json, updated_at) "
+                                "VALUES (?, 'driver_awaiting_qty', ?, datetime('now','localtime'))",
+                                (phone, _json_done.dumps({"order_id": order_id}))
+                            )
+                        else:
+                            conn.execute("UPDATE orders SET status='הושלם' WHERE id=?", (order_id,))
+                    if _is_drv and _ord:
+                        send_whatsapp_message(phone,
+                            f"📦 הזמנה #{order_id} — *{_ord['customer_name']}*\n"
+                            f"כמות מוזמנת: *{_ord['quantity']} ליטר*\n\n"
+                            f"כמה ליטרים סיפקת בפועל? (הזן מספר)"
+                        )
+                    else:
+                        send_whatsapp_message(phone, f"✅ הזמנה #{order_id} סומנה כהושלם!")
                     return JSONResponse({"status": "ok"})
 
         if msg_type == "text":
@@ -329,7 +352,29 @@ async def receive_message(request: Request):
         ).fetchone()
 
     if driver_row:
+        import json as _json_drv
         drv = dict(driver_row)
+
+        # בדוק אם הנהג ממתין לאישור כמות
+        with get_db() as conn:
+            _drv_state = conn.execute(
+                "SELECT * FROM conversation_state WHERE phone=?", (phone,)
+            ).fetchone()
+
+        if _drv_state and _drv_state["step"] == "driver_awaiting_qty" and msg_type == "text":
+            _info = _json_drv.loads(_drv_state["pending_order_json"] or "{}")
+            _oid  = _info.get("order_id")
+            _qty_text = text.strip()
+            if _oid and _qty_text:
+                with get_db() as conn:
+                    conn.execute(
+                        "UPDATE orders SET status='הושלם', actual_quantity=? WHERE id=?",
+                        (_qty_text, _oid)
+                    )
+                    conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+                send_whatsapp_message(phone, f"✅ הזמנה #{_oid} הושלמה — *{_qty_text} ליטר* נקלטו. תודה!")
+            return JSONResponse({"status": "ok"})
+
         # נהג ביקש את הסידור שלו
         if msg_type == "text" and text.strip() in ("סידור", "שלח סידור", "schedule"):
             from datetime import date as _d2, timedelta as _td2
@@ -348,7 +393,6 @@ async def receive_message(request: Request):
                 send_whatsapp_message(phone, f"📋 *סידור יומי — {_target2}*\nיש לך {len(_drv_orders)} הזמנות:")
                 for _i2, _o2 in enumerate(_drv_orders, 1):
                     _soc2(phone, _o2, _i2, len(_drv_orders))
-        # נהג לחץ כפתור ביצוע — כבר טופל למעלה, כאן לא נגיע
         # כל שאר ההודעות מנהג — מתעלמים (לא מוסיפים לממתינים)
         return JSONResponse({"status": "ok"})
 
