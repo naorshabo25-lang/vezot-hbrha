@@ -608,10 +608,17 @@
 
     <!-- ── משימות ── -->
     <div id="tasks" class="section">
-      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px;gap:10px">
-        <span id="tasks-send-result" style="font-size:0.88em;color:#15803d"></span>
-        <button class="btn btn-primary" style="background:#1e40af;font-size:0.9em;padding:8px 18px"
-          onclick="sendScheduleToAdminFromTasks(this)">📋 שלח סידור לוואטסאפ</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-sm" style="background:#f1f5f9;color:#374151;border:1px solid #e2e8f0" onclick="materializeAndReload(this)">🔄 ממש הזמנות קבועות</button>
+          <button class="btn btn-sm" style="background:#f1f5f9;color:#374151;border:1px solid #e2e8f0" onclick="loadTasks()">↺ רענן</button>
+          <span id="tasks-last-refresh" style="font-size:0.78em;color:#94a3b8"></span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="tasks-send-result" style="font-size:0.88em;color:#15803d"></span>
+          <button class="btn btn-primary" style="background:#1e40af;font-size:0.9em;padding:8px 18px"
+            onclick="sendScheduleToAdminFromTasks(this)">📋 שלח סידור לוואטסאפ</button>
+        </div>
       </div>
       <div id="tasks-container"></div>
       <div id="tasks-summary"></div>
@@ -2311,12 +2318,18 @@ async function loadTasks() {
   const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
   const tomorrow = tomorrowD.toISOString().slice(0,10);
 
-  // רק נהגים עם הזמנות למחר
+  // כל נהג עם הזמנות פתוחות בשבוע (לא רק מחר)
   const drivers = allDrivers.filter(d =>
-    (d.orders_by_date[tomorrow] || []).some(o => o.status !== 'הושלם')
+    Object.values(d.orders_by_date).flat().some(o => o.status !== 'הושלם')
   );
 
-  if (!drivers.length) { container.innerHTML = '<div class="card"><p class="empty">אין נהגים עם משימות למחר</p></div>'; return; }
+  // עדכן timestamp
+  const now = new Date();
+  const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  const tsEl = document.getElementById('tasks-last-refresh');
+  if (tsEl) tsEl.textContent = `עודכן ${ts}`;
+
+  if (!drivers.length) { container.innerHTML = '<div class="card"><p class="empty">אין משימות פתוחות לשבוע זה</p></div>'; return; }
 
   // אסוף את כל ההזמנות של היום לטבלת סיכום
   const allTodayOrders = [];
@@ -2488,6 +2501,31 @@ async function sendScheduleToAdminFromTasks(btn) {
   }
 }
 
+async function materializeAndReload(btn) {
+  btn.disabled = true; btn.textContent = 'ממש...';
+  try {
+    const r = await fetch('/api/recurring-orders/materialize', { method: 'POST',
+      headers: {'Content-Type':'application/json'}, body: '{}' });
+    const d = await r.json();
+    const tsEl = document.getElementById('tasks-last-refresh');
+    if (tsEl) tsEl.textContent = d.created > 0 ? `נוצרו ${d.created} הזמנות חדשות` : 'אין הזמנות חדשות';
+    await loadTasks();
+  } finally {
+    btn.disabled = false; btn.textContent = '🔄 ממש הזמנות קבועות';
+  }
+}
+
+// רענון אוטומטי כל 45 שניות כשלשונית המשימות פעילה
+let _tasksRefreshInterval = null;
+function startTasksAutoRefresh() {
+  if (_tasksRefreshInterval) return;
+  _tasksRefreshInterval = setInterval(() => {
+    if (document.getElementById('tasks') && document.getElementById('tasks').classList.contains('active')) {
+      loadTasks();
+    }
+  }, 45000);
+}
+
 async function updateTaskStatus(id, status, el) {
   el.className = `status-pill s-${status}`;
   await fetch(`/api/orders/${id}/status`, {
@@ -2655,6 +2693,7 @@ async function addOrderManual() {
 loadHome();
 loadCustomerDropdown();
 initCalendar();
+startTasksAutoRefresh();
 // רענון ממתינים לרישום כל 30 שניות
 setInterval(loadPendingRegistrations, 30000);
 </script>
