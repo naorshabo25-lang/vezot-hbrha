@@ -102,6 +102,8 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
   const [editing,          setEditing]          = useState(null);
   const [editingFuelCard,  setEditingFuelCard]  = useState(false);
   const [fuelCardDraft,    setFuelCardDraft]    = useState({ diesel: {}, benzin: {}, tanDiesel: {}, tanBenzin: {}, transport: {}, generator: {} });
+  const [bulkPriceInput,   setBulkPriceInput]   = useState('');
+  const [bulkPriceOpen,    setBulkPriceOpen]    = useState(false);
 
   const CARD_TYPES = ['סולר', 'בנזין', 'סולר טן', 'בנזין טן'];
   const fuelCardCustomers = externalData?.fuelCardCustomers || [];
@@ -429,10 +431,52 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
   const editRowStyle = { background: '#fffbeb', borderBottom: '1px solid #fcd34d' };
   const tickK = v => `₪${(v / 1000).toFixed(0)}k`;
 
+  const applyBulkPurchasePrice = () => {
+    const price = parseFloat(bulkPriceInput);
+    if (!price || price <= 0) return;
+    onChange(prev => {
+      const base = prev || DEFAULT_WORKPLAN;
+      return { ...base, clients: (base.clients || []).map(c => ({ ...c, purchasePrice: price })) };
+    });
+    setBulkPriceOpen(false);
+    setBulkPriceInput('');
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
       <MonthSelector monthId={monthId} allMonths={allMonths} onMonthSwitch={onMonthSwitch} onNewMonth={onNewMonth} />
+
+      {/* Bulk purchase price */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600 }}>
+          מחיר קניה סולר חודשי:
+          {avgPurchasePrice > 0 && <span style={{ color: 'var(--red)', marginRight: 6 }}>₪{avgPurchasePrice.toFixed(3)}</span>}
+        </span>
+        {bulkPriceOpen ? (
+          <>
+            <input
+              className="input" type="number" step="0.001" min="0"
+              placeholder="₪/ל׳ לכולם..."
+              value={bulkPriceInput}
+              onChange={e => setBulkPriceInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && applyBulkPurchasePrice()}
+              style={{ width: 130, fontSize: 13 }}
+              autoFocus
+            />
+            <button className="btn btn-sm" style={{ background: 'var(--green)', color: '#fff', border: 'none' }}
+              onClick={applyBulkPurchasePrice}>
+              ✓ עדכן לכולם ({clients.length})
+            </button>
+            <button className="btn btn-sm btn-ghost" onClick={() => { setBulkPriceOpen(false); setBulkPriceInput(''); }}>ביטול</button>
+          </>
+        ) : (
+          <button className="btn btn-sm" style={{ background: 'var(--red)', color: '#fff', border: 'none' }}
+            onClick={() => setBulkPriceOpen(true)}>
+            ✎ הגדר מחיר קניה לכולם
+          </button>
+        )}
+      </div>
 
       {/* KPI row */}
       <div className="grid-6">
