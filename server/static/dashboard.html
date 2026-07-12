@@ -421,12 +421,7 @@
       </div>
 
       <div id="orders-subtab-active" class="orders-subtab-content">
-        <div class="card" style="padding:14px 16px">
-          <table>
-            <thead><tr style="font-size:0.8em"><th style="padding:7px 8px">#</th><th style="padding:7px 8px">לקוח</th><th style="padding:7px 8px">כתובת</th><th style="padding:7px 8px">איש קשר</th><th style="padding:7px 8px">טלפון</th><th style="padding:7px 8px">כמות</th><th style="padding:7px 8px">נהג</th><th style="padding:7px 8px">סטטוס</th><th style="padding:7px 8px">שעת אספקה</th><th style="padding:7px 8px">פעולות</th></tr></thead>
-            <tbody id="orders-body"></tbody>
-          </table>
-        </div>
+        <div id="orders-by-date-container"></div>
       </div>
 
       <div id="orders-subtab-completed" class="orders-subtab-content" style="display:none">
@@ -1251,10 +1246,71 @@ function orderRowHtml(o, showStatus = true) {
 
 function renderActiveOrders() {
   const orders = _allOrders.filter(o => o.status !== 'הושלם');
-  const tbody = document.getElementById('orders-body');
-  tbody.innerHTML = orders.length
-    ? orders.map(o => orderRowHtml(o, true)).join('')
-    : '<tr><td colspan="10" class="empty">אין הזמנות פעילות</td></tr>';
+  const container = document.getElementById('orders-by-date-container');
+
+  if (!orders.length) {
+    container.innerHTML = '<div class="card"><p class="empty">אין הזמנות פעילות</p></div>';
+    return;
+  }
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const tom = new Date(now); tom.setDate(tom.getDate()+1);
+  const tomorrowStr = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
+
+  const fmt = d => { if (!d || d === 'ללא תאריך') return d; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; };
+  const fmtLiters = n => n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'K' : String(n);
+
+  const byDate = {};
+  orders.forEach(o => {
+    const d = o.order_date || 'ללא תאריך';
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(o);
+  });
+
+  const sorted = Object.keys(byDate).sort((a, b) => {
+    if (a === 'ללא תאריך') return 1;
+    if (b === 'ללא תאריך') return -1;
+    return a.localeCompare(b);
+  });
+
+  const headerFor = d => {
+    if (d === todayStr)    return { label: `☀️ היום — ${fmt(d)}`,   bg: '#fef9c3', border: '#fde047', badge: '#b45309' };
+    if (d === tomorrowStr) return { label: `📅 מחר — ${fmt(d)}`,   bg: '#eff6ff', border: '#bfdbfe', badge: '#1d4ed8' };
+    if (d < todayStr)      return { label: `📌 עבר — ${fmt(d)}`,   bg: '#fef2f2', border: '#fecaca', badge: '#b91c1c' };
+    return                        { label: `🗓 ${fmt(d)}`,          bg: '#f0fdf4', border: '#bbf7d0', badge: '#15803d' };
+  };
+
+  const thead = `<thead><tr style="font-size:0.8em">
+    <th style="padding:5px 8px">#</th><th style="padding:5px 8px">לקוח</th>
+    <th style="padding:5px 8px">כתובת</th><th style="padding:5px 8px">איש קשר</th>
+    <th style="padding:5px 8px">טלפון</th><th style="padding:5px 8px">כמות</th>
+    <th style="padding:5px 8px">נהג</th><th style="padding:5px 8px">סטטוס</th>
+    <th style="padding:5px 8px">שעה</th><th style="padding:5px 8px">פעולות</th>
+  </tr></thead>`;
+
+  container.innerHTML = sorted.map(date => {
+    const h = headerFor(date);
+    const grp = byDate[date];
+    const totalL = grp.reduce((s, o) => s + parseQty(o.quantity), 0);
+    return `
+      <div style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;
+          background:${h.bg};border:1px solid ${h.border};border-bottom:none;
+          border-radius:10px 10px 0 0">
+          <span style="font-weight:800;font-size:0.92em;color:#1e293b">${h.label}</span>
+          <span style="font-size:0.75em;font-weight:700;color:#fff;background:${h.badge};
+            border-radius:20px;padding:1px 9px">${grp.length} הזמנות</span>
+          <span style="font-size:0.78em;color:#64748b;font-weight:600">${fmtLiters(totalL)} ל'</span>
+        </div>
+        <div class="card" style="padding:10px 14px;border-radius:0 0 10px 10px;
+          border:1px solid ${h.border};border-top:none;margin-top:0">
+          <table>${thead}<tbody>
+            ${grp.map(o => orderRowHtml(o, true)).join('')}
+          </tbody></table>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 function renderCompletedOrders() {
