@@ -576,7 +576,7 @@ async def receive_message(request: Request):
     negative = {"לא", "no", "0", "לא.", "לא,", "לא!"}
     if step is None and text_lower in {r.lower() for r in negative}:
         greeting = time_greeting()
-        send_whatsapp_message(phone, f"תודה רבה {customer['name']} וה{greeting} 😊")
+        send_whatsapp_message(phone, f"תודה רבה והמשך {greeting} 😊")
         return JSONResponse({"status": "ok"})
 
     # שלב 0 — לקוח ענה "כן" להודעה היומית
