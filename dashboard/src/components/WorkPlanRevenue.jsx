@@ -900,22 +900,26 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
         </table>
       </Card>
 
-      {/* Add client button */}
-      <div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button className={`btn ${showForm ? 'btn-soft' : 'btn-primary'}`} style={showForm ? {} : { background: 'var(--green)', borderColor: 'var(--green)' }}
-            onClick={() => { setShowForm(v => !v); setShowAdditiveForm(false); setError(''); setEditing(null); }}>
-            {showForm ? '✕ ביטול' : '+ הוספת לקוח'}
-          </button>
-          <button className={`btn ${showAdditiveForm ? 'btn-soft' : ''}`}
-            style={showAdditiveForm ? {} : { background: 'var(--purple)', color: '#fff', border: 'none' }}
-            onClick={() => { setShowAdditiveForm(v => !v); setShowForm(false); setAdditiveError(''); }}>
-            {showAdditiveForm ? '✕ ביטול' : '+ הוספת הכנסת תוספים'}
-          </button>
+      {/* Detailed table */}
+      <Card style={{ padding: '18px 14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <p className="section-title" style={{ marginBottom: 0 }}>טבלת לקוחות מפורטת</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className={`btn btn-sm ${showForm ? 'btn-soft' : ''}`}
+              style={showForm ? {} : { background: 'var(--green)', color: '#fff', border: 'none' }}
+              onClick={() => { setShowForm(v => !v); setShowAdditiveForm(false); setError(''); setEditing(null); }}>
+              {showForm ? '✕ ביטול' : '+ הכנסה חדשה'}
+            </button>
+            <button className={`btn btn-sm ${showAdditiveForm ? 'btn-soft' : ''}`}
+              style={showAdditiveForm ? {} : { background: 'var(--purple)', color: '#fff', border: 'none' }}
+              onClick={() => { setShowAdditiveForm(v => !v); setShowForm(false); setAdditiveError(''); }}>
+              {showAdditiveForm ? '✕ ביטול' : '+ תוספים'}
+            </button>
+          </div>
         </div>
 
         {showAdditiveForm && (
-          <div className="card card-pad" style={{ marginTop: 12 }}>
+          <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 14, border: '1px solid #e9d5ff' }}>
             <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: 'var(--purple)' }}>הכנסת תוספים — לקוח חדש</p>
             <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>שם לקוח</label>
@@ -952,8 +956,8 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
         )}
 
         {showForm && (
-          <div className="card card-pad" style={{ marginTop: 12 }}>
-            <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>לקוח חדש</p>
+          <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 14, border: '1px solid var(--green-border)' }}>
+            <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>הכנסה חדשה</p>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
               {[
                 { label: 'שם לקוח', key: 'name', type: 'text', placeholder: 'שם...' },
@@ -978,11 +982,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
             </div>
           </div>
         )}
-      </div>
 
-      {/* Detailed table */}
-      <Card style={{ padding: '18px 14px' }}>
-        <p className="section-title">טבלת לקוחות מפורטת</p>
         <table className="data-table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '3%' }} />
