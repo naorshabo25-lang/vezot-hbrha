@@ -1302,6 +1302,12 @@ function renderActiveOrders() {
           <span style="font-size:0.75em;font-weight:700;color:#fff;background:${h.badge};
             border-radius:20px;padding:1px 9px">${grp.length} הזמנות</span>
           <span style="font-size:0.78em;color:#64748b;font-weight:600">${fmtLiters(totalL)} ל'</span>
+          <button onclick="completeAllForDate('${date}')"
+            style="margin-right:auto;font-size:0.75em;font-weight:700;padding:4px 12px;
+              background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;
+              white-space:nowrap">
+            ✓ כל המשימות הושלמו
+          </button>
         </div>
         <div class="card" style="padding:10px 14px;border-radius:0 0 10px 10px;
           border:1px solid ${h.border};border-top:none;margin-top:0">
@@ -1383,6 +1389,21 @@ async function updateStatus(id, status) {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status })
   });
+  loadOrders();
+  if (document.getElementById('home').classList.contains('active')) loadHome();
+}
+
+async function completeAllForDate(date) {
+  const ids = _allOrders
+    .filter(o => (o.order_date || 'ללא תאריך') === date && o.status !== 'הושלם')
+    .map(o => o.id);
+  if (!ids.length) return;
+  await Promise.all(ids.map(id =>
+    fetch(`/api/orders/${id}/status`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'הושלם' })
+    })
+  ));
   loadOrders();
   if (document.getElementById('home').classList.contains('active')) loadHome();
 }
