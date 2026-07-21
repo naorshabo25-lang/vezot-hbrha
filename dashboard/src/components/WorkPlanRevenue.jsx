@@ -952,7 +952,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
             <button className={`btn btn-sm ${showForm ? 'btn-soft' : ''}`}
               style={showForm ? {} : { background: 'var(--green)', color: '#fff', border: 'none' }}
               onClick={() => { setShowForm(v => !v); setShowAdditiveForm(false); setError(''); setEditing(null); }}>
-              {showForm ? '✕ ביטול' : '+ הכנסה חדשה'}
+              {showForm ? '✕ ביטול' : '+ לקוח חדש'}
             </button>
             <button className={`btn btn-sm ${showAdditiveForm ? 'btn-soft' : ''}`}
               style={showAdditiveForm ? {} : { background: 'var(--purple)', color: '#fff', border: 'none' }}
@@ -1001,7 +1001,7 @@ export default function WorkPlanRevenue({ data: externalData, onChange, monthId,
 
         {showForm && (
           <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 14, border: '1px solid var(--green-border)' }}>
-            <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>הכנסה חדשה</p>
+            <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>לקוח חדש</p>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
               {[
                 { label: 'שם לקוח', key: 'name', type: 'text', placeholder: 'שם...' },
