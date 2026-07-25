@@ -2562,15 +2562,19 @@ async function loadTasks() {
           </select>
         </div>`).join('');
 
-      const doneHtml = doneOrds.length ? `
-        <div style="margin-top:6px">
-          ${doneOrds.map(o => `
-            <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:#f0fdf4;border-radius:6px;margin-bottom:4px;font-size:0.83em;color:#6b7280">
-              <span style="color:#16a34a">✓</span>
-              <span style="flex:1"><strong>${o.customer_name}</strong> — ${o.site_address}</span>
-              <span style="color:#9ca3af">${o.quantity} ל'</span>
-            </div>`).join('')}
-        </div>` : '';
+      const doneHtml = doneOrds.length ? doneOrds.map(o => `
+        <div class="task-row" style="opacity:0.6">
+          <div class="task-num" style="background:#16a34a;color:#fff">✓</div>
+          <div class="task-info">
+            <strong>${o.customer_name}</strong>
+            <span>${o.site_address}</span>
+          </div>
+          <div class="task-qty">
+            ${o.quantity} ל'
+            ${o.actual_quantity ? `<span style="color:#16a34a;font-size:0.82em;display:block">בפועל: ${o.actual_quantity}</span>` : ''}
+          </div>
+          <span class="badge badge-הושלם" style="font-size:0.72em">הושלם</span>
+        </div>`).join('') : '';
 
       return `<div class="task-day-header">${label}${orders.length ? ` — ${sorted.length} הזמנות` : ''}${doneOrds.length ? ` · ${doneOrds.length} הושלמו ✓` : ''}</div>
               <div class="task-rows-container" data-date-key="${dateStr}" data-driver-name="${d.name}">${rowsHtml}</div>
