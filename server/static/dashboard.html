@@ -2569,10 +2569,6 @@ async function loadTasks() {
               <span style="color:#16a34a">✓</span>
               <span style="flex:1"><strong>${o.customer_name}</strong> — ${o.site_address}</span>
               <span style="color:#9ca3af">${o.quantity} ל'</span>
-              <button onclick='copyOrderToTomorrow(${JSON.stringify({customer_id:o.customer_id,customer_name:o.customer_name,site_address:o.site_address,contact_name:o.contact_name,contact_phone:o.contact_phone,quantity:o.quantity,driver_id:o.driver_id})})'
-                style="background:#dbeafe;color:#1d4ed8;border:none;border-radius:5px;padding:3px 9px;font-size:0.85em;cursor:pointer;white-space:nowrap">
-                ➕ הכנס למחר
-              </button>
             </div>`).join('')}
         </div>` : '';
 
