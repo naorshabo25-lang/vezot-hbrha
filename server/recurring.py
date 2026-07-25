@@ -29,8 +29,31 @@ def materialize_recurring_orders(target_date: str) -> int:
             ).fetchone()
             if exists:
                 continue
-            driver = conn.execute("SELECT * FROM drivers WHERE area = ?", (t["area"],)).fetchone()
-            driver_id = driver["id"] if driver else None
+
+            # ירש פרטים מההזמנה האחרונה של אותו לקוח+כתובת
+            prev = conn.execute(
+                """SELECT driver_id, delivery_time, extras, contact_name, contact_phone
+                   FROM orders
+                   WHERE customer_name = ? AND site_address = ? AND order_date < ?
+                   ORDER BY order_date DESC, created_at DESC
+                   LIMIT 1""",
+                (t["customer_name"], t["site_address"], target_date),
+            ).fetchone()
+
+            if prev and prev["driver_id"]:
+                driver_id    = prev["driver_id"]
+                delivery_time = prev["delivery_time"] or ""
+                extras        = prev["extras"] or ""
+            else:
+                # fallback: שייך לפי אזור
+                driver = conn.execute("SELECT * FROM drivers WHERE area = ?", (t["area"],)).fetchone()
+                driver_id     = driver["id"] if driver else None
+                delivery_time = ""
+                extras        = ""
+
+            contact_name  = t["contact_name"]  or (prev["contact_name"]  if prev else "") or ""
+            contact_phone = t["contact_phone"] or (prev["contact_phone"] if prev else "") or ""
+
             max_sort = conn.execute(
                 "SELECT COALESCE(MAX(sort_order), -1) FROM orders WHERE driver_id IS ? AND order_date = ?",
                 (driver_id, target_date)
@@ -38,10 +61,10 @@ def materialize_recurring_orders(target_date: str) -> int:
             conn.execute(
                 """INSERT INTO orders
                    (customer_id, customer_name, site_address, contact_name, contact_phone,
-                    quantity, driver_id, order_date, sort_order)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (t["customer_id"], t["customer_name"], t["site_address"], t["contact_name"],
-                 t["contact_phone"], t["quantity"], driver_id, target_date, max_sort + 1),
+                    quantity, driver_id, order_date, sort_order, delivery_time, extras)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (t["customer_id"], t["customer_name"], t["site_address"], contact_name, contact_phone,
+                 t["quantity"], driver_id, target_date, max_sort + 1, delivery_time, extras),
             )
             created += 1
     return created
