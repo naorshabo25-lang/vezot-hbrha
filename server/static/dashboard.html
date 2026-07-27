@@ -152,21 +152,21 @@
 
     /* ── Tasks ── */
     .task-day-header {
-      font-size: 0.78em; font-weight: 700; color: #dc2626;
-      padding: 6px 0 4px; border-bottom: 1px solid #f3f4f6; margin: 12px 0 6px;
+      font-size: 0.75em; font-weight: 700; color: #dc2626;
+      padding: 4px 0 3px; border-bottom: 1px solid #f3f4f6; margin: 8px 0 3px;
       letter-spacing: 0.05em; text-transform: uppercase;
     }
-    .task-row { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f9fafb; font-size: 0.87em; cursor: default; }
+    .task-row { display: flex; gap: 6px; align-items: center; padding: 5px 0; border-bottom: 1px solid #f9fafb; font-size: 0.83em; cursor: default; }
     .task-row:last-child { border-bottom: none; }
     .task-row.dragging { opacity: 0.35; }
     .task-row.drag-over { border-top: 2.5px solid #dc2626 !important; margin-top: -2px; }
-    .drag-handle { cursor: grab; color: #cbd5e1; padding: 0 2px 0 6px; font-size: 1.15em; user-select: none; flex-shrink: 0; }
+    .drag-handle { cursor: grab; color: #cbd5e1; padding: 0 2px 0 4px; font-size: 1em; user-select: none; flex-shrink: 0; }
     .drag-handle:active { cursor: grabbing; color: #94a3b8; }
-    .task-num { background: #fef2f2; color: #dc2626; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.78em; font-weight: 700; flex-shrink: 0; }
+    .task-num { background: #fef2f2; color: #dc2626; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.72em; font-weight: 700; flex-shrink: 0; }
     .task-info { flex: 1; }
     .task-info strong { display: block; color: #1f2937; }
-    .task-info span { color: #6b7280; font-size: 0.9em; }
-    .task-qty { color: #374151; font-weight: 600; font-size: 0.9em; min-width: 70px; text-align: center; }
+    .task-info span { color: #6b7280; font-size: 0.88em; }
+    .task-qty { color: #374151; font-weight: 600; font-size: 0.88em; min-width: 58px; text-align: center; }
     .status-pill {
       padding: 4px 12px; border-radius: 20px; font-size: 0.76em; font-weight: 700;
       white-space: nowrap; border: none; cursor: pointer; font-family: inherit;
@@ -2582,23 +2582,23 @@ async function loadTasks() {
     }).join('');
 
     return `
-      <div class="card" style="margin-bottom:20px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+      <div class="card" style="margin-bottom:12px;padding:12px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px">
           <div>
-            <div style="font-size:1.05em;font-weight:700;color:#1e293b">${d.name}</div>
-            <div style="font-size:0.82em;color:#94a3b8;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
+            <div style="font-size:0.95em;font-weight:700;color:#1e293b">${d.name}</div>
+            <div style="font-size:0.78em;color:#94a3b8;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap">
               <span>${d.area}</span>
               ${d.phone ? `<span>· ${d.phone}</span>` : ''}
               ${d.truck_number ? `<span>· מ"ס ${d.truck_number}</span>` : ''}
               ${d.tanker_volume ? `<span>· ${d.tanker_volume} ליטר</span>` : ''}
             </div>
           </div>
-          <div style="min-width:180px">
-            <div style="font-size:0.8em;color:#64748b;margin-bottom:4px">${done} / ${total} הושלמו · היום: ${todayOrders}</div>
-            <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-              <span style="font-size:0.78em;font-weight:700;color:#b71c1c">${pct}%</span>
-              <button class="btn btn-sm" onclick="openIturan()" style="background:#1e293b;color:white;font-size:0.75em;padding:3px 12px">איתורן</button>
+          <div style="min-width:150px">
+            <div style="font-size:0.75em;color:#64748b;margin-bottom:3px">${done} / ${total} הושלמו · היום: ${todayOrders}</div>
+            <div class="progress-wrap" style="height:5px"><div class="progress-bar" style="width:${pct}%"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px">
+              <span style="font-size:0.72em;font-weight:700;color:#b71c1c">${pct}%</span>
+              <button class="btn btn-sm" onclick="openIturan()" style="background:#1e293b;color:white;font-size:0.7em;padding:2px 10px">איתורן</button>
             </div>
           </div>
         </div>
