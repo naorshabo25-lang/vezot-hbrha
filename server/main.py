@@ -1940,6 +1940,7 @@ import time as _time
 
 WORKPLAN_FILE = os.path.join(os.path.dirname(__file__), "workplan_data.json")
 PROD_URL = "https://vezot-fuel.com"
+_workplan_lock = _threading.Lock()
 
 
 def _fetch_prod():
@@ -1960,7 +1961,7 @@ def _push_prod(data: dict):
             req = _urllib.Request(
                 f"{PROD_URL}/api/workplan",
                 data=payload,
-                headers={"Content-Type": "application/json"},
+                headers={"Content-Type": "application/json", "X-Sync-Source": "local"},
                 method="POST",
             )
             _urllib.urlopen(req, timeout=8)
@@ -1973,15 +1974,17 @@ def _load_local():
     if not os.path.exists(WORKPLAN_FILE):
         return None
     try:
-        with open(WORKPLAN_FILE, "r", encoding="utf-8") as f:
-            return _json.load(f)
+        with _workplan_lock:
+            with open(WORKPLAN_FILE, "r", encoding="utf-8") as f:
+                return _json.load(f)
     except Exception:
         return None
 
 
 def _save_local(data: dict):
-    with open(WORKPLAN_FILE, "w", encoding="utf-8") as f:
-        _json.dump(data, f, ensure_ascii=False, indent=2)
+    with _workplan_lock:
+        with open(WORKPLAN_FILE, "w", encoding="utf-8") as f:
+            _json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def _startup_sync():
@@ -2008,11 +2011,13 @@ def get_workplan():
 
 @app.post("/api/workplan")
 async def save_workplan(request: Request):
+    from_sync = request.headers.get("X-Sync-Source")
     body = await request.json()
     if "lastModified" not in body:
         body["lastModified"] = int(_time.time() * 1000)
     _save_local(body)
-    _push_prod(body)          # forward to production in background
+    if not from_sync:          # don't re-push if this came from a sync (prevents infinite loop)
+        _push_prod(body)
     return {"ok": True}
 
 

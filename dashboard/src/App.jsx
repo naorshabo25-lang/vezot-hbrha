@@ -108,12 +108,13 @@ export default function App() {
     }).catch(() => {});
   };
 
-  // בטעינה: קח נתונים מהשרת המקומי (שכבר סונכרן עם ייצור בעת הפעלה)
+  // בטעינה: סנכרן עם שרת — אך רק אם נתוני השרת חדשים יותר מה-localStorage המקומי
   useEffect(() => {
     fetch(`${SERVER}/api/workplan`)
       .then(r => r.json())
       .then(data => {
         if (!data) {
+          // שרת ריק — דחוף את ה-localStorage לשרת
           try {
             const ls = localStorage.getItem('workPlanData');
             if (ls) {
@@ -124,20 +125,32 @@ export default function App() {
           } catch {}
           return;
         }
-        const base = repairMonth(data, DEFAULT_WORKPLAN);
-        setWorkPlanData(prev => ({
-          ...base,
-          obligo:            data.obligo            || {},
-          additiveTypes:     (data.additiveTypes && Object.keys(data.additiveTypes).length > 0)
-            ? data.additiveTypes  : (prev?.additiveTypes     || {}),
-          fuelCardCustomers: (Array.isArray(data.fuelCardCustomers) && data.fuelCardCustomers.length > 0)
-            ? data.fuelCardCustomers : (prev?.fuelCardCustomers || []),
-          currentMonthId:    data.currentMonthId    || '2026-05',
-          currentMonthLabel: data.currentMonthLabel || 'מאי 2026',
-          monthHistory:      data.monthHistory      || {},
-          lastModified:      data.lastModified,
-        }));
-        try { localStorage.setItem('workPlanData', JSON.stringify(data)); } catch {}
+        setWorkPlanData(prev => {
+          // אם יש נתונים מקומיים חדשים יותר — אל תדרוס אותם
+          if (prev?.lastModified && data.lastModified && prev.lastModified > data.lastModified) {
+            // הנתונים המקומיים חדשים יותר — דחוף אותם לשרת
+            fetch(`${SERVER}/api/workplan`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(prev),
+            }).catch(() => {});
+            return prev;
+          }
+          const base = repairMonth(data, DEFAULT_WORKPLAN);
+          const next = {
+            ...base,
+            obligo:            data.obligo            || {},
+            additiveTypes:     (data.additiveTypes && Object.keys(data.additiveTypes).length > 0)
+              ? data.additiveTypes  : (prev?.additiveTypes     || {}),
+            fuelCardCustomers: (Array.isArray(data.fuelCardCustomers) && data.fuelCardCustomers.length > 0)
+              ? data.fuelCardCustomers : (prev?.fuelCardCustomers || []),
+            currentMonthId:    data.currentMonthId    || '2026-05',
+            currentMonthLabel: data.currentMonthLabel || 'מאי 2026',
+            monthHistory:      data.monthHistory      || {},
+            lastModified:      data.lastModified,
+          };
+          try { localStorage.setItem('workPlanData', JSON.stringify(next)); } catch {}
+          return next;
+        });
       })
       .catch(() => {});
   }, []);
