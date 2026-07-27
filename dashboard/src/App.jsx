@@ -39,11 +39,14 @@ const PAGE_TITLES = {
   settings:  'הגדרות',
 };
 
+const dedupClients = arr =>
+  arr.filter((c, i, a) => a.findIndex(x => (x.name || '').trim() === (c.name || '').trim()) === i);
+
 const repairMonth = (parsed, defaults) => ({
   operationalExpenses: parsed.operationalExpenses?.length > 0 ? parsed.operationalExpenses : defaults.operationalExpenses,
   salaries:            parsed.salaries?.length > 0            ? parsed.salaries            : defaults.salaries,
   fuelPurchases:       Array.isArray(parsed.fuelPurchases)    ? parsed.fuelPurchases       : defaults.fuelPurchases,
-  clients:             Array.isArray(parsed.clients)          ? parsed.clients             : defaults.clients,
+  clients:             Array.isArray(parsed.clients)          ? dedupClients(parsed.clients) : defaults.clients,
 });
 
 const getAllMonths = (data) => {
@@ -171,7 +174,7 @@ export default function App() {
         salaries:            next.salaries?.length > 0            ? next.salaries            : base.salaries,
         fuelPurchases:       Array.isArray(next.fuelPurchases)    ? next.fuelPurchases       : base.fuelPurchases,
         clients:             Array.isArray(next.clients)
-          ? next.clients.filter((c, i, arr) => arr.findIndex(x => x.name === c.name) === i)
+          ? dedupClients(next.clients)
           : base.clients,
         obligo:             next.obligo             != null ? next.obligo             : (base.obligo || {}),
         additiveTypes:      next.additiveTypes      != null ? next.additiveTypes      : (base.additiveTypes || {}),
@@ -205,7 +208,7 @@ export default function App() {
         operationalExpenses: target.operationalExpenses,
         salaries:            target.salaries,
         fuelPurchases:       target.fuelPurchases || [],
-        clients:             target.clients,
+        clients:             Array.isArray(target.clients) ? dedupClients(target.clients) : [],
         currentMonthId:      monthId,
         currentMonthLabel:   target.label,
         monthHistory:        history,

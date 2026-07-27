@@ -152,7 +152,11 @@ export default function WorkPlanObligo({ data: externalData, onChange, monthId }
     setPayment(false);
   };
 
-  const clientNames = [...new Set([...clients.map(c => c.name), ...Object.keys(obligo)])];
+  const _seen = new Set();
+  const clientNames = [
+    ...clients.map(c => (c.name || '').trim()).filter(Boolean),
+    ...Object.keys(obligo).map(k => k.trim()).filter(Boolean),
+  ].filter(n => { if (_seen.has(n)) return false; _seen.add(n); return true; });
   const rows = clientNames.map(name => {
     const o  = obligo[name] || { creditLimit: 0, currentBalance: 0, note: '' };
     const st = statusInfo(o.creditLimit, o.currentBalance);
