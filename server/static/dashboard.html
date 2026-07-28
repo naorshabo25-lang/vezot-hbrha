@@ -2518,7 +2518,13 @@ async function loadTasks() {
 
   container.innerHTML = drivers.map(d => {
     const tomorrowOrds = d.orders_by_date[tomorrow] || [];
-    const orders = tomorrowOrds.filter(o => o.status !== 'הושלם');
+    // dedup by id to guard against duplicate DB rows or saved-order duplicates
+    const seenIds = new Set();
+    const orders = tomorrowOrds.filter(o => {
+      if (o.status === 'הושלם' || seenIds.has(Number(o.id))) return false;
+      seenIds.add(Number(o.id));
+      return true;
+    });
     const total = orders.length;
     const done  = orders.filter(o => o.status === 'אושר' || o.status === 'נשלח').length;
     const pct   = total ? Math.round((done / total) * 100) : 0;
@@ -2529,10 +2535,13 @@ async function loadTasks() {
     let sorted = [...orders];
     if (saved && saved.length) {
       const byId = {};
-      sorted.forEach(o => byId[o.id] = o);
-      const reordered = saved.map(id => byId[id]).filter(Boolean);
+      sorted.forEach(o => byId[Number(o.id)] = o);
+      const usedIds = new Set();
+      const reordered = [...new Set(saved.map(Number))]
+        .map(id => byId[id])
+        .filter(o => { if (!o || usedIds.has(o.id)) return false; usedIds.add(o.id); return true; });
       const savedSet = new Set(saved.map(Number));
-      sorted.filter(o => !savedSet.has(o.id)).forEach(o => reordered.push(o));
+      sorted.filter(o => !savedSet.has(Number(o.id))).forEach(o => reordered.push(o));
       sorted = reordered;
     }
     const rowsHtml = sorted.map((o, idx) => `
