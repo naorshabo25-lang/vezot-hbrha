@@ -2453,9 +2453,9 @@ async function loadTasks() {
   const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
   const tomorrow = tomorrowD.toISOString().slice(0,10);
 
-  // כל נהג עם הזמנות פתוחות בשבוע (לא רק מחר)
+  // רק נהגים עם הזמנות פתוחות למחר
   const drivers = allDrivers.filter(d =>
-    Object.values(d.orders_by_date).flat().some(o => o.status !== 'הושלם')
+    (d.orders_by_date[tomorrow] || []).some(o => o.status !== 'הושלם')
   );
 
   // עדכן timestamp
@@ -2464,25 +2464,25 @@ async function loadTasks() {
   const tsEl = document.getElementById('tasks-last-refresh');
   if (tsEl) tsEl.textContent = `עודכן ${ts}`;
 
-  if (!drivers.length) { container.innerHTML = '<div class="card"><p class="empty">אין משימות פתוחות לשבוע זה</p></div>'; return; }
+  if (!drivers.length) { container.innerHTML = '<div class="card"><p class="empty">אין משימות פתוחות למחר</p></div>'; return; }
 
-  // אסוף את כל ההזמנות של היום לטבלת סיכום
-  const allTodayOrders = [];
+  // אסוף את כל ההזמנות של מחר לטבלת סיכום
+  const allTomorrowOrders = [];
   drivers.forEach(d => {
-    (d.orders_by_date[today] || []).forEach(o => allTodayOrders.push({...o, driver_name: d.name}));
+    (d.orders_by_date[tomorrow] || []).forEach(o => allTomorrowOrders.push({...o, driver_name: d.name}));
   });
 
   const summaryEl = document.getElementById('tasks-summary');
-  if (allTodayOrders.length) {
+  if (allTomorrowOrders.length) {
     const byDriver = {};
-    allTodayOrders.forEach(o => {
+    allTomorrowOrders.forEach(o => {
       if (!byDriver[o.driver_name]) byDriver[o.driver_name] = [];
       byDriver[o.driver_name].push(o);
     });
     const tableRows = Object.entries(byDriver).map(([driverName, orders]) =>
       orders.map((o, i) => `
         <tr>
-          ${i === 0 ? `<td rowspan="${orders.length}" style="font-weight:700;color:#1e293b;background:#fef2f2;vertical-align:middle;text-align:center">${driverName}</td>` : ''}
+          ${i === 0 ? `<td rowspan="${orders.length}" style="font-weight:700;color:#1e293b;background:#eff6ff;vertical-align:middle;text-align:center">${driverName}</td>` : ''}
           <td>${o.id}</td>
           <td><strong>${o.customer_name}</strong></td>
           <td>${o.site_address}</td>
@@ -2497,7 +2497,7 @@ async function loadTasks() {
     summaryEl.innerHTML = `
       <div class="card" style="margin-top:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <h2 style="margin-bottom:0;border-bottom:none;padding-bottom:0">סידור יום זה — לפי נהגים</h2>
+          <h2 style="margin-bottom:0;border-bottom:none;padding-bottom:0">סידור מחר — לפי נהגים</h2>
           <button class="btn btn-primary" style="background:#1e40af;font-size:0.85em;padding:7px 16px"
             onclick="sendScheduleToAdminFromTasks(this)">📋 שלח סידור לבדיקת מנהל</button>
         </div>
@@ -2517,69 +2517,43 @@ async function loadTasks() {
   }
 
   container.innerHTML = drivers.map(d => {
-    const allOrders = Object.values(d.orders_by_date).flat().filter(o => o.status !== 'הושלם');
-    const total = allOrders.length;
-    const done  = allOrders.filter(o => o.status === 'אושר' || o.status === 'נשלח').length;
+    const tomorrowOrds = d.orders_by_date[tomorrow] || [];
+    const orders = tomorrowOrds.filter(o => o.status !== 'הושלם');
+    const total = orders.length;
+    const done  = orders.filter(o => o.status === 'אושר' || o.status === 'נשלח').length;
     const pct   = total ? Math.round((done / total) * 100) : 0;
-    const todayOrders = (d.orders_by_date[today] || []).filter(o => o.status !== 'הושלם').length;
 
-    const daysHtml = Object.keys(d.orders_by_date).sort().map(dateStr => {
-      const allDay   = d.orders_by_date[dateStr];
-      const orders   = allDay.filter(o => o.status !== 'הושלם');
-      const doneOrds = allDay.filter(o => o.status === 'הושלם');
-      if (!orders.length && !doneOrds.length) return '';
-      const dateObj = new Date(dateStr + 'T00:00:00');
-      const label = dateStr === today
-        ? 'היום'
-        : `יום ${DAYS_HE[dateObj.getDay()]} — ${dateObj.getDate()} ${MONTHS_HE[dateObj.getMonth()]}`;
-      const saved = getTaskOrder(dateStr, d.name);
-      let sorted = [...orders];
-      if (saved && saved.length) {
-        const byId = {};
-        sorted.forEach(o => byId[o.id] = o);
-        const reordered = saved.map(id => byId[id]).filter(Boolean);
-        const savedSet = new Set(saved.map(Number));
-        sorted.filter(o => !savedSet.has(o.id)).forEach(o => reordered.push(o));
-        sorted = reordered;
-      }
-      const rowsHtml = sorted.map((o, idx) => `
-        <div class="task-row" draggable="true" data-order-id="${o.id}"
-             ondragstart="taskDragStart(event)" ondragover="taskDragOver(event)"
-             ondrop="taskDrop(event)" ondragend="taskDragEnd(event)">
-          <div class="drag-handle" title="גרור לסידור">⠿</div>
-          <div class="task-num">${idx + 1}</div>
-          <div class="task-info">
-            <strong>${o.customer_name}</strong>
-            <span>${o.site_address}</span>
-            ${o.contact_name ? `<span> · ${o.contact_name}${o.contact_phone ? ' · ' + o.contact_phone : ''}</span>` : ''}
-          </div>
-          <div class="task-qty">
-            ${o.quantity} ל'
-            ${o.actual_quantity ? `<span style="color:#16a34a;font-size:0.82em;display:block">בפועל: ${o.actual_quantity}</span>` : ''}
-          </div>
-          <select class="status-pill s-${o.status}" onchange="updateTaskStatus(${o.id}, this.value, this)">
-            ${STATUS_OPTIONS.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>`).join('');
-
-      const doneHtml = doneOrds.length ? doneOrds.map(o => `
-        <div class="task-row" style="opacity:0.6">
-          <div class="task-num" style="background:#16a34a;color:#fff">✓</div>
-          <div class="task-info">
-            <strong>${o.customer_name}</strong>
-            <span>${o.site_address}</span>
-          </div>
-          <div class="task-qty">
-            ${o.quantity} ל'
-            ${o.actual_quantity ? `<span style="color:#16a34a;font-size:0.82em;display:block">בפועל: ${o.actual_quantity}</span>` : ''}
-          </div>
-          <span class="badge badge-הושלם" style="font-size:0.72em">הושלם</span>
-        </div>`).join('') : '';
-
-      return `<div class="task-day-header">${label}${orders.length ? ` — ${sorted.length} הזמנות` : ''}${doneOrds.length ? ` · ${doneOrds.length} הושלמו ✓` : ''}</div>
-              <div class="task-rows-container" data-date-key="${dateStr}" data-driver-name="${d.name}">${rowsHtml}</div>
-              ${doneHtml}`;
-    }).join('');
+    const dateObj = new Date(tomorrow + 'T00:00:00');
+    const label = `מחר — ${dateObj.getDate()} ${MONTHS_HE[dateObj.getMonth()]}`;
+    const saved = getTaskOrder(tomorrow, d.name);
+    let sorted = [...orders];
+    if (saved && saved.length) {
+      const byId = {};
+      sorted.forEach(o => byId[o.id] = o);
+      const reordered = saved.map(id => byId[id]).filter(Boolean);
+      const savedSet = new Set(saved.map(Number));
+      sorted.filter(o => !savedSet.has(o.id)).forEach(o => reordered.push(o));
+      sorted = reordered;
+    }
+    const rowsHtml = sorted.map((o, idx) => `
+      <div class="task-row" draggable="true" data-order-id="${o.id}"
+           ondragstart="taskDragStart(event)" ondragover="taskDragOver(event)"
+           ondrop="taskDrop(event)" ondragend="taskDragEnd(event)">
+        <div class="drag-handle" title="גרור לסידור">⠿</div>
+        <div class="task-num">${idx + 1}</div>
+        <div class="task-info">
+          <strong>${o.customer_name}</strong>
+          <span>${o.site_address}</span>
+          ${o.contact_name ? `<span> · ${o.contact_name}${o.contact_phone ? ' · ' + o.contact_phone : ''}</span>` : ''}
+        </div>
+        <div class="task-qty">
+          ${o.quantity} ל'
+          ${o.actual_quantity ? `<span style="color:#16a34a;font-size:0.82em;display:block">בפועל: ${o.actual_quantity}</span>` : ''}
+        </div>
+        <select class="status-pill s-${o.status}" onchange="updateTaskStatus(${o.id}, this.value, this)">
+          ${STATUS_OPTIONS.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>`).join('');
 
     return `
       <div class="card" style="margin-bottom:12px;padding:12px 16px">
@@ -2594,7 +2568,7 @@ async function loadTasks() {
             </div>
           </div>
           <div style="min-width:150px">
-            <div style="font-size:0.75em;color:#64748b;margin-bottom:3px">${done} / ${total} הושלמו · היום: ${todayOrders}</div>
+            <div style="font-size:0.75em;color:#64748b;margin-bottom:3px">${done} / ${total} הושלמו</div>
             <div class="progress-wrap" style="height:5px"><div class="progress-bar" style="width:${pct}%"></div></div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px">
               <span style="font-size:0.72em;font-weight:700;color:#b71c1c">${pct}%</span>
@@ -2602,7 +2576,8 @@ async function loadTasks() {
             </div>
           </div>
         </div>
-        ${total ? daysHtml : '<p class="empty" style="padding:16px">אין משימות לשבוע זה</p>'}
+        <div class="task-day-header">${label}${orders.length ? ` — ${sorted.length} הזמנות` : ''}</div>
+        <div class="task-rows-container" data-date-key="${tomorrow}" data-driver-name="${d.name}">${rowsHtml}</div>
       </div>`;
   }).join('');
 }
