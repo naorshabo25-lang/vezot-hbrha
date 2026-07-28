@@ -24,7 +24,9 @@ def materialize_recurring_orders(target_date: str) -> int:
 
         for t in templates:
             exists = conn.execute(
-                "SELECT 1 FROM orders WHERE order_date = ? AND customer_name = ? AND site_address = ?",
+                """SELECT 1 FROM orders
+                   WHERE order_date = ? AND customer_name = ? AND site_address = ?
+                   LIMIT 1""",
                 (target_date, t["customer_name"], t["site_address"]),
             ).fetchone()
             if exists:

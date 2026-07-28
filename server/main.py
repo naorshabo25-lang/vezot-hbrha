@@ -1347,9 +1347,32 @@ def get_weekly_tasks():
                     ORDER BY sort_order, delivery_time, created_at
                 """, (d["id"], date_str)).fetchall()
                 if rows:
-                    orders_by_date[date_str] = [dict(r) for r in rows]
+                    # dedup by (customer_name, site_address) — keep first occurrence
+                    seen = set()
+                    unique = []
+                    for r in rows:
+                        key = (r["customer_name"], r["site_address"])
+                        if key not in seen:
+                            seen.add(key)
+                            unique.append(dict(r))
+                    orders_by_date[date_str] = unique
             result.append({**dict(d), "orders_by_date": orders_by_date})
     return result
+
+
+@app.post("/api/orders/dedup")
+def dedup_orders():
+    """מחיקת הזמנות כפולות — שומר רק את זו עם ה-id הנמוך ביותר"""
+    with get_db() as conn:
+        deleted = conn.execute("""
+            DELETE FROM orders
+            WHERE id NOT IN (
+                SELECT MIN(id)
+                FROM orders
+                GROUP BY driver_id, order_date, customer_name, site_address
+            )
+        """).rowcount
+    return {"ok": True, "deleted": deleted}
 
 
 @app.post("/api/customers/import-excel")
