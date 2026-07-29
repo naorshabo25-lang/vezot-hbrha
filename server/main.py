@@ -1866,7 +1866,8 @@ async def send_daily_schedule(request: Request):
             return {"ok": False, "error": "לא הוגדר טלפון מנהל"}
 
         orders_raw = conn.execute("""
-            SELECT o.*, d.name as driver_name, d.phone as driver_phone
+            SELECT o.*, d.name as driver_name, d.phone as driver_phone,
+                   d.personal_phone as driver_personal_phone
             FROM orders o LEFT JOIN drivers d ON o.driver_id = d.id
             WHERE o.order_date = ?
             ORDER BY d.name, o.sort_order, o.delivery_time, o.created_at
@@ -1916,39 +1917,51 @@ async def send_daily_schedule(request: Request):
 
     for driver_name, driver_orders in by_driver.items():
         first = driver_orders[0]
-        raw_phone = (first.get("driver_phone") or "").strip().replace(" ", "").replace("-", "")
-        raw_personal = (first.get("driver_personal_phone") or "").strip().replace(" ", "").replace("-", "")
+        def _fmt_phone(p):
+            p = (p or "").strip().replace(" ", "").replace("-", "").lstrip("+")
+            if p.startswith("0"):
+                p = "972" + p[1:]
+            return p
+
+        raw_phone    = _fmt_phone(first.get("driver_phone"))
+        raw_personal = _fmt_phone(first.get("driver_personal_phone"))
+
         if not raw_phone and not raw_personal:
             driver_results.append({"name": driver_name, "ok": False, "reason": "אין טלפון"})
             continue
-        if raw_phone.startswith("0"):
-            raw_phone = "972" + raw_phone[1:]
-        if raw_personal.startswith("0"):
-            raw_personal = "972" + raw_personal[1:]
 
-        header = f"📋 *סידור יומי — {target_date}*\nיש לך {len(driver_orders)} הזמנות:"
-        ok = True
+        header = (
+            f"📋 *סידור יומי — {target_date}*\n"
+            f"יש לך {len(driver_orders)} הזמנות:\n"
+        )
+        lines = []
+        for i, o in enumerate(driver_orders, 1):
+            lines.append(
+                f"{i}. *{o['customer_name']}*\n"
+                f"   📍 {o['site_address']}\n"
+                f"   ⛽ {o['quantity']} ליטר"
+                + (f"  🕐 {o['delivery_time']}" if o.get('delivery_time') else "")
+                + (f"\n   👤 {o['contact_name']}" + (f" · {o['contact_phone']}" if o.get('contact_phone') else "") if o.get('contact_name') else "")
+            )
+        full_text = header + "\n".join(lines)
+
+        # שלח טקסט רגיל לטלפון אישי (עדיף) או לטלפון הקבוצה
+        target_phone = raw_personal or raw_phone
+        ok_text = send_whatsapp_message(target_phone, full_text)
+
+        # שלח כרטיסי ביצוע למספר האישי בלבד (אם קיים ונפרד)
         if raw_personal:
-            # לקבוצה — טקסט בלבד; למספר האישי — כרטיסי ביצוע
-            send_whatsapp_message(raw_phone, header)
-            for o in driver_orders:
-                t = (f"📦 הזמנה #{o['id']}\n👥 {o['customer_name']}\n📍 {o['site_address']}"
-                     f"\n⛽ {o['quantity']} ליטר\n🕐 {o.get('delivery_time') or '—'}")
-                send_whatsapp_message(raw_phone, t)
-            ok_h = send_whatsapp_message(raw_personal, header)
             for i, o in enumerate(driver_orders, 1):
                 send_order_card(raw_personal, o, i, len(driver_orders))
-            ok = ok_h
-        else:
-            ok_h = send_whatsapp_message(raw_phone, header)
-            for i, o in enumerate(driver_orders, 1):
-                send_order_card(raw_phone, o, i, len(driver_orders))
-            ok = ok_h
+            # שלח גם לקבוצה — טקסט בלבד
+            if raw_phone and raw_phone != raw_personal:
+                send_whatsapp_message(raw_phone, full_text)
 
+        ok = ok_text
         phone_display = raw_personal or raw_phone
         driver_results.append({"name": driver_name, "ok": ok, "orders": len(driver_orders),
                                 "phone": phone_display,
-                                "reason": None if ok else "שגיאת וואטסאפ"})
+                                "reason": None if ok else "שגיאת וואטסאפ — בדוק מספר טלפון"})
         print(f"[Schedule] {driver_name} ({phone_display}): {'✓' if ok else '✗'}")
 
     return {"ok": True, "orders_sent": len(orders), "drivers": driver_results}
