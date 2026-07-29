@@ -248,6 +248,14 @@
 </head>
 <body>
 
+<!-- New-order alert toast -->
+<div id="new-order-toast" style="display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;
+  background:#15803d;color:#fff;padding:14px 22px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.25);
+  font-size:1.05em;font-weight:600;min-width:280px;text-align:center;cursor:pointer;direction:rtl"
+  onclick="this.style.display='none'">
+  🔔 <span id="new-order-toast-text">הזמנה חדשה נכנסה!</span>
+</div>
+
 <!-- Mobile overlay -->
 <div class="sidebar-overlay-m" id="sidebar-overlay-m" onclick="closeMobileSidebar()"></div>
 
@@ -2921,6 +2929,53 @@ initCalendar();
 startTasksAutoRefresh();
 // רענון ממתינים לרישום כל 30 שניות
 setInterval(loadPendingRegistrations, 30000);
+
+// ── התרעה על הזמנה חדשה ─────────────────────────────────────────────────────
+let _lastKnownOrderId = 0;
+let _newOrderToastTimer = null;
+
+function _playAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.18, 0.36].forEach(offset => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine'; o.frequency.value = 880;
+      g.gain.setValueAtTime(0, ctx.currentTime + offset);
+      g.gain.linearRampToValueAtTime(0.45, ctx.currentTime + offset + 0.07);
+      g.gain.linearRampToValueAtTime(0, ctx.currentTime + offset + 0.22);
+      o.start(ctx.currentTime + offset);
+      o.stop(ctx.currentTime + offset + 0.25);
+    });
+  } catch(e) {}
+}
+
+function _showNewOrderToast(order) {
+  const toast = document.getElementById('new-order-toast');
+  const txt   = document.getElementById('new-order-toast-text');
+  txt.textContent = `הזמנה חדשה: ${order.customer_name} — ${order.quantity} ל'`;
+  toast.style.display = 'block';
+  clearTimeout(_newOrderToastTimer);
+  _newOrderToastTimer = setTimeout(() => { toast.style.display = 'none'; }, 8000);
+  _playAlertSound();
+}
+
+async function _checkNewOrders() {
+  try {
+    const r = await fetch('/api/orders/latest');
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.id) return;
+    if (_lastKnownOrderId === 0) { _lastKnownOrderId = data.id; return; }
+    if (data.id > _lastKnownOrderId) {
+      _lastKnownOrderId = data.id;
+      _showNewOrderToast(data);
+    }
+  } catch(e) {}
+}
+_checkNewOrders(); // אתחול ה-ID הידוע
+setInterval(_checkNewOrders, 30000);
 </script>
 </body>
 </html>

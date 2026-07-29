@@ -222,6 +222,36 @@ def verify_webhook(request: Request):
     raise HTTPException(status_code=403, detail="Forbidden")
 
 
+def _notify_admin_new_order(order_info: dict):
+    """שולח התרעה למנהל בוואטסאפ על כל הזמנה חדשה."""
+    try:
+        with get_db() as conn:
+            settings = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
+        admin_phone = settings.get("admin_phone", "").strip().replace(" ", "").replace("-", "").lstrip("+")
+        if not admin_phone:
+            return
+        if admin_phone.startswith("0"):
+            admin_phone = "972" + admin_phone[1:]
+        customer = order_info.get("customer_name", "לא ידוע")
+        address  = order_info.get("site_address", "")
+        qty      = order_info.get("quantity", "")
+        date     = order_info.get("order_date", "")
+        driver   = order_info.get("driver_name", "")
+        msg = f"🔔 *הזמנה חדשה נכנסה!*\n\n👥 {customer}\n📍 {address}\n⛽ {qty} ליטר"
+        if date:
+            try:
+                from datetime import datetime as _dt2
+                d = _dt2.strptime(date, "%Y-%m-%d")
+                msg += f"\n📅 {d.day}/{d.month}/{d.year}"
+            except Exception:
+                msg += f"\n📅 {date}"
+        if driver:
+            msg += f"\n🚛 נהג: {driver}"
+        send_whatsapp_message(admin_phone, msg)
+    except Exception as e:
+        print(f"[Notify] שגיאה בשליחת התרעה למנהל: {e}")
+
+
 @app.post("/webhook")
 async def receive_message(request: Request):
     data = await request.json()
@@ -517,6 +547,11 @@ async def receive_message(request: Request):
                          qty_str, driver_id, order_date, "")
                     )
                     conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+                _notify_admin_new_order({
+                    "customer_name": customer["name"], "site_address": address,
+                    "quantity": qty_str, "order_date": order_date,
+                    "driver_name": driver["name"] if driver else "",
+                })
                 from datetime import datetime as _dt
                 try:
                     d = _dt.strptime(order_date, "%Y-%m-%d")
@@ -761,6 +796,11 @@ async def receive_message(request: Request):
                      cname, cphone, quantity, driver_id, order_date, dtime)
                 )
                 conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+            _notify_admin_new_order({
+                "customer_name": customer["name"], "site_address": f"{city}, {address}",
+                "quantity": quantity, "order_date": order_date,
+                "driver_name": driver["name"] if driver else "",
+            })
             from datetime import datetime
             d = datetime.strptime(order_date, "%Y-%m-%d")
             date_label = f"{d.day}/{d.month}/{d.year}"
@@ -825,6 +865,11 @@ async def receive_message(request: Request):
                  cname, contact_phone, quantity, driver_id, order_date, dtime)
             )
             conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+        _notify_admin_new_order({
+            "customer_name": customer["name"], "site_address": f"{city}, {address}",
+            "quantity": quantity, "order_date": order_date,
+            "driver_name": driver["name"] if driver else "",
+        })
         from datetime import datetime
         d = datetime.strptime(order_date, "%Y-%m-%d")
         date_label = f"{d.day}/{d.month}/{d.year}"
@@ -890,6 +935,11 @@ def submit_order(
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (customer_id, customer_name, site_address, contact_name, contact_phone, quantity, driver_id),
         )
+    _notify_admin_new_order({
+        "customer_name": customer_name, "site_address": site_address,
+        "quantity": quantity,
+        "driver_name": driver["name"] if driver else "",
+    })
 
     return HTMLResponse("""
     <!DOCTYPE html><html dir="rtl" lang="he">
@@ -963,7 +1013,23 @@ async def add_order_manual(request: Request):
             (customer_id, body["customer_name"], body["site_address"],
              body["contact_name"], body["contact_phone"], body["quantity"], driver_id, order_date, extras, new_sort),
         )
+    _notify_admin_new_order({
+        "customer_name": body["customer_name"], "site_address": body["site_address"],
+        "quantity": body["quantity"], "order_date": order_date,
+        "driver_name": driver["name"] if driver else "",
+    })
     return {"ok": True}
+
+
+@app.get("/api/orders/latest")
+def get_latest_order():
+    with get_db() as conn:
+        row = conn.execute(
+            """SELECT o.id, o.customer_name, o.site_address, o.quantity, o.order_date, d.name as driver_name
+               FROM orders o LEFT JOIN drivers d ON o.driver_id = d.id
+               ORDER BY o.id DESC LIMIT 1"""
+        ).fetchone()
+    return dict(row) if row else {}
 
 
 @app.post("/api/orders/reorder")
