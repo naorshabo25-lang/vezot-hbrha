@@ -1286,7 +1286,10 @@ function orderRowHtml(o, showStatus = true, isPast = false) {
       <td style="padding:6px 8px;color:#475569;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.site_address}</td>
       <td style="padding:6px 8px;color:#374151">${o.contact_name || '<span style="color:#cbd5e1">—</span>'}</td>
       <td style="padding:6px 8px;color:#374151;direction:ltr">${o.contact_phone || '<span style="color:#cbd5e1">—</span>'}</td>
-      <td style="padding:6px 8px;font-weight:700;color:#0f172a">${o.quantity} ל'</td>
+      <td style="padding:6px 8px;color:#0f172a">
+        <div style="font-weight:700">${o.quantity} ל'</div>
+        ${o.actual_quantity ? `<div style="font-size:0.82em;font-weight:700;color:#16a34a;margin-top:1px">✓ ${o.actual_quantity} ל'</div>` : ''}
+      </td>
       <td style="padding:6px 8px">${o.driver_name ? `<span class="tag" style="font-size:0.88em">${o.driver_name}</span>` : '<span style="color:#cbd5e1">—</span>'}</td>
       <td style="padding:6px 8px">${showStatus ? `<select class="status-select" style="font-size:0.82em;padding:3px 6px" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="badge badge-הושלם">הושלם</span>`}</td>
       <td style="padding:6px 8px;color:#64748b;font-size:0.9em;white-space:nowrap">${o.delivery_time || '<span style="color:#cbd5e1">—</span>'}</td>
@@ -2489,6 +2492,7 @@ async function loadTasks() {
           <td>${o.contact_name || '—'}</td>
           <td>${o.contact_phone || '—'}</td>
           <td><strong>${o.quantity}</strong> ל'</td>
+          <td>${o.actual_quantity ? `<strong style="color:#16a34a">${o.actual_quantity} ל'</strong>` : '<span style="color:#d1d5db">—</span>'}</td>
           <td>${o.delivery_time || '—'}</td>
           <td><span class="badge badge-${o.status}">${o.status}</span></td>
         </tr>`).join('')
@@ -2501,7 +2505,7 @@ async function loadTasks() {
           <table>
             <thead><tr>
               <th>נהג</th><th>#</th><th>לקוח</th><th>כתובת</th>
-              <th>איש קשר</th><th>טלפון</th><th>כמות</th><th>שעה</th><th>סטטוס</th>
+              <th>איש קשר</th><th>טלפון</th><th>כמות</th><th>בפועל</th><th>שעה</th><th>סטטוס</th>
             </tr></thead>
             <tbody>${tableRows}</tbody>
           </table>

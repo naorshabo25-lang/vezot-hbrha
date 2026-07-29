@@ -1055,7 +1055,14 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                               <div style={{ fontWeight: 600 }}>{o.contact_name || '—'}</div>
                               {o.contact_phone && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{o.contact_phone}</div>}
                             </td>
-                            <td style={{ padding: '10px 14px', fontWeight: 700, color: '#1e2d3d', whiteSpace: 'nowrap' }}>{o.quantity} ל'</td>
+                            <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontWeight: 700, color: '#1e2d3d' }}>{o.quantity} ל'</div>
+                              {o.actual_quantity && (
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', marginTop: 2 }}>
+                                  ✓ בפועל: {o.actual_quantity} ל'
+                                </div>
+                              )}
+                            </td>
                             <td style={{ padding: '10px 14px', color: '#6b7280', whiteSpace: 'nowrap' }}>{o.delivery_time || '—'}</td>
                             <td style={{ padding: '10px 14px', color: '#374151' }}>{o.driver_name || '—'}</td>
                             <td style={{ padding: '10px 14px' }}>
