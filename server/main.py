@@ -1230,7 +1230,21 @@ def delete_pending(pid: int):
 @app.get("/api/customers")
 def get_customers():
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM customers WHERE active=1 ORDER BY name").fetchall()
+        rows = conn.execute("""
+            SELECT c.*,
+                   COALESCE(lo.contact_name, '') as last_order_contact_name,
+                   COALESCE(lo.contact_phone, '') as last_order_contact_phone
+            FROM customers c
+            LEFT JOIN orders lo ON lo.id = (
+                SELECT id FROM orders
+                WHERE customer_id = c.id
+                  AND (contact_name != '' OR contact_phone != '')
+                ORDER BY order_date DESC, id DESC
+                LIMIT 1
+            )
+            WHERE c.active=1
+            ORDER BY c.name
+        """).fetchall()
     return [dict(r) for r in rows]
 
 

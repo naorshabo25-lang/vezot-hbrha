@@ -2875,8 +2875,8 @@ function fillCustomerData() {
   if (!c) return;
   document.getElementById('o-name').value = c.name;
   document.getElementById('o-site').value = c.site_address || '';
-  document.getElementById('o-contact-name').value  = c.order_contact_name  || c.contact_name  || '';
-  document.getElementById('o-contact-phone').value = c.order_contact_phone || c.contact_phone || '';
+  document.getElementById('o-contact-name').value  = c.last_order_contact_name  || c.order_contact_name  || c.contact_name  || '';
+  document.getElementById('o-contact-phone').value = c.last_order_contact_phone || c.order_contact_phone || c.contact_phone || '';
   document.getElementById('o-area').value = c.area || '';
   previewDriver();
 }
