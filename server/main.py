@@ -222,6 +222,13 @@ def verify_webhook(request: Request):
     raise HTTPException(status_code=403, detail="Forbidden")
 
 
+def _fmt_phone(p: str) -> str:
+    p = (p or "").strip().replace(" ", "").replace("-", "").lstrip("+")
+    if p.startswith("0"):
+        p = "972" + p[1:]
+    return p
+
+
 def _notify_admin_new_order(order_info: dict):
     """שולח התרעה למנהל בוואטסאפ על כל הזמנה חדשה."""
     try:
@@ -250,6 +257,58 @@ def _notify_admin_new_order(order_info: dict):
         send_whatsapp_message(admin_phone, msg)
     except Exception as e:
         print(f"[Notify] שגיאה בשליחת התרעה למנהל: {e}")
+
+
+def _send_order_immediate(driver: dict, order_info: dict) -> dict:
+    """שולח הזמנה מיידית לנהג ולמנהל (להעברה לקבוצה). מחזיר סטטוס שליחה."""
+    from datetime import datetime as _dt3
+    date_str = order_info.get("order_date", "")
+    try:
+        d = _dt3.strptime(date_str, "%Y-%m-%d")
+        date_label = f"{d.day}/{d.month}/{d.year}"
+    except Exception:
+        date_label = date_str or "היום"
+
+    cname  = order_info.get("contact_name", "")
+    cphone = order_info.get("contact_phone", "")
+    contact_line = f"\n📞 {cname}" + (f" — {cphone}" if cphone else "") if (cname or cphone) else ""
+
+    driver_msg = (
+        f"📋 *הזמנה מיידית — {date_label}*\n\n"
+        f"👥 {order_info['customer_name']}\n"
+        f"📍 {order_info['site_address']}\n"
+        f"⛽ {order_info['quantity']} ליטר"
+        + contact_line
+    )
+
+    target = _fmt_phone(driver.get("personal_phone") or "") or _fmt_phone(driver.get("phone") or "")
+    driver_ok = bool(target) and send_whatsapp_message(target, driver_msg)
+
+    admin_ok = False
+    try:
+        with get_db() as conn:
+            settings = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
+        admin_phone = _fmt_phone(settings.get("admin_phone", ""))
+        if admin_phone:
+            admin_msg = (
+                f"📦 *הזמנה מיידית — {date_label}*\n\n"
+                f"👥 *{order_info['customer_name']}*\n"
+                f"📍 {order_info['site_address']}\n"
+                f"⛽ {order_info['quantity']} ליטר"
+                + contact_line +
+                f"\n🚛 נהג: {driver['name']}\n\n"
+                f"✅ נשלחה לנהג"
+            )
+            admin_ok = send_whatsapp_message(admin_phone, admin_msg)
+    except Exception as e:
+        print(f"[ImmediateSend] שגיאה בשליחה למנהל: {e}")
+
+    return {
+        "driver_ok": bool(driver_ok),
+        "admin_ok": bool(admin_ok),
+        "driver_name": driver["name"],
+        "driver_phone": target,
+    }
 
 
 @app.post("/webhook")
@@ -989,6 +1048,7 @@ def get_order_dates():
 @app.post("/api/orders")
 async def add_order_manual(request: Request):
     body = await request.json()
+    send_now = body.get("send_now", False)
     with get_db() as conn:
         customer_id = body.get("customer_id")
         area = body.get("area", "")
@@ -1018,7 +1078,19 @@ async def add_order_manual(request: Request):
         "quantity": body["quantity"], "order_date": order_date,
         "driver_name": driver["name"] if driver else "",
     })
-    return {"ok": True}
+    result = {"ok": True}
+    if send_now:
+        if driver:
+            sent = _send_order_immediate(driver, {
+                "customer_name": body["customer_name"], "site_address": body["site_address"],
+                "quantity": body["quantity"], "order_date": order_date,
+                "contact_name": body.get("contact_name", ""),
+                "contact_phone": body.get("contact_phone", ""),
+            })
+            result["sent"] = sent
+        else:
+            result["sent"] = {"driver_ok": False, "admin_ok": False, "driver_name": "", "driver_phone": ""}
+    return result
 
 
 @app.get("/api/orders/latest")
@@ -1997,12 +2069,6 @@ async def send_daily_schedule(request: Request):
 
     for driver_name, driver_orders in by_driver.items():
         first = driver_orders[0]
-        def _fmt_phone(p):
-            p = (p or "").strip().replace(" ", "").replace("-", "").lstrip("+")
-            if p.startswith("0"):
-                p = "972" + p[1:]
-            return p
-
         raw_phone    = _fmt_phone(first.get("driver_phone"))
         raw_personal = _fmt_phone(first.get("driver_personal_phone"))
 

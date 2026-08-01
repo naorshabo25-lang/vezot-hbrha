@@ -406,8 +406,10 @@
           <div class="form-row" style="align-items:center">
             <select id="o-area" onchange="previewDriver()" style="flex:1;min-width:160px"><option value="">-- אזור --</option></select>
             <div id="o-driver-preview" style="flex:2;font-size:0.83em;color:#64748b;padding:4px"></div>
-            <button class="btn btn-primary btn-sm" onclick="addOrderManual()">הוסף הזמנה</button>
+            <button class="btn btn-primary btn-sm" onclick="addOrderManual(false)">הוסף הזמנה</button>
+            <button class="btn btn-primary btn-sm" style="background:#15803d;white-space:nowrap" onclick="addOrderManual(true)">📤 הוסף ושלח לנהג</button>
           </div>
+          <div id="o-send-result" style="display:none;margin-top:8px;padding:10px 14px;border-radius:8px;font-size:0.88em;font-weight:600;direction:rtl"></div>
         </div>
       </details>
 
@@ -2895,7 +2897,7 @@ function previewDriver() {
   }
 }
 
-async function addOrderManual() {
+async function addOrderManual(sendNow = false) {
   const customer_id   = document.getElementById('o-customer').value || null;
   const customer_name = document.getElementById('o-name').value.trim();
   const site_address  = document.getElementById('o-site').value.trim();
@@ -2908,10 +2910,11 @@ async function addOrderManual() {
   const ureaQty      = document.getElementById('o-urea-qty').value;
   const extras       = extrasSel === 'אוריאה' && ureaQty ? `אוריאה: ${ureaQty} י"ח` : extrasSel;
   if (!customer_name || !site_address || !quantity) return alert('יש למלא שם לקוח, כתובת וכמות');
-  await fetch('/api/orders', {
+  const res = await fetch('/api/orders', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ customer_id, customer_name, site_address, contact_name, contact_phone, quantity, order_date, area, extras })
+    body: JSON.stringify({ customer_id, customer_name, site_address, contact_name, contact_phone, quantity, order_date, area, extras, send_now: sendNow })
   });
+  const data = await res.json();
   ['o-name','o-site','o-contact-name','o-contact-phone','o-quantity','o-date'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('o-customer').value = '';
   document.getElementById('o-area').value = '';
@@ -2919,6 +2922,22 @@ async function addOrderManual() {
   document.getElementById('o-urea-qty').value = '';
   document.getElementById('o-urea-qty').style.display = 'none';
   document.getElementById('o-driver-preview').textContent = '';
+  const resultEl = document.getElementById('o-send-result');
+  if (sendNow && data.sent) {
+    const s = data.sent;
+    const driverLine = s.driver_ok
+      ? `✅ נשלח לנהג <strong>${s.driver_name}</strong>`
+      : `❌ שליחה לנהג נכשלה${s.driver_name ? ` (${s.driver_name})` : ''}`;
+    const adminLine  = s.admin_ok ? ' &nbsp;|&nbsp; ✅ נשלח אליך' : ' &nbsp;|&nbsp; ❌ שליחה אליך נכשלה';
+    resultEl.innerHTML = driverLine + adminLine;
+    resultEl.style.display = 'block';
+    resultEl.style.background = (s.driver_ok && s.admin_ok) ? '#f0fdf4' : '#fef2f2';
+    resultEl.style.border = `1px solid ${(s.driver_ok && s.admin_ok) ? '#86efac' : '#fca5a5'}`;
+    resultEl.style.color  = (s.driver_ok && s.admin_ok) ? '#15803d' : '#b91c1c';
+    setTimeout(() => { resultEl.style.display = 'none'; }, 8000);
+  } else {
+    resultEl.style.display = 'none';
+  }
   loadOrders();
 }
 
