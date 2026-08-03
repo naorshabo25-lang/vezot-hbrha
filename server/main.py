@@ -1514,14 +1514,14 @@ def get_weekly_tasks():
 
 @app.post("/api/orders/dedup")
 def dedup_orders():
-    """מחיקת הזמנות כפולות — שומר רק את זו עם ה-id הנמוך ביותר"""
+    """מחיקת הזמנות כפולות — שומר רק את זו עם ה-id הנמוך ביותר (ללא תלות בנהג)"""
     with get_db() as conn:
         deleted = conn.execute("""
             DELETE FROM orders
             WHERE id NOT IN (
                 SELECT MIN(id)
                 FROM orders
-                GROUP BY driver_id, order_date, customer_name, site_address
+                GROUP BY order_date, customer_name, site_address
             )
         """).rowcount
     return {"ok": True, "deleted": deleted}

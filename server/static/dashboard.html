@@ -2479,10 +2479,16 @@ async function loadTasks() {
 
   if (!drivers.length) { container.innerHTML = '<div class="card"><p class="empty">אין משימות פתוחות למחר</p></div>'; return; }
 
-  // אסוף את כל ההזמנות של מחר לטבלת סיכום
+  // אסוף את כל ההזמנות של מחר לטבלת סיכום — dedup גלובלי לפי לקוח+כתובת
+  const _globalSeen = new Set();
   const allTomorrowOrders = [];
   drivers.forEach(d => {
-    (d.orders_by_date[tomorrow] || []).forEach(o => allTomorrowOrders.push({...o, driver_name: d.name}));
+    (d.orders_by_date[tomorrow] || []).forEach(o => {
+      const key = o.customer_name + '||' + o.site_address;
+      if (_globalSeen.has(key)) return;
+      _globalSeen.add(key);
+      allTomorrowOrders.push({...o, driver_name: d.name});
+    });
   });
 
   const summaryEl = document.getElementById('tasks-summary');
@@ -2527,11 +2533,15 @@ async function loadTasks() {
 
   container.innerHTML = drivers.map(d => {
     const tomorrowOrds = d.orders_by_date[tomorrow] || [];
-    // dedup by id to guard against duplicate DB rows or saved-order duplicates
+    // dedup by id AND by customer+site to guard against all types of duplicates
     const seenIds = new Set();
+    const seenKeys = new Set();
     const orders = tomorrowOrds.filter(o => {
-      if (o.status === 'הושלם' || seenIds.has(Number(o.id))) return false;
+      if (o.status === 'הושלם') return false;
+      const key = o.customer_name + '||' + o.site_address;
+      if (seenIds.has(Number(o.id)) || seenKeys.has(key)) return false;
       seenIds.add(Number(o.id));
+      seenKeys.add(key);
       return true;
     });
     const total = orders.length;
