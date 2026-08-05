@@ -256,6 +256,24 @@
   🔔 <span id="new-order-toast-text">הזמנה חדשה נכנסה!</span>
 </div>
 
+<!-- אישור שליחת סידור לנהגים -->
+<div id="schedule-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:18px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:min(540px,95vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;direction:rtl">
+    <div style="padding:18px 20px 14px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:1.05em;font-weight:700;color:#1e293b">📋 אישור שליחת סידור לנהגים</div>
+        <div id="schedule-confirm-subtitle" style="font-size:0.82em;color:#64748b;margin-top:2px"></div>
+      </div>
+      <button onclick="closeScheduleConfirm()" style="background:none;border:none;font-size:1.4em;cursor:pointer;color:#94a3b8;line-height:1">✕</button>
+    </div>
+    <div id="schedule-confirm-body" style="overflow-y:auto;flex:1;padding:16px 20px"></div>
+    <div style="padding:14px 20px;border-top:1px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeScheduleConfirm()" class="btn btn-sm" style="background:#f1f5f9;color:#374151">ביטול</button>
+      <button id="schedule-confirm-send-btn" onclick="confirmAndSend()" class="btn btn-primary btn-sm" style="background:#15803d;min-width:120px">✅ אשר ושלח</button>
+    </div>
+  </div>
+</div>
+
 <!-- Mobile overlay -->
 <div class="sidebar-overlay-m" id="sidebar-overlay-m" onclick="closeMobileSidebar()"></div>
 
@@ -624,7 +642,7 @@
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn btn-primary" style="background:#15803d;font-size:0.9em;padding:8px 18px"
-            onclick="sendScheduleToDrivers(this)">💬 שלח סידור לנהגים</button>
+            onclick="openScheduleConfirm(this)">💬 שלח סידור לנהגים</button>
         </div>
       </div>
       <div id="tasks-drivers-result" style="display:none;margin-bottom:12px;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0"></div>
@@ -2625,15 +2643,9 @@ async function loadTasks() {
   }).join('');
 }
 
-async function sendScheduleToDrivers(btn) {
-  btn.disabled = true;
-  const origText = btn.textContent;
-  btn.textContent = '⏳ שולח...';
+let _scheduleSendBtn = null; // שמור reference לכפתור המקורי
 
-  const panel = document.getElementById('tasks-drivers-result');
-  panel.style.display = 'block';
-  panel.innerHTML = '<div style="padding:14px;color:#64748b;font-size:0.88em">שולח לנהגים...</div>';
-
+function _collectOrderedIds() {
   const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
   const tomorrow  = tomorrowD.toISOString().slice(0, 10);
   const orderedIds = [];
@@ -2643,6 +2655,74 @@ async function sendScheduleToDrivers(btn) {
                      .map(r => parseInt(r.dataset.orderId));
     if (ids.length) orderedIds.push(ids);
   });
+  return orderedIds;
+}
+
+function openScheduleConfirm(btn) {
+  _scheduleSendBtn = btn;
+  const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
+  const tomorrow  = tomorrowD.toISOString().slice(0, 10);
+
+  // בנה תצוגה מקדימה מהנתונים שכבר על המסך
+  const drivers = [];
+  document.querySelectorAll('.task-rows-container').forEach(container => {
+    if (container.dataset.dateKey !== tomorrow) return;
+    const driverName = container.dataset.driverName;
+    if (driverName === 'ללא נהג') return;
+    const rows = Array.from(container.querySelectorAll('.task-row'));
+    if (!rows.length) return;
+    const orders = rows.map(r => {
+      const info = r.querySelector('.task-info');
+      return info ? info.querySelector('strong')?.textContent || '' : '';
+    }).filter(Boolean);
+    drivers.push({ name: driverName, orders });
+  });
+
+  if (!drivers.length) {
+    alert('אין הזמנות לשלוח');
+    return;
+  }
+
+  document.getElementById('schedule-confirm-subtitle').textContent =
+    `${drivers.length} נהגים · ${drivers.reduce((s,d)=>s+d.orders.length,0)} הזמנות סה"כ`;
+
+  const bodyHtml = drivers.map(d => `
+    <div style="margin-bottom:14px;padding:12px 14px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0">
+      <div style="font-weight:700;color:#1e293b;margin-bottom:6px;font-size:0.92em">🚛 ${d.name} — ${d.orders.length} הזמנות</div>
+      <ol style="margin:0;padding-right:18px;color:#374151;font-size:0.85em;line-height:1.7">
+        ${d.orders.map(o => `<li>${o}</li>`).join('')}
+      </ol>
+    </div>`).join('');
+
+  document.getElementById('schedule-confirm-body').innerHTML = bodyHtml;
+  const overlay = document.getElementById('schedule-confirm-overlay');
+  overlay.style.display = 'flex';
+}
+
+function closeScheduleConfirm() {
+  document.getElementById('schedule-confirm-overlay').style.display = 'none';
+}
+
+async function confirmAndSend() {
+  const sendBtn = document.getElementById('schedule-confirm-send-btn');
+  sendBtn.disabled = true;
+  sendBtn.textContent = '⏳ שולח...';
+  closeScheduleConfirm();
+  if (_scheduleSendBtn) await sendScheduleToDrivers(_scheduleSendBtn);
+  sendBtn.disabled = false;
+  sendBtn.textContent = '✅ אשר ושלח';
+}
+
+async function sendScheduleToDrivers(btn) {
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = '⏳ שולח...';
+
+  const panel = document.getElementById('tasks-drivers-result');
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="padding:14px;color:#64748b;font-size:0.88em">שולח לנהגים...</div>';
+
+  const orderedIds = _collectOrderedIds();
 
   try {
     const res  = await fetch('/api/send-daily-schedule', {
