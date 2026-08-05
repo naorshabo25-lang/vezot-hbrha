@@ -1499,7 +1499,6 @@ def get_weekly_tasks():
                     ORDER BY sort_order, delivery_time, created_at
                 """, (d["id"], date_str)).fetchall()
                 if rows:
-                    # dedup by (customer_name, site_address) — keep first occurrence
                     seen = set()
                     unique = []
                     for r in rows:
@@ -1509,6 +1508,30 @@ def get_weekly_tasks():
                             unique.append(dict(r))
                     orders_by_date[date_str] = unique
             result.append({**dict(d), "orders_by_date": orders_by_date})
+
+        # הזמנות ללא נהג משויך
+        unassigned_by_date = {}
+        for date_str in week_dates:
+            rows = conn.execute("""
+                SELECT * FROM orders WHERE driver_id IS NULL AND order_date = ?
+                ORDER BY created_at
+            """, (date_str,)).fetchall()
+            if rows:
+                seen = set()
+                unique = []
+                for r in rows:
+                    key = (r["customer_name"], r["site_address"])
+                    if key not in seen:
+                        seen.add(key)
+                        unique.append(dict(r))
+                unassigned_by_date[date_str] = unique
+        if unassigned_by_date:
+            result.append({
+                "id": None, "name": "ללא נהג", "area": "", "phone": "",
+                "personal_phone": "", "truck_number": "", "tanker_volume": "",
+                "orders_by_date": unassigned_by_date,
+            })
+
     return result
 
 
