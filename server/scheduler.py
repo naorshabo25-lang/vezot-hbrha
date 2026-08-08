@@ -83,39 +83,8 @@ def send_admin_schedule():
             admin_lines.append(f"{i}. {o['customer_name']} — {o['site_address']}")
         admin_lines.append("")
     send_whatsapp_message(admin_phone, "\n".join(admin_lines))
-
-    for driver_name, driver_orders in by_driver.items():
-        raw_phone = (driver_orders[0].get("driver_phone") or "").strip().replace(" ", "").replace("-", "")
-        if not raw_phone:
-            continue
-        if raw_phone.startswith("0"):
-            raw_phone = "972" + raw_phone[1:]
-
-        raw_personal = (driver_orders[0].get("driver_personal_phone") or "").strip().replace(" ", "").replace("-", "")
-        if raw_personal.startswith("0"):
-            raw_personal = "972" + raw_personal[1:]
-
-        if raw_personal:
-            # קבוצה: טקסט בלבד; מספר אישי: כפתורי ביצוע
-            send_whatsapp_message(raw_phone, f"📋 *סידור יומי — {target_date}*\nיש לך {len(driver_orders)} הזמנות:")
-            for o in driver_orders:
-                contact_str = ""
-                if o.get("contact_name"): contact_str += f"\n👤 {o['contact_name']}"
-                if o.get("contact_phone"): contact_str += f"\n📞 {o['contact_phone']}"
-                extras_str = f"\n➕ {o['extras']}" if o.get("extras") else ""
-                text = (f"📦 הזמנה #{o['id']}\n👥 {o['customer_name']}\n📍 {o['site_address']}"
-                        f"{contact_str}\n⛽ {o['quantity']} ליטר{extras_str}\n🕐 {o.get('delivery_time') or '—'}")
-                send_whatsapp_message(raw_phone, text)
-            send_whatsapp_message(raw_personal, f"📋 *סידור יומי — {target_date}*\nיש לך {len(driver_orders)} הזמנות:")
-            for i, o in enumerate(driver_orders, 1):
-                send_order_card(raw_personal, o, i, len(driver_orders))
-        else:
-            # ללא מספר אישי — שולח כפתורים לקבוצה (התנהגות קודמת)
-            send_whatsapp_message(raw_phone, f"📋 *סידור יומי — {target_date}*\nיש לך {len(driver_orders)} הזמנות:")
-            for i, o in enumerate(driver_orders, 1):
-                send_order_card(raw_phone, o, i, len(driver_orders))
-
-    print(f"[Scheduler] סידור נשלח למנהל ול-{len(by_driver)} נהגים — {len(orders)} הזמנות")
+    # שליחה לנהגים מתבצעת רק ידנית דרך כפתור "שלח סידור לנהגים" בדשבורד
+    print(f"[Scheduler] סידור נשלח למנהל — {len(orders)} הזמנות (נהגים ממתינים לאישור ידני)")
 
 
 def start_scheduler(hour: int = 14, minute: int = 0,
