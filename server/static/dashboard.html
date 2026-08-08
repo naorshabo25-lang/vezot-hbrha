@@ -2759,16 +2759,29 @@ function taskDrop(e) {
 }
 
 async function loadTasks() {
-  const res = await fetch('/api/tasks/week');
-  const allDrivers = await res.json();
-  const container = document.getElementById('tasks-container');
-  const today = new Date().toISOString().slice(0,10);
   const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
   const tomorrow = tomorrowD.toISOString().slice(0,10);
 
-  // רק נהגים עם הזמנות פתוחות למחר
+  const [res, tripsRes] = await Promise.all([
+    fetch('/api/tasks/week'),
+    fetch(`/api/terminal-trips?date=${tomorrow}`)
+  ]);
+  const allDrivers = await res.json();
+  const terminalTrips = (await tripsRes.json()) || [];
+  // map: driver_id → trips[]
+  const tripsByDriver = {};
+  terminalTrips.forEach(t => {
+    if (!tripsByDriver[t.driver_id]) tripsByDriver[t.driver_id] = [];
+    tripsByDriver[t.driver_id].push(t);
+  });
+
+  const container = document.getElementById('tasks-container');
+  const today = new Date().toISOString().slice(0,10);
+
+  // נהגים עם הזמנות פתוחות למחר, או נסיעת מסוף למחר
   const drivers = allDrivers.filter(d =>
-    (d.orders_by_date[tomorrow] || []).some(o => o.status !== 'הושלם')
+    (d.orders_by_date[tomorrow] || []).some(o => o.status !== 'הושלם') ||
+    (tripsByDriver[d.id] && tripsByDriver[d.id].length > 0)
   );
 
   // עדכן timestamp
@@ -2927,6 +2940,30 @@ async function loadTasks() {
           </div>
         </div>
         <div class="task-day-header">${label}${orders.length ? ` — ${sorted.length} הזמנות` : ''}</div>
+        ${(tripsByDriver[d.id] || []).map(trip => {
+          let comps = [];
+          try { comps = JSON.parse(trip.compartments || '[]'); } catch(e) {}
+          const tripTotal = comps.reduce((s,c) => s + (parseFloat(c.qty)||0), 0);
+          const compText = comps.map(c => `תא ${c.num}: ${c.qty} ל'`).join(' · ');
+          return `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;margin-bottom:6px;
+                      background:#fffbeb;border:1px solid #fde68a;border-radius:7px">
+            <span style="font-size:1.1em;flex-shrink:0;margin-top:1px">⛽</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:0.84em;font-weight:700;color:#92400e">נסיעה למסוף — ${trip.fuel_company}</div>
+              <div style="font-size:0.76em;color:#b45309;margin-top:2px;white-space:pre-wrap;word-break:break-word">
+                ${trip.cert_number ? `תעודה: ${trip.cert_number} · ` : ''}סה"כ: ${tripTotal.toLocaleString('he-IL')} ל'
+                ${compText ? `\n${compText}` : ''}
+                ${trip.notes ? `\n${trip.notes}` : ''}
+              </div>
+            </div>
+            <button onclick="openTerminalModal(${d.id},'${d.name.replace(/'/g,"\\'")}')"
+              style="flex-shrink:0;background:none;border:1px solid #fde68a;border-radius:5px;
+                     padding:2px 8px;font-size:0.72em;color:#92400e;cursor:pointer;font-family:inherit;white-space:nowrap">
+              עריכה
+            </button>
+          </div>`;
+        }).join('')}
         <div class="task-rows-container" data-date-key="${tomorrow}" data-driver-name="${d.name}">${rowsHtml}</div>
       </div>`;
   }).join('');
