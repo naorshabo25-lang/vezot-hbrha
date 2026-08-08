@@ -456,12 +456,7 @@
       </div>
 
       <div id="orders-subtab-completed" class="orders-subtab-content" style="display:none">
-        <div class="card" style="padding:14px 16px">
-          <table>
-            <thead><tr style="font-size:0.8em"><th style="padding:7px 8px">#</th><th style="padding:7px 8px">לקוח</th><th style="padding:7px 8px">כתובת</th><th style="padding:7px 8px">איש קשר</th><th style="padding:7px 8px">טלפון</th><th style="padding:7px 8px">כמות</th><th style="padding:7px 8px">נהג</th><th style="padding:7px 8px">סטטוס</th><th style="padding:7px 8px">שעת אספקה</th><th style="padding:7px 8px">נכנסה</th><th style="padding:7px 8px">פעולות</th></tr></thead>
-            <tbody id="completed-orders-body"></tbody>
-          </table>
-        </div>
+        <div id="completed-orders-container"></div>
       </div>
 
       <div id="orders-subtab-by-driver" class="orders-subtab-content" style="display:none">
@@ -1410,10 +1405,58 @@ function renderActiveOrders() {
 
 function renderCompletedOrders() {
   const orders = _allOrders.filter(o => o.status === 'הושלם');
-  const tbody = document.getElementById('completed-orders-body');
-  tbody.innerHTML = orders.length
-    ? orders.map(o => orderRowHtml(o, false)).join('')
-    : '<tr><td colspan="10" class="empty">אין הזמנות שהושלמו</td></tr>';
+  const container = document.getElementById('completed-orders-container');
+
+  if (!orders.length) {
+    container.innerHTML = '<div class="card"><p class="empty">אין הזמנות שהושלמו</p></div>';
+    return;
+  }
+
+  const fmt = d => { if (!d || d === 'ללא תאריך') return d; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; };
+  const fmtLiters = n => n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'K' : String(n);
+
+  const byDate = {};
+  orders.forEach(o => {
+    const d = o.order_date || 'ללא תאריך';
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(o);
+  });
+
+  const sorted = Object.keys(byDate).sort((a, b) => {
+    if (a === 'ללא תאריך') return 1;
+    if (b === 'ללא תאריך') return -1;
+    return b.localeCompare(a); // מהאחרון לראשון
+  });
+
+  const thead = `<thead><tr style="font-size:0.8em">
+    <th style="padding:5px 8px">#</th><th style="padding:5px 8px">לקוח</th>
+    <th style="padding:5px 8px">כתובת</th><th style="padding:5px 8px">איש קשר</th>
+    <th style="padding:5px 8px">טלפון</th><th style="padding:5px 8px">כמות</th>
+    <th style="padding:5px 8px">נהג</th><th style="padding:5px 8px">סטטוס</th>
+    <th style="padding:5px 8px">שעת אספקה</th><th style="padding:5px 8px">נכנסה</th><th style="padding:5px 8px">פעולות</th>
+  </tr></thead>`;
+
+  container.innerHTML = sorted.map(date => {
+    const grp = byDate[date];
+    const totalL    = grp.reduce((s, o) => s + parseQty(o.quantity), 0);
+    const totalReal = grp.reduce((s, o) => s + parseQty(o.actual_quantity), 0);
+    return `
+      <div style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;
+          background:#f0fdf4;border:1px solid #bbf7d0;border-bottom:none;border-radius:10px 10px 0 0">
+          <span style="font-weight:800;font-size:0.92em;color:#1e293b">✅ ${fmt(date)}</span>
+          <span style="font-size:0.75em;font-weight:700;color:#fff;background:#16a34a;
+            border-radius:20px;padding:1px 9px">${grp.length} הזמנות</span>
+          <span style="font-size:0.78em;color:#15803d;font-weight:600">${fmtLiters(totalL)} ל'${totalReal ? ` · בפועל: ${fmtLiters(totalReal)} ל'` : ''}</span>
+        </div>
+        <div style="overflow-x:auto;border:1px solid #bbf7d0;border-radius:0 0 10px 10px">
+          <table style="border-radius:0">
+            ${thead}
+            <tbody>${grp.map(o => orderRowHtml(o, false, true)).join('')}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 function renderOrdersByDriver() {
