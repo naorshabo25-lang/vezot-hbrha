@@ -162,6 +162,27 @@ def init_db():
                 conn.execute(f"ALTER TABLE drivers ADD COLUMN {col}")
             except Exception:
                 pass
+        try:
+            conn.execute("ALTER TABLE drivers ADD COLUMN is_terminal_driver INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        # סמן נהגי מסוף ידועים אוטומטית
+        conn.execute("UPDATE drivers SET is_terminal_driver = 1 WHERE name LIKE '%ישראל מזרחי%' AND is_terminal_driver = 0")
+
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS terminal_trips (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                driver_id    INTEGER,
+                trip_date    TEXT NOT NULL,
+                fuel_company TEXT DEFAULT '',
+                cert_number  TEXT DEFAULT '',
+                compartments TEXT DEFAULT '[]',
+                notes        TEXT DEFAULT '',
+                created_at   TEXT DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY (driver_id) REFERENCES drivers(id)
+            );
+        """)
+
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS recurring_orders (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,

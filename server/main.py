@@ -1535,6 +1535,88 @@ def get_weekly_tasks():
     return result
 
 
+# ─── Terminal Trips ────────────────────────────────────────────────────────────
+
+@app.get("/api/terminal-trips")
+def list_terminal_trips(date: str = None):
+    with get_db() as conn:
+        if date:
+            rows = conn.execute("""
+                SELECT t.*, d.name AS driver_name
+                FROM terminal_trips t
+                LEFT JOIN drivers d ON t.driver_id = d.id
+                WHERE t.trip_date = ?
+                ORDER BY t.created_at DESC
+            """, (date,)).fetchall()
+        else:
+            rows = conn.execute("""
+                SELECT t.*, d.name AS driver_name
+                FROM terminal_trips t
+                LEFT JOIN drivers d ON t.driver_id = d.id
+                ORDER BY t.trip_date DESC, t.created_at DESC
+                LIMIT 60
+            """).fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/terminal-trips")
+async def create_terminal_trip(request: Request):
+    import json as _json
+    data = await request.json()
+    driver_id    = data.get("driver_id")
+    trip_date    = data.get("trip_date", "")
+    fuel_company = data.get("fuel_company", "")
+    cert_number  = data.get("cert_number", "")
+    compartments = _json.dumps(data.get("compartments", []), ensure_ascii=False)
+    notes        = data.get("notes", "")
+    send_wa      = data.get("send_whatsapp", False)
+
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO terminal_trips (driver_id, trip_date, fuel_company, cert_number, compartments, notes) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (driver_id, trip_date, fuel_company, cert_number, compartments, notes)
+        )
+        trip_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        wa_sent = False
+        wa_error = ""
+        if send_wa and driver_id:
+            driver = conn.execute("SELECT * FROM drivers WHERE id = ?", (driver_id,)).fetchone()
+            if driver:
+                driver = dict(driver)
+                phone = _fmt_phone(driver.get("personal_phone") or driver.get("phone") or "")
+                if phone:
+                    comps = data.get("compartments", [])
+                    total = sum(float(c.get("qty") or 0) for c in comps)
+                    lines = [f"⛽ *נסיעה למסוף — {trip_date}*",
+                             f"חברת דלק: *{fuel_company}*"]
+                    if cert_number:
+                        lines.append(f"מס' תעודה: *{cert_number}*")
+                    lines.append("\n*תאים:*")
+                    for c in comps:
+                        lines.append(f"  תא {c.get('num','')} ← {c.get('qty','')} ל'")
+                    lines.append(f"\n*סה\"כ: {int(total):,} ל'*")
+                    if notes:
+                        lines.append(f"\nהערות: {notes}")
+                    try:
+                        send_whatsapp_message(phone, "\n".join(lines))
+                        wa_sent = True
+                    except Exception as e:
+                        wa_error = str(e)
+
+    return {"ok": True, "id": trip_id, "wa_sent": wa_sent, "wa_error": wa_error}
+
+
+@app.patch("/api/drivers/{driver_id}/terminal")
+async def toggle_terminal_driver(driver_id: int, request: Request):
+    data = await request.json()
+    val = 1 if data.get("is_terminal_driver") else 0
+    with get_db() as conn:
+        conn.execute("UPDATE drivers SET is_terminal_driver = ? WHERE id = ?", (val, driver_id))
+    return {"ok": True}
+
+
 @app.post("/api/orders/dedup")
 def dedup_orders():
     """מחיקת הזמנות כפולות — שומר רק את זו עם ה-id הנמוך ביותר (ללא תלות בנהג)"""
