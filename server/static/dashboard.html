@@ -1022,16 +1022,60 @@ function parseQty(str) {
 async function loadHome() {
   const res = await fetch('/api/orders');
   const orders = await res.json();
-  const counts = { total: orders.length, ממתין: 0, אושר: 0, נשלח: 0, הושלם: 0 };
-  let litersDelivered = 0;
+
+  // חשב כל חודש בנפרד
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const prevDate  = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+
+  const monthNames = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const fmtMonthLabel = ym => { const [y,m] = ym.split('-'); return `${monthNames[parseInt(m)-1]} ${y}`; };
+  const fmt = n => n >= 1000 ? (n/1000).toFixed(1).replace('.0','') + 'K' : String(n);
+
+  const calcStats = monthKey => {
+    const mo = orders.filter(o => (o.order_date || '').slice(0,7) === monthKey);
+    const c = { total: mo.length, ממתין: 0, אושר: 0, נשלח: 0, הושלם: 0 };
+    let liters = 0;
+    mo.forEach(o => {
+      if (c[o.status] !== undefined) c[o.status]++;
+      if (o.status === 'הושלם') liters += parseQty(o.quantity);
+    });
+    return { counts: c, liters };
+  };
+
+  const renderStatRow = (monthKey, label) => {
+    const { counts, liters } = calcStats(monthKey);
+    const defs = [
+      { num: counts.total,      label: 'הזמנות',  bg: 'linear-gradient(135deg,#1e293b,#0f172a)' },
+      { num: counts['ממתין'],   label: 'ממתינות', bg: 'linear-gradient(135deg,#d97706,#b45309)' },
+      { num: counts['אושר'],    label: 'אושרו',   bg: 'linear-gradient(135deg,#1d4ed8,#1e40af)' },
+      { num: counts['נשלח'],    label: 'נשלחו',   bg: 'linear-gradient(135deg,#7c3aed,#5b21b6)' },
+      { num: counts['הושלם'],   label: 'הושלמו',  bg: 'linear-gradient(135deg,#16a34a,#15803d)' },
+      { num: fmt(liters),       label: "ל' סופקו", bg: 'linear-gradient(135deg,#059669,#047857)' },
+    ];
+    return `
+      <div style="grid-column:1/-1;font-size:0.8em;font-weight:700;color:#374151;margin-bottom:4px;margin-top:6px">📅 ${label}</div>
+      ${defs.map(s => `
+        <div style="background:${s.bg};border-radius:14px;padding:14px 10px;text-align:center;box-shadow:0 3px 10px rgba(0,0,0,0.15)">
+          <div style="font-size:1.7em;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums">${s.num}</div>
+          <div style="font-size:0.68em;color:rgba(255,255,255,0.75);font-weight:600;margin-top:6px">${s.label}</div>
+        </div>`).join('')}`;
+  };
+
+  document.getElementById('home-stats').innerHTML =
+    renderStatRow(thisMonth, fmtMonthLabel(thisMonth)) +
+    renderStatRow(prevMonth, fmtMonthLabel(prevMonth));
+
+  // byDriver ו-byMonth נשארים לטבלאות למטה — לפי חודשיים
   const byDriver = {};
   const byMonth  = {};
-
-  orders.forEach(o => {
-    if (counts[o.status] !== undefined) counts[o.status]++;
+  orders.filter(o => {
+    const m = (o.order_date||'').slice(0,7);
+    return m === thisMonth || m === prevMonth;
+  }).forEach(o => {
     if (o.status === 'הושלם') {
       const qty = parseQty(o.quantity);
-      litersDelivered += qty;
       const name = o.driver_name || 'ללא נהג';
       if (!byDriver[name]) byDriver[name] = { orders: 0, liters: 0 };
       byDriver[name].orders++;
@@ -1044,22 +1088,7 @@ async function loadHome() {
       }
     }
   });
-
-  const fmt = n => n >= 1000 ? (n/1000).toFixed(1).replace('.0','') + 'K' : String(n);
-
-  const statDefs = [
-    { num: counts.total,         label: 'סה"כ הזמנות', bg: 'linear-gradient(135deg,#1e293b,#0f172a)' },
-    { num: counts['ממתין'],      label: 'ממתינות',      bg: 'linear-gradient(135deg,#d97706,#b45309)' },
-    { num: counts['אושר'],       label: 'אושרו',        bg: 'linear-gradient(135deg,#1d4ed8,#1e40af)' },
-    { num: counts['נשלח'],       label: 'נשלחו',        bg: 'linear-gradient(135deg,#7c3aed,#5b21b6)' },
-    { num: counts['הושלם'],      label: 'הושלמו',       bg: 'linear-gradient(135deg,#16a34a,#15803d)' },
-    { num: fmt(litersDelivered), label: 'ליטרים סופקו', bg: 'linear-gradient(135deg,#059669,#047857)' },
-  ];
-  document.getElementById('home-stats').innerHTML = statDefs.map(s => `
-    <div style="background:${s.bg};border-radius:16px;padding:18px 14px;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,0.18)">
-      <div style="font-size:2em;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums">${s.num}</div>
-      <div style="font-size:0.7em;color:rgba(255,255,255,0.7);font-weight:600;margin-top:7px;letter-spacing:0.3px">${s.label}</div>
-    </div>`).join('');
+  const litersDelivered = Object.values(byDriver).reduce((s,d) => s + d.liters, 0);
 
   // הזמנות מחר
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1118,15 +1147,13 @@ async function loadHome() {
   }
 
   // ליטרים לפי חודש
-  const monthNames = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
-  const fmtMonth = ym => { const [y,m] = ym.split('-'); return `${monthNames[parseInt(m)-1]} ${y}`; };
   const monthEl = document.getElementById('home-month-breakdown');
   const monthEntries = Object.entries(byMonth).sort((a,b) => b[0].localeCompare(a[0]));
   if (monthEntries.length) {
     const maxL = Math.max(...monthEntries.map(([,d]) => d.liters));
     const rows = monthEntries.map(([ym, d]) => `
       <tr>
-        <td style="font-weight:700;white-space:nowrap">${fmtMonth(ym)}</td>
+        <td style="font-weight:700;white-space:nowrap">${fmtMonthLabel(ym)}</td>
         <td style="text-align:center;color:#64748b">${d.orders}</td>
         <td style="text-align:center;font-weight:800;color:#15803d;white-space:nowrap">${d.liters.toLocaleString()} ל'</td>
         <td style="min-width:140px;padding:0 8px">
