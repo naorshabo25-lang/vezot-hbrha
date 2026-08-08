@@ -2214,6 +2214,13 @@ function _openTripEdit(driverId, driverName, tripId) {
   openTerminalModal(driverId, driverName, tripId, tripData);
 }
 
+async function _deleteTripRow(tripId) {
+  if (!confirm('למחוק את נסיעת המסוף?')) return;
+  await fetch(`/api/terminal-trips/${tripId}`, { method: 'DELETE' });
+  delete (window._ttTripsCache || {})[tripId];
+  await loadTasks();
+}
+
 function openTerminalModal(driverId, driverName, tripId, tripData) {
   _ttDriverId = driverId;
   _ttTripId   = tripId || null;
@@ -2937,6 +2944,11 @@ async function loadTasks() {
             style="flex-shrink:0;background:none;border:1px solid #fde68a;border-radius:5px;
                    padding:2px 8px;font-size:0.72em;color:#92400e;cursor:pointer;font-family:inherit">
             עריכה
+          </button>
+          <button onclick="_deleteTripRow(${safeId})"
+            style="flex-shrink:0;background:none;border:1px solid #fca5a5;border-radius:5px;
+                   padding:2px 6px;font-size:0.72em;color:#b91c1c;cursor:pointer;font-family:inherit">
+            ✕
           </button>
         </div>`;
       } else {

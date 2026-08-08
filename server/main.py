@@ -1652,6 +1652,13 @@ async def update_terminal_trip(trip_id: int, request: Request):
     return {"ok": True, "wa_sent": wa_sent, "wa_error": wa_error}
 
 
+@app.delete("/api/terminal-trips/{trip_id}")
+def delete_terminal_trip(trip_id: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM terminal_trips WHERE id = ?", (trip_id,))
+    return {"ok": True}
+
+
 @app.patch("/api/drivers/{driver_id}/terminal")
 async def toggle_terminal_driver(driver_id: int, request: Request):
     data = await request.json()
