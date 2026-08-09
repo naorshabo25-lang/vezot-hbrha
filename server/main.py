@@ -2251,13 +2251,21 @@ async def send_daily_schedule(request: Request):
         target_phone = raw_personal or raw_phone
         ok_text = send_whatsapp_message(target_phone, full_text)
 
-        # שלח כרטיסי ביצוע למספר האישי בלבד (אם קיים ונפרד)
+        # שלח כרטיסי ביצוע
         if raw_personal:
+            # יש מספר אישי — כפתורים למספר האישי, טקסט לקבוצה
             for i, o in enumerate(driver_orders, 1):
-                send_order_card(raw_personal, o, i, len(driver_orders))
-            # שלח גם לקבוצה — טקסט בלבד
+                ok_card = send_order_card(raw_personal, o, i, len(driver_orders))
+                if not ok_card:
+                    print(f"[Schedule] ⚠ כרטיס נכשל לנהג {driver_name} ({raw_personal}) הזמנה #{o['id']}")
             if raw_phone and raw_phone != raw_personal:
                 send_whatsapp_message(raw_phone, full_text)
+        else:
+            # אין מספר אישי — כפתורים ישירות לטלפון הנהג
+            for i, o in enumerate(driver_orders, 1):
+                ok_card = send_order_card(raw_phone, o, i, len(driver_orders))
+                if not ok_card:
+                    print(f"[Schedule] ⚠ כרטיס נכשל לנהג {driver_name} ({raw_phone}) הזמנה #{o['id']}")
 
         ok = ok_text
         phone_display = raw_personal or raw_phone
