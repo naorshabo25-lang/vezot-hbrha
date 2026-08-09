@@ -1180,28 +1180,17 @@ async function loadHome() {
   };
 
   document.getElementById('home-stats').innerHTML =
-    renderStatRow(thisMonth, fmtMonthLabel(thisMonth)) +
-    renderStatRow(prevMonth, fmtMonthLabel(prevMonth));
+    renderStatRow(thisMonth, fmtMonthLabel(thisMonth));
 
-  // byDriver ו-byMonth נשארים לטבלאות למטה — לפי חודשיים
+  // byDriver — רק החודש הנוכחי
   const byDriver = {};
-  const byMonth  = {};
-  orders.filter(o => {
-    const m = (o.order_date||'').slice(0,7);
-    return m === thisMonth || m === prevMonth;
-  }).forEach(o => {
+  orders.filter(o => (o.order_date||'').slice(0,7) === thisMonth).forEach(o => {
     if (o.status === 'הושלם') {
-      const qty = parseQty(o.quantity);
+      const qty  = parseQty(o.quantity);
       const name = o.driver_name || 'ללא נהג';
       if (!byDriver[name]) byDriver[name] = { orders: 0, liters: 0 };
       byDriver[name].orders++;
       byDriver[name].liters += qty;
-      const month = (o.order_date || '').slice(0, 7);
-      if (month) {
-        if (!byMonth[month]) byMonth[month] = { orders: 0, liters: 0 };
-        byMonth[month].orders++;
-        byMonth[month].liters += qty;
-      }
     }
   });
   const litersDelivered = Object.values(byDriver).reduce((s,d) => s + d.liters, 0);
@@ -1262,38 +1251,8 @@ async function loadHome() {
     breakdownEl.innerHTML = '';
   }
 
-  // ליטרים לפי חודש
   const monthEl = document.getElementById('home-month-breakdown');
-  const monthEntries = Object.entries(byMonth).sort((a,b) => b[0].localeCompare(a[0]));
-  if (monthEntries.length) {
-    const maxL = Math.max(...monthEntries.map(([,d]) => d.liters));
-    const rows = monthEntries.map(([ym, d]) => `
-      <tr>
-        <td style="font-weight:700;white-space:nowrap">${fmtMonthLabel(ym)}</td>
-        <td style="text-align:center;color:#64748b">${d.orders}</td>
-        <td style="text-align:center;font-weight:800;color:#15803d;white-space:nowrap">${d.liters.toLocaleString()} ל'</td>
-        <td style="min-width:140px;padding:0 8px">
-          <div class="progress-wrap" style="margin:0">
-            <div class="progress-bar" style="width:${Math.round((d.liters/maxL)*100)}%;background:linear-gradient(90deg,#059669,#34d399)"></div>
-          </div>
-        </td>
-      </tr>`).join('');
-    monthEl.innerHTML = `
-      <div class="card" style="margin-bottom:0">
-        <h2 style="font-size:0.78em">📅 ליטרים שסופקו — לפי חודש</h2>
-        <table>
-          <thead><tr>
-            <th>חודש</th>
-            <th style="text-align:center">הזמנות</th>
-            <th style="text-align:center">ליטרים</th>
-            <th>חלק יחסי</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-  } else {
-    monthEl.innerHTML = '';
-  }
+  if (monthEl) monthEl.innerHTML = '';
 
   // ממתינים לרישום
   loadPendingRegistrations();
