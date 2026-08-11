@@ -1211,10 +1211,13 @@ async def update_order_status(order_id: int, request: Request):
 @app.put("/api/orders/{order_id}")
 async def update_order(order_id: int, request: Request):
     body = await request.json()
-    area = body.get("area", "")
     with get_db() as conn:
-        driver = conn.execute("SELECT id FROM drivers WHERE area = ? LIMIT 1", (area,)).fetchone()
-        driver_id = driver["id"] if driver else None
+        if "driver_id" in body:
+            driver_id = body["driver_id"]  # ישירות מהטופס
+        else:
+            area = body.get("area", "")
+            driver = conn.execute("SELECT id FROM drivers WHERE area = ? LIMIT 1", (area,)).fetchone()
+            driver_id = driver["id"] if driver else None
         conn.execute(
             """UPDATE orders SET
                customer_name = ?, site_address = ?, contact_name = ?, contact_phone = ?,

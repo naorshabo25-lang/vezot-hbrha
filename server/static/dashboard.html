@@ -978,8 +978,8 @@
         <input id="em-date" type="date" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">
-        <label style="font-size:0.82em;font-weight:600;color:#6b7280">אזור</label>
-        <select id="em-area" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937"><option value="">-- בחר אזור --</option></select>
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">נהג</label>
+        <select id="em-driver" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937"><option value="">-- ללא נהג --</option></select>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">
         <label style="font-size:0.82em;font-weight:600;color:#6b7280">מוצר נוסף</label>
@@ -1674,11 +1674,10 @@ function openEditOrder(order) {
     document.getElementById('em-urea-qty').value = '';
     document.getElementById('em-urea-qty').style.display = 'none';
   }
-  // populate area options from drivers
-  const areaSel = document.getElementById('em-area');
-  const areas = [...new Set(_drivers.map(d => d.area).filter(Boolean))];
-  areaSel.innerHTML = '<option value="">-- בחר אזור --</option>' +
-    areas.map(a => `<option value="${a}" ${a === (order.area || '') ? 'selected' : ''}>${a}</option>`).join('');
+  // populate driver select
+  const driverSel = document.getElementById('em-driver');
+  driverSel.innerHTML = '<option value="">-- ללא נהג --</option>' +
+    _drivers.map(d => `<option value="${d.id}" ${d.id === order.driver_id ? 'selected' : ''}>${d.name}</option>`).join('');
   document.getElementById('edit-order-modal').style.display = 'flex';
 }
 
@@ -1687,6 +1686,7 @@ function closeOrderModal() {
 }
 
 function saveEditOrder() {
+  var driverVal = document.getElementById('em-driver').value;
   var body = {
     customer_name: document.getElementById('em-name').value.trim(),
     site_address:  document.getElementById('em-site').value.trim(),
@@ -1694,7 +1694,7 @@ function saveEditOrder() {
     contact_phone: document.getElementById('em-contact-phone').value.trim(),
     quantity:      document.getElementById('em-quantity').value.trim(),
     order_date:    document.getElementById('em-date').value,
-    area:          document.getElementById('em-area').value,
+    driver_id:     driverVal ? parseInt(driverVal) : null,
     extras:        (function() {
       const sel = document.getElementById('em-extras').value;
       const qty = document.getElementById('em-urea-qty').value;
