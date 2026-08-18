@@ -455,13 +455,17 @@ async def receive_message(request: Request):
             _oid  = _info.get("order_id")
             _qty_text = text.strip()
             if _oid and _qty_text:
+                from datetime import datetime as _dt
+                import pytz as _pytz
+                _now_il = _dt.now(_pytz.timezone("Asia/Jerusalem"))
+                _delivery_time = _now_il.strftime("%H:%M")
                 with get_db() as conn:
                     conn.execute(
-                        "UPDATE orders SET status='הושלם', actual_quantity=? WHERE id=?",
-                        (_qty_text, _oid)
+                        "UPDATE orders SET status='הושלם', actual_quantity=?, delivery_time=? WHERE id=?",
+                        (_qty_text, _delivery_time, _oid)
                     )
                     conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
-                send_whatsapp_message(phone, f"✅ הזמנה #{_oid} הושלמה — *{_qty_text} ליטר* נקלטו. תודה!")
+                send_whatsapp_message(phone, f"✅ הזמנה #{_oid} הושלמה — *{_qty_text} ליטר* נקלטו בשעה {_delivery_time}. תודה!")
             return JSONResponse({"status": "ok"})
 
         # נהג ביקש את הסידור שלו
