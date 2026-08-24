@@ -33,69 +33,70 @@
     html { overflow-x: hidden; }
     body {
       font-family: 'Heebo', system-ui, Arial, sans-serif;
-      font-size: 13px;
+      font-size: 14px;
       line-height: 1.5;
       background: var(--bg);
       color: var(--text-1);
       display: flex;
+      flex-direction: column;
       min-height: 100vh;
       max-width: 100vw;
       overflow-x: hidden;
     }
 
-    /* ── Sidebar ── */
-    .sidebar {
-      position: fixed; right: 0; top: 0; bottom: 0; width: 200px;
+    /* ── Top Navbar ── */
+    .topbar {
       background: var(--sidebar-bg);
-      display: flex; flex-direction: column; z-index: 200;
-      box-shadow: -2px 0 16px rgba(0,0,0,0.28);
+      display: flex; align-items: center; gap: 0;
+      position: sticky; top: 0; z-index: 200;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.28);
+      height: 54px; flex-shrink: 0;
     }
-    .sidebar-logo {
-      padding: 14px 12px 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      display: flex; align-items: center; justify-content: center;
+    .topbar-logo {
+      padding: 0 14px;
+      border-left: 1px solid rgba(255,255,255,0.08);
+      height: 100%; display: flex; align-items: center; flex-shrink: 0;
     }
-    .sidebar-logo img {
-      height: 64px; object-fit: contain; border-radius: 6px;
-      background: rgba(255,255,255,0.06); padding: 5px;
+    .topbar-logo img {
+      height: 38px; object-fit: contain; border-radius: 5px;
+      background: rgba(255,255,255,0.06); padding: 3px;
     }
-    .sidebar-nav { flex: 1; padding: 8px; overflow-y: auto; }
+    .topbar-nav {
+      display: flex; align-items: center; gap: 2px;
+      padding: 0 10px; flex: 1; height: 100%; overflow-x: auto;
+    }
+    .topbar-nav::-webkit-scrollbar { height: 0; }
     .nav-item {
-      display: flex; align-items: center; gap: 8px;
-      padding: 7px 10px; border-radius: 6px; cursor: pointer;
-      color: var(--sidebar-text); font-size: 0.88em; font-weight: 500;
-      transition: background 0.15s, color 0.15s; margin-bottom: 1px;
-      border: none; background: transparent; width: 100%; text-align: right;
-      font-family: inherit;
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 6px; cursor: pointer;
+      color: var(--sidebar-text); font-size: 0.9em; font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+      border: none; background: transparent; white-space: nowrap;
+      font-family: inherit; height: 36px; flex-shrink: 0;
     }
-    .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--sidebar-hover); }
+    .nav-item:hover { background: rgba(255,255,255,0.08); color: var(--sidebar-hover); }
     .nav-item.active {
       background: var(--accent-dim);
       color: #ff7070; font-weight: 700;
-      border-right: 2px solid var(--accent);
+      border-bottom: 2px solid var(--accent);
+      border-radius: 6px 6px 0 0;
     }
-    .nav-icon { font-size: 0.95em; width: 16px; flex-shrink: 0; }
-    .sidebar-footer {
-      padding: 10px 12px;
-      border-top: 1px solid rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.2);
-      font-size: 0.72em;
-      display: flex; align-items: center; justify-content: space-between;
+    .nav-icon { font-size: 1em; flex-shrink: 0; }
+    .topbar-right {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 16px; border-right: 1px solid rgba(255,255,255,0.08);
+      height: 100%; flex-shrink: 0;
+    }
+    .topbar-clock { font-size: 1em; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+    .topbar-date-str { font-size: 0.78em; color: var(--sidebar-text); }
+    .topbar-status {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 0.72em; color: rgba(255,255,255,0.25); padding: 0 14px;
     }
 
     /* ── Main layout ── */
-    .main { margin-right: 200px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
-    .topbar {
-      background: var(--surface); padding: 9px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 100;
-      box-shadow: var(--shadow-s);
-    }
-    .topbar-title { font-size: 0.95em; font-weight: 700; color: var(--text-2); }
-    .topbar-right { display: flex; align-items: center; gap: 12px; }
-    .topbar-clock { font-size: 1em; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
-    .topbar-date-str { font-size: 0.78em; color: var(--text-3); }
+    .main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .topbar-title { display: none; }
     .container { padding: 14px 18px; flex: 1; }
 
     /* ── Sections ── */
@@ -273,22 +274,16 @@
     ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
 
     /* ── Mobile ── */
-    .hamburger-btn-m {
-      display: none; align-items: center; justify-content: center;
-      width: 32px; height: 32px; border-radius: 6px;
-      border: 1px solid var(--border); background: var(--surface-2);
-      cursor: pointer; font-size: 16px; color: var(--text-2);
-      font-family: inherit; flex-shrink: 0;
-    }
-    .sidebar-overlay-m { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 199; display: none; }
-    .sidebar-overlay-m.open { display: block; }
     @media (max-width: 767px) {
-      .hamburger-btn-m { display: flex; }
-      .sidebar { right: -220px !important; transition: right 0.25s cubic-bezier(0.4,0,0.2,1); width: 200px !important; }
-      .sidebar.mobile-open { right: 0 !important; }
-      .main { margin-right: 0 !important; width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; }
+      .topbar { height: auto; flex-wrap: wrap; padding: 6px 0; }
+      .topbar-logo { padding: 0 10px; border-left: none; height: 42px; }
+      .topbar-logo img { height: 32px; }
+      .topbar-nav { padding: 4px 6px; gap: 1px; order: 3; width: 100%; border-top: 1px solid rgba(255,255,255,0.06); }
+      .nav-item { padding: 5px 10px; font-size: 0.82em; }
+      .topbar-right { padding: 0 10px; border-right: none; height: 42px; }
+      .topbar-status { padding: 0 10px; }
       .container { padding: 10px 8px; width: 100%; }
-      .topbar { padding: 8px 12px; }
+      .main { width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; }
       #home-stats { grid-template-columns: repeat(3,1fr) !important; gap: 6px !important; }
       .stat-card { min-width: 0 !important; padding: 10px 10px; }
       .stat-card .num { font-size: 1.4em; }
@@ -392,14 +387,12 @@
 </div>
 
 <!-- Mobile overlay -->
-<div class="sidebar-overlay-m" id="sidebar-overlay-m" onclick="closeMobileSidebar()"></div>
-
-<!-- ── Sidebar ── -->
-<div class="sidebar" id="main-sidebar">
-  <div class="sidebar-logo" style="justify-content:center">
-    <img src="/static/logo.jpeg" alt="לוגו" style="height:90px" />
+<!-- ── Top Navbar ── -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <img src="/static/logo.jpeg" alt="לוגו" />
   </div>
-  <nav class="sidebar-nav">
+  <nav class="topbar-nav">
     <button class="nav-item active" onclick="showSection('home', this)">
       <span class="nav-icon">&#8962;</span> דף הבית
     </button>
@@ -419,22 +412,18 @@
       <span class="nav-icon">&#9881;</span> הגדרות
     </button>
   </nav>
-  <div class="sidebar-footer">
-    <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,0.2)"></span>זאת הברכה</span>
-    <span style="background:rgba(255,255,255,0.08);border-radius:4px;padding:1px 6px;font-size:0.85em;font-weight:700">v2</span>
+  <div class="topbar-right">
+    <span class="topbar-date-str" id="clock-date"></span>
+    <span class="topbar-clock" id="clock-time"></span>
+  </div>
+  <div class="topbar-status">
+    <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,0.2);flex-shrink:0"></span>
+    זאת הברכה
   </div>
 </div>
 
 <!-- ── Main ── -->
 <div class="main">
-  <div class="topbar">
-    <div class="topbar-title" id="topbar-title">דף הבית</div>
-    <div class="topbar-right">
-      <span class="topbar-date-str" id="clock-date"></span>
-      <span class="topbar-clock" id="clock-time"></span>
-      <button class="hamburger-btn-m" onclick="toggleMobileSidebar()" aria-label="פתח תפריט">☰</button>
-    </div>
-  </div>
 
   <div class="container">
 
@@ -1048,29 +1037,7 @@
 </div>
 
 <script>
-// Mobile detection — runs before first paint
-(function applyMobileLayout() {
-  const isMobile = window.innerWidth < 768;
-  if (!isMobile) return;
-  const sidebar = document.getElementById('main-sidebar');
-  const main    = document.querySelector('.main');
-  if (sidebar) sidebar.style.right = '-220px';
-  if (main)    main.style.marginRight = '0';
-})();
-
-window.addEventListener('resize', function() {
-  const isMobile = window.innerWidth < 768;
-  const sidebar = document.getElementById('main-sidebar');
-  const main    = document.querySelector('.main');
-  if (!sidebar || !main) return;
-  if (isMobile && !sidebar.classList.contains('mobile-open')) {
-    sidebar.style.right = '-220px';
-    main.style.marginRight = '0';
-  } else if (!isMobile) {
-    sidebar.style.right = '0';
-    main.style.marginRight = '200px';
-  }
-});
+// (sidebar removed — top navbar)
 
 const STATUS_OPTIONS = ['ממתין','אושר','נשלח','הושלם'];
 
@@ -1087,29 +1054,11 @@ const SECTION_TITLES = {
   drivers: 'נהגים', tasks: 'משימות', emails: 'מיילים', settings: 'הגדרות'
 };
 
-function toggleMobileSidebar() {
-  const sidebar = document.getElementById('main-sidebar');
-  const overlay = document.getElementById('sidebar-overlay-m');
-  const opening = !sidebar.classList.contains('mobile-open');
-  sidebar.classList.toggle('mobile-open');
-  overlay.classList.toggle('open');
-  sidebar.style.right = opening ? '0' : '-260px';
-}
-function closeMobileSidebar() {
-  const sidebar = document.getElementById('main-sidebar');
-  const overlay = document.getElementById('sidebar-overlay-m');
-  sidebar.classList.remove('mobile-open');
-  overlay.classList.remove('open');
-  if (window.innerWidth < 768) sidebar.style.right = '-220px';
-}
-
 function showSection(id, btn) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (btn) btn.classList.add('active');
-  document.getElementById('topbar-title').textContent = SECTION_TITLES[id] || id;
-  closeMobileSidebar();
   if (id === 'home') loadHome();
   if (id === 'orders') loadOrders();
   if (id === 'customers') loadCustomers();
