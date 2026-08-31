@@ -11,6 +11,7 @@ import WorkPlanObligo from './components/WorkPlanObligo';
 import CustomerOrdersTab from './components/CustomerOrdersTab';
 import PotentialClientsTab from './components/PotentialClientsTab';
 import SettingsTab from './components/SettingsTab';
+import FleetTab from './components/FleetTab';
 
 const MIGRATION_V = 'workPlanMigration_v4';
 if (!localStorage.getItem(MIGRATION_V)) {
@@ -34,6 +35,7 @@ const PAGE_TITLES = {
   customers: 'לקוחות והזמנות',
   potential: 'לקוחות פוטנציאלים',
   obligo:    'אובליגו ותנאי תשלום',
+  fleet:     'ניהול צי מכליות',
   orders:    'מערכת הזמנות',
   import:    'ייבוא / ייצוא',
   settings:  'הגדרות',
@@ -406,6 +408,9 @@ export default function App() {
           )}
           {tab === 'potential' && (
             <PotentialClientsTab />
+          )}
+          {tab === 'fleet' && (
+            <FleetTab />
           )}
           {tab === 'settings' && (
             <SettingsTab />

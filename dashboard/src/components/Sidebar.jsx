@@ -5,6 +5,7 @@ const NAV = [
   { id: 'customers',  label: 'לקוחות והזמנות',     icon: '👥' },
   { id: 'potential',  label: 'לקוחות פוטנציאלים',  icon: '🎯' },
   { id: 'obligo',     label: 'אובליגו',            icon: '💳' },
+  { id: 'fleet',      label: 'ניהול צי מכליות',    icon: '🛢️' },
   { id: 'orders',     label: 'מערכת הזמנות',       icon: '🚛' },
   { id: 'import',     label: 'ייבוא/ייצוא',        icon: '⇅'  },
   { id: 'settings',   label: 'הגדרות',             icon: '⚙'  },
