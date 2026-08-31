@@ -61,6 +61,13 @@ const getAllMonths = (data) => {
 
 export default function App() {
   const [tab, setTab] = useState('workplan');
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handle = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', handle);
+    return () => mq.removeEventListener('change', handle);
+  }, []);
 
   const [workPlanData, setWorkPlanData] = useState(() => {
     try {
