@@ -2284,6 +2284,87 @@ async def send_daily_schedule(request: Request):
     return {"ok": True, "orders_sent": len(orders), "drivers": driver_results}
 
 
+# ── Fleet Management ──────────────────────────────────────────────────────────
+
+@app.get("/api/fleet/trucks")
+def get_fleet_trucks():
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT t.*, d.name as driver_name
+            FROM fleet_trucks t LEFT JOIN drivers d ON t.driver_id = d.id
+            ORDER BY t.name
+        """).fetchall()
+    return [dict(r) for r in rows]
+
+@app.post("/api/fleet/trucks")
+async def add_fleet_truck(request: Request):
+    body = await request.json()
+    with get_db() as conn:
+        cur = conn.execute(
+            "INSERT INTO fleet_trucks (name, plate_number, driver_id, tanker_volume, notes) VALUES (?,?,?,?,?)",
+            (body.get("name",""), body.get("plate_number",""),
+             body.get("driver_id") or None, body.get("tanker_volume",""), body.get("notes",""))
+        )
+    return {"ok": True, "id": cur.lastrowid}
+
+@app.put("/api/fleet/trucks/{tid}")
+async def update_fleet_truck(tid: int, request: Request):
+    body = await request.json()
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE fleet_trucks SET name=?, plate_number=?, driver_id=?, tanker_volume=?, notes=? WHERE id=?",
+            (body.get("name",""), body.get("plate_number",""),
+             body.get("driver_id") or None, body.get("tanker_volume",""), body.get("notes",""), tid)
+        )
+    return {"ok": True}
+
+@app.delete("/api/fleet/trucks/{tid}")
+def delete_fleet_truck(tid: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM fleet_records WHERE truck_id=?", (tid,))
+        conn.execute("DELETE FROM fleet_trucks WHERE id=?", (tid,))
+    return {"ok": True}
+
+@app.get("/api/fleet/records/{truck_id}")
+def get_fleet_records(truck_id: int):
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM fleet_records WHERE truck_id=? ORDER BY event_date DESC, created_at DESC",
+            (truck_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+@app.post("/api/fleet/records")
+async def add_fleet_record(request: Request):
+    body = await request.json()
+    with get_db() as conn:
+        cur = conn.execute(
+            "INSERT INTO fleet_records (truck_id, category, title, event_date, expiry_date, cost, notes) VALUES (?,?,?,?,?,?,?)",
+            (body.get("truck_id"), body.get("category",""), body.get("title",""),
+             body.get("event_date",""), body.get("expiry_date",""),
+             body.get("cost") or 0, body.get("notes",""))
+        )
+    return {"ok": True, "id": cur.lastrowid}
+
+@app.put("/api/fleet/records/{rid}")
+async def update_fleet_record(rid: int, request: Request):
+    body = await request.json()
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE fleet_records SET category=?, title=?, event_date=?, expiry_date=?, cost=?, notes=? WHERE id=?",
+            (body.get("category",""), body.get("title",""),
+             body.get("event_date",""), body.get("expiry_date",""),
+             body.get("cost") or 0, body.get("notes",""), rid)
+        )
+    return {"ok": True}
+
+@app.delete("/api/fleet/records/{rid}")
+def delete_fleet_record(rid: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM fleet_records WHERE id=?", (rid,))
+    return {"ok": True}
+
+
 # ── WorkPlan persistence + bidirectional sync ────────────────────────────────
 
 import json as _json

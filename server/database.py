@@ -184,6 +184,32 @@ def init_db():
         """)
 
         conn.executescript("""
+            CREATE TABLE IF NOT EXISTS fleet_trucks (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                name         TEXT NOT NULL,
+                plate_number TEXT DEFAULT '',
+                driver_id    INTEGER,
+                tanker_volume TEXT DEFAULT '',
+                notes        TEXT DEFAULT '',
+                created_at   TEXT DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY (driver_id) REFERENCES drivers(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS fleet_records (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                truck_id     INTEGER NOT NULL,
+                category     TEXT NOT NULL,
+                title        TEXT DEFAULT '',
+                event_date   TEXT DEFAULT '',
+                expiry_date  TEXT DEFAULT '',
+                cost         REAL DEFAULT 0,
+                notes        TEXT DEFAULT '',
+                created_at   TEXT DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY (truck_id) REFERENCES fleet_trucks(id)
+            );
+        """)
+
+        conn.executescript("""
             CREATE TABLE IF NOT EXISTS recurring_orders (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 customer_id   INTEGER,

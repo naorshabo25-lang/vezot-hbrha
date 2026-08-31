@@ -408,6 +408,9 @@
     <button class="nav-item" onclick="showSection('tasks', this)">
       <span class="nav-icon">&#10003;</span> משימות
     </button>
+    <button class="nav-item" onclick="showSection('fleet', this)">
+      <span class="nav-icon">&#128665;</span> צי מכליות
+    </button>
     <button class="nav-item" onclick="showSection('settings', this)">
       <span class="nav-icon">&#9881;</span> הגדרות
     </button>
@@ -938,6 +941,78 @@
   </div>
 </div>
 
+    <!-- ── ניהול צי מכליות ── -->
+    <div id="fleet" class="section">
+      <div class="card" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <h2 style="margin:0">&#128665; ניהול צי מכליות</h2>
+          <button class="btn btn-primary btn-sm" onclick="openFleetTruckModal()">+ הוסף משאית</button>
+        </div>
+        <div id="fleet-alerts" style="margin-bottom:14px"></div>
+        <div id="fleet-trucks-list"></div>
+      </div>
+    </div>
+
+    <!-- מודל הוספה/עריכת משאית -->
+    <div id="fleet-truck-modal" onclick="if(event.target===this)closeFleetTruckModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
+      <div style="background:white;border-radius:16px;padding:28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.15);position:relative">
+        <button onclick="closeFleetTruckModal()" style="position:absolute;top:14px;left:16px;background:none;border:none;font-size:1.4em;cursor:pointer;color:#9ca3af">✕</button>
+        <h2 id="fleet-truck-modal-title" style="color:#1f2937;margin-bottom:18px;font-size:1em">&#128665; משאית</h2>
+        <input type="hidden" id="ft-id" value="" />
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input id="ft-name" placeholder="שם משאית *" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em" />
+          <input id="ft-plate" placeholder="מספר רישוי" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em" />
+          <select id="ft-driver" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em">
+            <option value="">-- ללא נהג קבוע --</option>
+          </select>
+          <input id="ft-volume" placeholder="נפח מכלית (ליטר)" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em" />
+          <textarea id="ft-notes" placeholder="הערות" rows="2" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;resize:vertical"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+          <button class="btn" onclick="closeFleetTruckModal()" style="background:#f9fafb;color:#6b7280;border:1.5px solid #e5e7eb">ביטול</button>
+          <button class="btn btn-primary" onclick="saveFleetTruck()">שמור</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- מודל הוספת רשומה לצי -->
+    <div id="fleet-record-modal" onclick="if(event.target===this)closeFleetRecordModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
+      <div style="background:white;border-radius:16px;padding:28px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,0.15);position:relative">
+        <button onclick="closeFleetRecordModal()" style="position:absolute;top:14px;left:16px;background:none;border:none;font-size:1.4em;cursor:pointer;color:#9ca3af">✕</button>
+        <h2 id="fleet-record-modal-title" style="color:#1f2937;margin-bottom:18px;font-size:1em">הוסף רשומה</h2>
+        <input type="hidden" id="fr-id" value="" />
+        <input type="hidden" id="fr-truck-id" value="" />
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <select id="fr-category" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em" onchange="fleetCategoryChange()">
+            <option value="טיפול">&#128295; טיפול / שירות</option>
+            <option value="טסט">&#128196; טסט שנתי</option>
+            <option value="ביקורת_חורף">&#10052; ביקורת חורף</option>
+            <option value="רישיון_חומס">&#128196; רישיון חומס</option>
+            <option value="ביטוח">&#128737; ביטוח</option>
+            <option value="הוצאת_מוסך">&#128295; הוצאת מוסך</option>
+          </select>
+          <input id="fr-title" placeholder="כותרת / תיאור" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em" />
+          <div id="fr-event-date-row" style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:0.82em;font-weight:600;color:#6b7280">תאריך ביצוע</label>
+            <input id="fr-event-date" type="date" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em" />
+          </div>
+          <div id="fr-expiry-date-row" style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:0.82em;font-weight:600;color:#6b7280">תוקף עד</label>
+            <input id="fr-expiry-date" type="date" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em" />
+          </div>
+          <div id="fr-cost-row" style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:0.82em;font-weight:600;color:#6b7280">עלות (₪)</label>
+            <input id="fr-cost" type="number" min="0" placeholder="0" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em" />
+          </div>
+          <textarea id="fr-notes" placeholder="הערות" rows="2" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;resize:vertical"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+          <button class="btn" onclick="closeFleetRecordModal()" style="background:#f9fafb;color:#6b7280;border:1.5px solid #e5e7eb">ביטול</button>
+          <button class="btn btn-primary" onclick="saveFleetRecord()">שמור</button>
+        </div>
+      </div>
+    </div>
+
 <!-- ── מודל עריכת הזמנה ── -->
 <div id="edit-order-modal" onclick="if(event.target===this)closeOrderModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
   <div style="background:white;border-radius:16px;padding:30px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,0.15);position:relative">
@@ -1051,7 +1126,7 @@ function waBtn(phone) {
 const SECTION_TITLES = {
   home: 'דף הבית', orders: 'הזמנות', customers: 'לקוחות',
   potential: 'מאגר לקוחות פוטנציאלים',
-  drivers: 'נהגים', tasks: 'משימות', emails: 'מיילים', settings: 'הגדרות'
+  drivers: 'נהגים', tasks: 'משימות', emails: 'מיילים', settings: 'הגדרות', fleet: 'ניהול צי מכליות'
 };
 
 function showSection(id, btn) {
@@ -1067,6 +1142,7 @@ function showSection(id, btn) {
   if (id === 'tasks') loadTasks();
   if (id === 'emails') loadEmailSection();
   if (id === 'settings') loadSettings();
+  if (id === 'fleet') loadFleet();
 }
 
 function showSectionByName(id) {
@@ -3434,6 +3510,265 @@ async function _checkNewOrders() {
 }
 _checkNewOrders(); // אתחול ה-ID הידוע
 setInterval(_checkNewOrders, 30000);
+
+// ── Fleet Management ──────────────────────────────────────
+
+const FLEET_CAT_LABELS = {
+  'טיפול': { icon: '🔧', label: 'טיפול / שירות', hasExpiry: false, hasCost: true },
+  'טסט': { icon: '📋', label: 'טסט שנתי', hasExpiry: true, hasCost: false },
+  'ביקורת_חורף': { icon: '❄️', label: 'ביקורת חורף', hasExpiry: true, hasCost: false },
+  'רישיון_חומס': { icon: '📄', label: 'רישיון חומס', hasExpiry: true, hasCost: false },
+  'ביטוח': { icon: '🛡️', label: 'ביטוח', hasExpiry: true, hasCost: true },
+  'הוצאת_מוסך': { icon: '🔧', label: 'הוצאת מוסך', hasExpiry: false, hasCost: true },
+};
+
+function fleetDaysLeft(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  const now = new Date();
+  now.setHours(0,0,0,0); d.setHours(0,0,0,0);
+  return Math.round((d - now) / 86400000);
+}
+
+function fleetStatusBadge(days) {
+  if (days === null) return '';
+  if (days < 0) return '<span style="background:#fee2e2;color:#dc2626;border-radius:5px;padding:2px 7px;font-size:0.78em;font-weight:700">פג תוקף</span>';
+  if (days <= 30) return `<span style="background:#fef9c3;color:#a16207;border-radius:5px;padding:2px 7px;font-size:0.78em;font-weight:700">עוד ${days} יום</span>`;
+  return `<span style="background:#dcfce7;color:#16a34a;border-radius:5px;padding:2px 7px;font-size:0.78em;font-weight:700">בתוקף</span>`;
+}
+
+function fleetFmtDate(dateStr) {
+  if (!dateStr) return '—';
+  const [y,m,d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+let _fleetTrucks = [];
+let _fleetDrivers = [];
+let _fleetOpenTruckId = null;
+
+async function loadFleet() {
+  const [trucksRes, driversRes] = await Promise.all([
+    fetch('/api/fleet/trucks'),
+    fetch('/api/drivers'),
+  ]);
+  _fleetTrucks = await trucksRes.json();
+  _fleetDrivers = await driversRes.json();
+  renderFleetAlerts();
+  renderFleetTrucks();
+}
+
+function renderFleetAlerts() {
+  const alerts = [];
+  _fleetTrucks.forEach(t => {
+    // We'll check per-record expiry after loading records — handled in truck render
+  });
+  document.getElementById('fleet-alerts').innerHTML = '';
+}
+
+function renderFleetTrucks() {
+  const el = document.getElementById('fleet-trucks-list');
+  if (!_fleetTrucks.length) {
+    el.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:32px 0">אין משאיות. לחץ "+ הוסף משאית" להתחלה.</div>';
+    return;
+  }
+  el.innerHTML = _fleetTrucks.map(t => `
+    <div style="border:1.5px solid #e5e7eb;border-radius:12px;margin-bottom:14px;overflow:hidden">
+      <div style="background:#f8fafc;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:1.4em">🚛</span>
+          <div>
+            <div style="font-weight:700;font-size:1em;color:#1f2937">${t.name}</div>
+            <div style="font-size:0.8em;color:#6b7280">${t.plate_number ? 'רישוי: '+t.plate_number : ''} ${t.driver_name ? '· נהג: '+t.driver_name : ''} ${t.tanker_volume ? '· '+t.tanker_volume+' ל"ג' : ''}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="openFleetRecordModal(${t.id})" style="background:#1d4ed8;color:white;border:none">+ רשומה</button>
+          <button class="btn btn-sm" onclick="openFleetTruckModal(${t.id})" style="background:#f3f4f6;color:#374151;border:none">✏️</button>
+          <button class="btn btn-sm" onclick="deleteFleetTruck(${t.id})" style="background:#fee2e2;color:#dc2626;border:none">🗑️</button>
+        </div>
+      </div>
+      <div id="fleet-records-${t.id}" style="padding:10px 16px 4px">
+        <div style="color:#9ca3af;font-size:0.84em">טוען...</div>
+      </div>
+    </div>
+  `).join('');
+  _fleetTrucks.forEach(t => loadFleetRecords(t.id));
+}
+
+async function loadFleetRecords(truckId) {
+  const res = await fetch(`/api/fleet/records/${truckId}`);
+  const records = await res.json();
+  const el = document.getElementById(`fleet-records-${truckId}`);
+  if (!el) return;
+
+  // Group by category — show latest record per category + expenses list
+  const byCategory = {};
+  const expenses = [];
+  records.forEach(r => {
+    if (r.category === 'הוצאת_מוסך') { expenses.push(r); return; }
+    if (!byCategory[r.category]) byCategory[r.category] = r;
+  });
+
+  const cats = ['טיפול','טסט','ביקורת_חורף','רישיון_חומס','ביטוח'];
+  let html = '<div style="display:flex;flex-wrap:wrap;gap:8px;padding-bottom:10px">';
+
+  cats.forEach(cat => {
+    const cfg = FLEET_CAT_LABELS[cat];
+    const rec = byCategory[cat];
+    let badge = '', dateStr = '';
+    if (rec && rec.expiry_date) {
+      const days = fleetDaysLeft(rec.expiry_date);
+      badge = fleetStatusBadge(days);
+      dateStr = `עד ${fleetFmtDate(rec.expiry_date)}`;
+    } else if (rec && rec.event_date) {
+      dateStr = `ביצוע: ${fleetFmtDate(rec.event_date)}`;
+    } else {
+      badge = '<span style="background:#f3f4f6;color:#9ca3af;border-radius:5px;padding:2px 7px;font-size:0.78em">לא הוזן</span>';
+    }
+    html += `<div style="border:1.5px solid #e5e7eb;border-radius:9px;padding:8px 12px;min-width:150px;flex:1;cursor:pointer" onclick="openFleetRecordModal(${truckId},'${cat}')">
+      <div style="font-size:0.82em;font-weight:700;color:#374151;margin-bottom:4px">${cfg.icon} ${cfg.label}</div>
+      <div style="font-size:0.8em;color:#6b7280">${dateStr}</div>
+      <div style="margin-top:4px">${badge}</div>
+    </div>`;
+  });
+
+  html += '</div>';
+
+  // הוצאות מוסך
+  if (expenses.length) {
+    const total = expenses.reduce((s,r) => s + (r.cost||0), 0);
+    html += `<div style="border-top:1px solid #f3f4f6;padding-top:8px;margin-bottom:8px">
+      <div style="font-size:0.82em;font-weight:700;color:#374151;margin-bottom:6px">🔧 הוצאות מוסך — סה"כ: ₪${total.toLocaleString()}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.8em">
+        <thead><tr style="color:#6b7280">
+          <th style="text-align:right;padding:3px 6px;font-weight:600">תאריך</th>
+          <th style="text-align:right;padding:3px 6px;font-weight:600">תיאור</th>
+          <th style="text-align:right;padding:3px 6px;font-weight:600">עלות</th>
+          <th style="padding:3px 6px"></th>
+        </tr></thead>
+        <tbody>${expenses.map(r => `<tr style="border-top:1px solid #f9fafb">
+          <td style="padding:4px 6px;color:#374151">${fleetFmtDate(r.event_date)}</td>
+          <td style="padding:4px 6px;color:#374151">${r.title||r.notes||'—'}</td>
+          <td style="padding:4px 6px;color:#374151">₪${(r.cost||0).toLocaleString()}</td>
+          <td style="padding:4px 6px"><button onclick="deleteFleetRecord(${r.id},${truckId})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:0.9em">🗑️</button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  } else {
+    html += `<div style="font-size:0.8em;color:#9ca3af;padding-bottom:8px">אין הוצאות מוסך — <a href="#" onclick="openFleetRecordModal(${truckId},'הוצאת_מוסך');return false" style="color:#2563eb">הוסף</a></div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// מודל משאית
+
+function openFleetTruckModal(truckId) {
+  const modal = document.getElementById('fleet-truck-modal');
+  const sel = document.getElementById('ft-driver');
+  sel.innerHTML = '<option value="">-- ללא נהג קבוע --</option>';
+  _fleetDrivers.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id; opt.textContent = d.name;
+    sel.appendChild(opt);
+  });
+
+  if (truckId) {
+    const t = _fleetTrucks.find(x => x.id === truckId);
+    if (!t) return;
+    document.getElementById('fleet-truck-modal-title').textContent = '✏️ עריכת משאית';
+    document.getElementById('ft-id').value = t.id;
+    document.getElementById('ft-name').value = t.name;
+    document.getElementById('ft-plate').value = t.plate_number||'';
+    document.getElementById('ft-volume').value = t.tanker_volume||'';
+    document.getElementById('ft-notes').value = t.notes||'';
+    sel.value = t.driver_id||'';
+  } else {
+    document.getElementById('fleet-truck-modal-title').textContent = '🚛 הוסף משאית';
+    document.getElementById('ft-id').value = '';
+    ['ft-name','ft-plate','ft-volume','ft-notes'].forEach(id => document.getElementById(id).value = '');
+    sel.value = '';
+  }
+  modal.style.display = 'flex';
+}
+
+function closeFleetTruckModal() {
+  document.getElementById('fleet-truck-modal').style.display = 'none';
+}
+
+async function saveFleetTruck() {
+  const id = document.getElementById('ft-id').value;
+  const body = {
+    name: document.getElementById('ft-name').value.trim(),
+    plate_number: document.getElementById('ft-plate').value.trim(),
+    driver_id: document.getElementById('ft-driver').value || null,
+    tanker_volume: document.getElementById('ft-volume').value.trim(),
+    notes: document.getElementById('ft-notes').value.trim(),
+  };
+  if (!body.name) { alert('יש להזין שם משאית'); return; }
+  const url = id ? `/api/fleet/trucks/${id}` : '/api/fleet/trucks';
+  const method = id ? 'PUT' : 'POST';
+  await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  closeFleetTruckModal();
+  loadFleet();
+}
+
+async function deleteFleetTruck(id) {
+  if (!confirm('למחוק את המשאית וכל הרשומות שלה?')) return;
+  await fetch(`/api/fleet/trucks/${id}`, { method: 'DELETE' });
+  loadFleet();
+}
+
+// מודל רשומה
+
+function fleetCategoryChange() {
+  const cat = document.getElementById('fr-category').value;
+  const cfg = FLEET_CAT_LABELS[cat];
+  document.getElementById('fr-expiry-date-row').style.display = cfg.hasExpiry ? '' : 'none';
+  document.getElementById('fr-cost-row').style.display = cfg.hasCost ? '' : 'none';
+}
+
+function openFleetRecordModal(truckId, preCategory) {
+  document.getElementById('fr-truck-id').value = truckId;
+  document.getElementById('fr-id').value = '';
+  document.getElementById('fleet-record-modal-title').textContent = '➕ הוסף רשומה';
+  ['fr-title','fr-event-date','fr-expiry-date','fr-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fr-cost').value = '';
+  if (preCategory) document.getElementById('fr-category').value = preCategory;
+  fleetCategoryChange();
+  document.getElementById('fleet-record-modal').style.display = 'flex';
+}
+
+function closeFleetRecordModal() {
+  document.getElementById('fleet-record-modal').style.display = 'none';
+}
+
+async function saveFleetRecord() {
+  const truckId = document.getElementById('fr-truck-id').value;
+  const rid = document.getElementById('fr-id').value;
+  const body = {
+    truck_id: parseInt(truckId),
+    category: document.getElementById('fr-category').value,
+    title: document.getElementById('fr-title').value.trim(),
+    event_date: document.getElementById('fr-event-date').value,
+    expiry_date: document.getElementById('fr-expiry-date').value,
+    cost: parseFloat(document.getElementById('fr-cost').value) || 0,
+    notes: document.getElementById('fr-notes').value.trim(),
+  };
+  const url = rid ? `/api/fleet/records/${rid}` : '/api/fleet/records';
+  const method = rid ? 'PUT' : 'POST';
+  await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  closeFleetRecordModal();
+  loadFleetRecords(truckId);
+}
+
+async function deleteFleetRecord(rid, truckId) {
+  if (!confirm('למחוק רשומה זו?')) return;
+  await fetch(`/api/fleet/records/${rid}`, { method: 'DELETE' });
+  loadFleetRecords(truckId);
+}
+
 </script>
 </body>
 </html>
