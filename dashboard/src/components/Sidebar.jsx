@@ -1,3 +1,5 @@
+import LiveClock from './LiveClock';
+
 const NAV = [
   { id: 'workplan',   label: 'תמונת מצב',          icon: '⛽' },
   { id: 'expenses',   label: 'הוצאות',             icon: '📋' },
@@ -5,132 +7,112 @@ const NAV = [
   { id: 'customers',  label: 'לקוחות והזמנות',     icon: '👥' },
   { id: 'potential',  label: 'לקוחות פוטנציאלים',  icon: '🎯' },
   { id: 'obligo',     label: 'אובליגו',            icon: '💳' },
-  { id: 'fleet',      label: 'ניהול צי מכליות',    icon: '🛢️' },
+  { id: 'fleet',      label: 'צי מכליות',          icon: '🛢️' },
   { id: 'orders',     label: 'מערכת הזמנות',       icon: '🚛' },
   { id: 'import',     label: 'ייבוא/ייצוא',        icon: '⇅'  },
   { id: 'settings',   label: 'הגדרות',             icon: '⚙'  },
 ];
 
-const DIVIDER_AFTER = new Set(['revenue', 'obligo']);
-
-export default function Sidebar({ tab, onTab, isMobile, isOpen, onClose }) {
-  const handleNav = (id) => {
-    onTab(id);
-    if (isMobile) onClose();
-  };
-
+export default function Sidebar({ tab, onTab }) {
   return (
-    <>
-      {isMobile && (
-        <div
-          className={`sidebar-overlay${isOpen ? ' open' : ''}`}
-          onClick={onClose}
+    <header style={{
+      position: 'fixed',
+      top: 0, right: 0, left: 0,
+      height: 52,
+      background: '#070d1c',
+      display: 'flex',
+      alignItems: 'center',
+      zIndex: 30,
+      boxShadow: '0 2px 16px rgba(0,0,0,0.35)',
+    }}>
+      {/* Logo */}
+      <div style={{
+        padding: '0 16px',
+        borderLeft: '1px solid rgba(255,255,255,0.07)',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        flexShrink: 0,
+      }}>
+        <img
+          src="/לוגו חברה.jpeg"
+          alt="זאת הברכה"
+          style={{ height: 36, objectFit: 'contain', borderRadius: 6 }}
         />
-      )}
+      </div>
 
-      <aside
-        className={isMobile ? `sidebar-drawer${isOpen ? ' open' : ''}` : ''}
-        style={{
-          width: 'var(--sidebar-w)',
-          background: 'var(--sidebar-bg)',
-          position: 'fixed', top: 0, right: 0, bottom: 0,
-          zIndex: 30,
-          display: 'flex', flexDirection: 'column',
-          boxShadow: '-3px 0 16px rgba(0,0,0,0.18)',
-        }}
-      >
-        {/* Logo */}
-        <div style={{
-          padding: '18px 14px 14px',
-          borderBottom: '1px solid var(--sidebar-divider)',
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <div style={{
-            borderRadius: 'var(--r-md)',
-            overflow: 'hidden',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(255,255,255,0.07)',
-            padding: '12px 10px',
-            minHeight: 90,
-            flex: 1,
-          }}>
-            <img
-              src="/לוגו חברה.jpeg"
-              alt="זאת הברכה"
-              style={{ maxHeight: 80, maxWidth: '100%', objectFit: 'contain' }}
-            />
-          </div>
-          {isMobile && (
+      {/* Nav items */}
+      <nav style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        overflowX: 'auto',
+        height: '100%',
+        padding: '0 6px',
+        gap: 2,
+        scrollbarWidth: 'none',
+      }}>
+        {NAV.map(item => {
+          const active = tab === item.id;
+          return (
             <button
-              onClick={onClose}
+              key={item.id}
+              onClick={() => onTab(item.id)}
               style={{
-                background: 'rgba(255,255,255,0.08)',
-                border: 'none', borderRadius: 8,
-                color: 'rgba(255,255,255,0.55)',
-                width: 32, height: 32,
-                cursor: 'pointer', fontSize: 16,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '0 13px',
+                height: 36,
+                borderRadius: 8,
+                border: 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                fontSize: 13,
+                fontWeight: active ? 700 : 500,
+                fontFamily: 'inherit',
+                background: active ? 'rgba(229,57,53,0.18)' : 'transparent',
+                color: active ? '#ff8a80' : '#556080',
+                transition: 'all 0.15s',
+                position: 'relative',
               }}
-            >✕</button>
-          )}
-        </div>
+              onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#a8b8d8'; }}}
+              onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#556080'; }}}
+            >
+              {active && (
+                <span style={{
+                  position: 'absolute',
+                  bottom: 0, right: '12%', left: '12%',
+                  height: 2.5,
+                  background: '#e53935',
+                  borderRadius: '3px 3px 0 0',
+                }} />
+              )}
+              <span style={{ fontSize: 14 }}>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
-        {/* Nav */}
-        <nav style={{ flex: 1, padding: '10px 10px', overflowY: 'auto' }}>
-          {NAV.map(item => {
-            const active = tab === item.id;
-            return (
-              <div key={item.id}>
-                <button
-                  className={`nav-item${active ? ' active' : ''}`}
-                  onClick={() => handleNav(item.id)}
-                >
-                  {active && (
-                    <span style={{
-                      position: 'absolute',
-                      right: 0, top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: 3, height: '55%',
-                      background: 'var(--red)',
-                      borderRadius: '3px 0 0 3px',
-                    }} />
-                  )}
-                  <span style={{ fontSize: 15, width: 20, textAlign: 'center', flexShrink: 0 }}>
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </button>
-                {DIVIDER_AFTER.has(item.id) && (
-                  <hr style={{ border: 'none', borderTop: '1px solid var(--sidebar-divider)', margin: '6px 4px' }} />
-                )}
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* Footer */}
-        <div style={{
-          padding: '12px 16px',
-          borderTop: '1px solid var(--sidebar-divider)',
-          fontSize: 11,
-          color: 'rgba(255,255,255,0.28)',
-          letterSpacing: 0.4,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 7,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{
-              width: 7, height: 7, borderRadius: '50%', background: '#22c55e', flexShrink: 0,
-              boxShadow: '0 0 0 2px rgba(34,197,94,0.2)',
-            }} />
-            <span>זאת הברכה דלקים</span>
-          </div>
-          <span style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 4, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>v2.0</span>
-        </div>
-      </aside>
-    </>
+      {/* Clock + status */}
+      <div style={{
+        padding: '0 16px',
+        borderRight: '1px solid rgba(255,255,255,0.07)',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        flexShrink: 0,
+      }}>
+        <LiveClock dark />
+        <span style={{
+          width: 7, height: 7, borderRadius: '50%',
+          background: '#22c55e',
+          boxShadow: '0 0 0 2px rgba(34,197,94,0.2)',
+          flexShrink: 0,
+        }} />
+      </div>
+    </header>
   );
 }

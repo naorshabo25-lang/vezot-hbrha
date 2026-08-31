@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 const MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 const pad = n => String(n).padStart(2, '0');
 
-export default function LiveClock() {
+export default function LiveClock({ dark = false }) {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -12,6 +12,13 @@ export default function LiveClock() {
 
   const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
   const date = `${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+
+  if (dark) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.2 }}>
+      <span style={{ fontWeight: 700, fontSize: 14, color: '#e53935', fontVariantNumeric: 'tabular-nums', fontFamily: '"Courier New", monospace', letterSpacing: 1 }}>{time}</span>
+      <span style={{ fontSize: 10, color: '#556080' }}>{date}</span>
+    </div>
+  );
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

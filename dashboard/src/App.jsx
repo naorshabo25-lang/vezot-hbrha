@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { DEFAULT_WORKPLAN } from './defaultWorkPlan';
 import { useExpenses } from './hooks/useExpenses';
 import Sidebar from './components/Sidebar';
-import LiveClock from './components/LiveClock';
 import ImportExport from './components/ImportExport';
 import WorkPlanDashboard from './components/WorkPlanDashboard';
 import WorkPlanExpenses from './components/WorkPlanExpenses';
@@ -62,18 +61,6 @@ const getAllMonths = (data) => {
 
 export default function App() {
   const [tab, setTab] = useState('workplan');
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    const handle = (e) => {
-      setIsMobile(e.matches);
-      if (!e.matches) setSidebarOpen(false);
-    };
-    mq.addEventListener('change', handle);
-    return () => mq.removeEventListener('change', handle);
-  }, []);
 
   const [workPlanData, setWorkPlanData] = useState(() => {
     try {
@@ -256,89 +243,25 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', direction: 'rtl' }}>
 
-      {!isOrders && (
-        <Sidebar
-          tab={tab}
-          onTab={t => setTab(t)}
-          isMobile={isMobile}
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
+      {!isOrders && <Sidebar tab={tab} onTab={t => setTab(t)} />}
+
+      {/* Back button for orders iframe */}
+      {isOrders && (
+        <div style={{ position: 'fixed', top: 12, right: 12, zIndex: 1000 }}>
+          <button className="btn btn-soft" onClick={() => setTab('workplan')}>← חזרה</button>
+        </div>
       )}
 
       <div style={{
-        marginRight: isOrders || isMobile ? 0 : 'var(--sidebar-w)',
+        paddingTop: isOrders ? 0 : 52,
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
       }}>
-
-        {/* Back button for orders iframe */}
-        {isOrders && (
-          <div style={{ position: 'fixed', top: 12, right: 12, zIndex: 1000 }}>
-            <button
-              className="btn btn-soft"
-              onClick={() => setTab('workplan')}
-            >
-              ← חזרה
-            </button>
-          </div>
-        )}
-
-        {/* Header */}
-        {!isOrders && (
-          <header style={{
-            background: 'rgba(255,255,255,0.80)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderBottom: '1px solid rgba(160,174,220,0.18)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 28px',
-            height: 56,
-            position: 'sticky',
-            top: 0,
-            zIndex: 20,
-            boxShadow: '0 1px 12px rgba(14,22,40,0.06)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {isMobile && (
-                <button
-                  className="hamburger-btn"
-                  onClick={() => setSidebarOpen(true)}
-                  aria-label="פתח תפריט"
-                >☰</button>
-              )}
-              <div style={{
-                width: 4, height: 20, background: 'var(--red)',
-                borderRadius: 2, flexShrink: 0,
-              }} />
-              <span style={{ fontWeight: 700, fontSize: 15.5, color: 'var(--text-1)', letterSpacing: -0.2 }}>
-                {PAGE_TITLES[tab]}
-              </span>
-              {tab === 'workplan' && (
-                <span style={{
-                  background: 'var(--red-soft)',
-                  color: 'var(--red)',
-                  border: '1px solid var(--red-border)',
-                  borderRadius: 'var(--r-sm)',
-                  padding: '2px 10px',
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}>
-                  {monthLabel}
-                </span>
-              )}
-            </div>
-            <LiveClock />
-          </header>
-        )}
-
         {/* Main content */}
         <main style={{
           flex: 1,
-          padding: isOrders ? 0 : isMobile ? '14px 12px' : '24px 28px',
+          padding: isOrders ? 0 : '24px 28px',
           display: 'flex',
           flexDirection: 'column',
           gap: isOrders ? 0 : 18,
