@@ -513,7 +513,8 @@
             <input id="o-site" placeholder="כתובת האתר" />
           </div>
           <div class="form-row">
-            <input id="o-contact-name" placeholder="שם איש קשר" />
+            <input id="o-contact-name" placeholder="שם איש קשר" list="contact-suggestions-list" autocomplete="off" oninput="onContactNameInput(this.value)" />
+            <datalist id="contact-suggestions-list"></datalist>
             <input id="o-contact-phone" placeholder="טל' איש קשר" />
             <input id="o-quantity" type="number" min="1" placeholder="כמות (ליטר)" />
             <input id="o-date" type="date" />
@@ -1025,7 +1026,7 @@
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">
         <label style="font-size:0.82em;font-weight:600;color:#6b7280">שם איש קשר</label>
-        <input id="em-contact-name" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+        <input id="em-contact-name" list="contact-suggestions-list" autocomplete="off" oninput="onContactNameInput(this.value,'em-contact-phone')" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">
         <label style="font-size:0.82em;font-weight:600;color:#6b7280">טל' איש קשר</label>
@@ -3507,6 +3508,36 @@ async function _checkNewOrders() {
 }
 _checkNewOrders(); // אתחול ה-ID הידוע
 setInterval(_checkNewOrders, 30000);
+
+// ── Contact Suggestions ───────────────────────────────────
+
+let _contactSuggestions = []; // [{ contact_name, contact_phone }]
+
+async function loadContactSuggestions() {
+  try {
+    const res = await fetch('/api/contact-suggestions');
+    _contactSuggestions = await res.json();
+    const dl = document.getElementById('contact-suggestions-list');
+    if (!dl) return;
+    dl.innerHTML = _contactSuggestions
+      .map(s => `<option value="${s.contact_name.replace(/"/g,'&quot;')}">${s.contact_phone ? '📞 ' + s.contact_phone : ''}</option>`)
+      .join('');
+  } catch(e) {}
+}
+
+function onContactNameInput(val, phoneFieldId = 'o-contact-phone') {
+  const match = _contactSuggestions.find(
+    s => s.contact_name.trim().toLowerCase() === val.trim().toLowerCase()
+  );
+  if (match && match.contact_phone) {
+    const phoneEl = document.getElementById(phoneFieldId);
+    if (phoneEl && !phoneEl.value) phoneEl.value = match.contact_phone;
+  }
+}
+
+// טען הצעות בטעינת הדף
+loadContactSuggestions();
+
 
 // ── Fleet Management ──────────────────────────────────────
 

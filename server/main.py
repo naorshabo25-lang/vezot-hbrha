@@ -2284,6 +2284,22 @@ async def send_daily_schedule(request: Request):
     return {"ok": True, "orders_sent": len(orders), "drivers": driver_results}
 
 
+# ── Contact Suggestions ───────────────────────────────────────────────────────
+
+@app.get("/api/contact-suggestions")
+def get_contact_suggestions():
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT contact_name, contact_phone,
+                   COUNT(*) as usage_count
+            FROM orders
+            WHERE contact_name IS NOT NULL AND contact_name != ''
+            GROUP BY contact_name, contact_phone
+            ORDER BY usage_count DESC, contact_name
+        """).fetchall()
+    return [dict(r) for r in rows]
+
+
 # ── Fleet Management ──────────────────────────────────────────────────────────
 
 @app.get("/api/fleet/trucks")
