@@ -508,10 +508,26 @@
           <span style="font-size:1em">＋</span> הוספת הזמנה ידנית
         </summary>
         <div style="padding:0 18px 16px;border-top:1px solid #f1f5f9">
-          <div class="form-row" style="margin-top:12px">
+          <!-- טוגל לקוח קיים / מזדמן -->
+          <div style="display:flex;gap:6px;margin-top:12px;margin-bottom:10px">
+            <button id="o-mode-existing" onclick="setOrderMode('existing')"
+              style="padding:5px 14px;border-radius:20px;border:1.5px solid #2563eb;background:#2563eb;color:white;font-size:0.82em;font-weight:700;cursor:pointer">
+              👤 לקוח קיים
+            </button>
+            <button id="o-mode-walk-in" onclick="setOrderMode('walkin')"
+              style="padding:5px 14px;border-radius:20px;border:1.5px solid #e5e7eb;background:white;color:#6b7280;font-size:0.82em;font-weight:700;cursor:pointer">
+              🚶 לקוח מזדמן
+            </button>
+          </div>
+          <div class="form-row" id="o-existing-row">
             <select id="o-customer" onchange="fillCustomerData()"><option value="">-- לקוח קיים --</option></select>
             <input id="o-name" placeholder="שם הלקוח" />
             <input id="o-site" placeholder="כתובת האתר" />
+          </div>
+          <div class="form-row" id="o-walkin-row" style="display:none">
+            <input id="o-walkin-name" placeholder="שם לקוח מזדמן *" style="flex:2" />
+            <input id="o-walkin-phone" placeholder="טלפון לקוח" style="flex:1" />
+            <input id="o-walkin-site" placeholder="כתובת האתר" style="flex:2" />
           </div>
           <div class="form-row">
             <input id="o-contact-name" placeholder="שם איש קשר" list="contact-suggestions-list" autocomplete="off" oninput="onContactNameInput(this.value)" />
@@ -3411,25 +3427,60 @@ function previewDriver() {
   }
 }
 
+let _orderMode = 'existing'; // 'existing' | 'walkin'
+
+function setOrderMode(mode) {
+  _orderMode = mode;
+  const isWalkin = mode === 'walkin';
+  document.getElementById('o-existing-row').style.display = isWalkin ? 'none' : '';
+  document.getElementById('o-walkin-row').style.display   = isWalkin ? ''     : 'none';
+  const btnEx = document.getElementById('o-mode-existing');
+  const btnWk = document.getElementById('o-mode-walk-in');
+  if (isWalkin) {
+    btnWk.style.background = '#f59e0b'; btnWk.style.color = 'white'; btnWk.style.borderColor = '#f59e0b';
+    btnEx.style.background = 'white';   btnEx.style.color = '#6b7280'; btnEx.style.borderColor = '#e5e7eb';
+    document.getElementById('o-walkin-name').focus();
+  } else {
+    btnEx.style.background = '#2563eb'; btnEx.style.color = 'white'; btnEx.style.borderColor = '#2563eb';
+    btnWk.style.background = 'white';   btnWk.style.color = '#6b7280'; btnWk.style.borderColor = '#e5e7eb';
+  }
+}
+
 async function addOrderManual(sendNow = false) {
-  const customer_id   = document.getElementById('o-customer').value || null;
-  const customer_name = document.getElementById('o-name').value.trim();
-  const site_address  = document.getElementById('o-site').value.trim();
-  const contact_name  = document.getElementById('o-contact-name').value.trim();
-  const contact_phone = document.getElementById('o-contact-phone').value.trim();
+  let customer_id, customer_name, site_address, contact_name, contact_phone;
+  if (_orderMode === 'walkin') {
+    customer_id   = null;
+    customer_name = document.getElementById('o-walkin-name').value.trim();
+    site_address  = document.getElementById('o-walkin-site').value.trim();
+    contact_name  = document.getElementById('o-contact-name').value.trim();
+    contact_phone = document.getElementById('o-walkin-phone').value.trim() ||
+                    document.getElementById('o-contact-phone').value.trim();
+    if (!customer_name) return alert('יש להזין שם לקוח מזדמן');
+    if (!site_address)  return alert('יש להזין כתובת');
+  } else {
+    customer_id   = document.getElementById('o-customer').value || null;
+    customer_name = document.getElementById('o-name').value.trim();
+    site_address  = document.getElementById('o-site').value.trim();
+    contact_name  = document.getElementById('o-contact-name').value.trim();
+    contact_phone = document.getElementById('o-contact-phone').value.trim();
+    if (!customer_name || !site_address) return alert('יש למלא שם לקוח וכתובת');
+  }
   const quantity      = document.getElementById('o-quantity').value.trim();
   const order_date    = document.getElementById('o-date').value;
   const area          = document.getElementById('o-area').value;
   const extrasSel    = document.getElementById('o-extras').value;
   const ureaQty      = document.getElementById('o-urea-qty').value;
   const extras       = extrasSel === 'אוריאה' && ureaQty ? `אוריאה: ${ureaQty} י"ח` : extrasSel;
-  if (!customer_name || !site_address || !quantity) return alert('יש למלא שם לקוח, כתובת וכמות');
+  if (!quantity) return alert('יש למלא כמות');
   const res = await fetch('/api/orders', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ customer_id, customer_name, site_address, contact_name, contact_phone, quantity, order_date, area, extras, send_now: sendNow })
   });
   const data = await res.json();
-  ['o-name','o-site','o-contact-name','o-contact-phone','o-quantity','o-date'].forEach(id => document.getElementById(id).value = '');
+  ['o-name','o-site','o-contact-name','o-contact-phone','o-quantity','o-date',
+   'o-walkin-name','o-walkin-phone','o-walkin-site'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
   document.getElementById('o-customer').value = '';
   document.getElementById('o-area').value = '';
   document.getElementById('o-extras').value = '';
