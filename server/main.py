@@ -377,6 +377,42 @@ async def receive_message(request: Request):
                         send_whatsapp_message(phone, "\n".join(_lines))
                     return JSONResponse({"status": "ok"})
 
+                # ── נהג שולח "סידור" — שלח לו את ההזמנות שלו ──────────────
+                else:
+                    from datetime import date as _ddate, timedelta as _dtd
+                    from whatsapp import send_order_card as _soc_drv
+                    _phone_alt2 = ("0" + phone[3:]) if phone.startswith("972") else ("972" + phone[1:])
+                    with get_db() as conn:
+                        _drv = conn.execute(
+                            "SELECT * FROM drivers WHERE phone=? OR phone=? OR personal_phone=? OR personal_phone=?",
+                            (phone, _phone_alt2, phone, _phone_alt2)
+                        ).fetchone()
+                    if _drv:
+                        _tgt2 = (_ddate.today() + _dtd(days=1)).isoformat()
+                        with get_db() as conn:
+                            _dorders = [dict(r) for r in conn.execute(
+                                "SELECT * FROM orders WHERE driver_id=? AND order_date=? ORDER BY sort_order, delivery_time, created_at",
+                                (_drv["id"], _tgt2)
+                            ).fetchall()]
+                        if not _dorders:
+                            send_whatsapp_message(phone, f"📋 אין לך הזמנות למחר ({_tgt2}) 👍")
+                        else:
+                            _hdr = f"📋 *הסידור שלך — {_tgt2}*\n{len(_dorders)} הזמנות:\n"
+                            _ln2 = []
+                            for _i2, _o2 in enumerate(_dorders, 1):
+                                _ln2.append(
+                                    f"{_i2}. *{_o2['customer_name']}*\n"
+                                    f"   📍 {_o2['site_address']}\n"
+                                    f"   ⛽ {_o2['quantity']} ליטר"
+                                    + (f"  🕐 {_o2['delivery_time']}" if _o2.get('delivery_time') else "")
+                                )
+                            send_whatsapp_message(phone, _hdr + "\n".join(_ln2))
+                            for _i2, _o2 in enumerate(_dorders, 1):
+                                _soc_drv(phone, _o2, _i2, len(_dorders))
+                        return JSONResponse({"status": "ok"})
+                    # שולח לא מנהל ולא נהג — התעלם
+                    return JSONResponse({"status": "ok"})
+
         # כפתור ביצוע נהג — לפני כל בדיקה אחרת
         if msg_type == "interactive":
             inter = message["interactive"]
@@ -2258,28 +2294,34 @@ async def send_daily_schedule(request: Request):
         target_phone = raw_personal or raw_phone
         ok_text = send_whatsapp_message(target_phone, full_text)
 
-        # שלח כרטיסי ביצוע
-        if raw_personal:
-            # יש מספר אישי — כפתורים למספר האישי, טקסט לקבוצה
-            for i, o in enumerate(driver_orders, 1):
-                ok_card = send_order_card(raw_personal, o, i, len(driver_orders))
-                if not ok_card:
-                    print(f"[Schedule] ⚠ כרטיס נכשל לנהג {driver_name} ({raw_personal}) הזמנה #{o['id']}")
-            if raw_phone and raw_phone != raw_personal:
-                send_whatsapp_message(raw_phone, full_text)
-        else:
-            # אין מספר אישי — כפתורים ישירות לטלפון הנהג
-            for i, o in enumerate(driver_orders, 1):
-                ok_card = send_order_card(raw_phone, o, i, len(driver_orders))
-                if not ok_card:
-                    print(f"[Schedule] ⚠ כרטיס נכשל לנהג {driver_name} ({raw_phone}) הזמנה #{o['id']}")
+        # שלח כרטיסי ביצוע — אם נכשל, שלח fallback טקסט
+        card_phone = raw_personal or raw_phone
+        cards_failed = []
+        for i, o in enumerate(driver_orders, 1):
+            ok_card = send_order_card(card_phone, o, i, len(driver_orders))
+            if not ok_card:
+                cards_failed.append(o)
+                print(f"[Schedule] ⚠ כרטיס נכשל לנהג {driver_name} ({card_phone}) הזמנה #{o['id']}")
+
+        if cards_failed:
+            # Fallback — שלח טקסט עם הנחיה לנהג להפעיל את הבוט
+            fallback = (
+                "⚠️ לא הצלחתי לשלוח כפתורי ביצוע.\n"
+                "כדי לקבל את הכרטיסים — שלח *סידור* בהודעה ואני אשלח לך מחדש 👇"
+            )
+            send_whatsapp_message(card_phone, fallback)
+
+        if raw_personal and raw_phone and raw_phone != raw_personal:
+            send_whatsapp_message(raw_phone, full_text)
 
         ok = ok_text
-        phone_display = raw_personal or raw_phone
-        driver_results.append({"name": driver_name, "ok": ok, "orders": len(driver_orders),
-                                "phone": phone_display,
-                                "reason": None if ok else "שגיאת וואטסאפ — בדוק מספר טלפון"})
-        print(f"[Schedule] {driver_name} ({phone_display}): {'✓' if ok else '✗'}")
+        phone_display = card_phone
+        driver_results.append({
+            "name": driver_name, "ok": ok, "orders": len(driver_orders),
+            "phone": phone_display, "cards_ok": len(cards_failed) == 0,
+            "reason": None if ok else "שגיאת וואטסאפ — בדוק מספר טלפון"
+        })
+        print(f"[Schedule] {driver_name} ({phone_display}): {'✓' if ok else '✗'} | כרטיסים: {'✓' if not cards_failed else f'✗ {len(cards_failed)} נכשלו'}")
 
     return {"ok": True, "orders_sent": len(orders), "drivers": driver_results}
 
