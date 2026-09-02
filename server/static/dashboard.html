@@ -535,8 +535,20 @@
             <input id="o-contact-phone" placeholder="טל' איש קשר" />
             <input id="o-quantity" type="number" min="1" placeholder="כמות (ליטר)" />
             <input id="o-date" type="date" />
-            <select id="o-extras" style="flex:1;min-width:170px" onchange="toggleUreaInput('o-urea-qty',this.value)">
-              <option value="">-- מוצר נוסף --</option>
+            <select id="o-product-type" style="flex:1;min-width:160px">
+              <option value="סולר תחבורה">⛽ סולר תחבורה</option>
+              <option value="נוזל גנרטורים">🔋 נוזל גנרטורים</option>
+              <option value="קרוסין">🕯️ קרוסין</option>
+              <option value="נפט">🛢️ נפט</option>
+            </select>
+            <select id="o-payment" style="flex:1;min-width:140px">
+              <option value="">— תשלום —</option>
+              <option value="תשלום במקום">💵 במקום</option>
+              <option value="חשבונית">🧾 חשבונית</option>
+              <option value="שוטף">📅 שוטף+30</option>
+            </select>
+            <select id="o-extras" style="flex:1;min-width:160px" onchange="toggleUreaInput('o-urea-qty',this.value)">
+              <option value="">-- תוספת --</option>
               <option value="אוריאה">אוריאה</option>
               <option value="גריקן שמן הידראולי 68">גריקן שמן הידראולי 68</option>
               <option value="גריקן שמן מנוע 15W40">גריקן שמן מנוע 15W40</option>
@@ -3439,10 +3451,14 @@ function setOrderMode(mode) {
   if (isWalkin) {
     btnWk.style.background = '#f59e0b'; btnWk.style.color = 'white'; btnWk.style.borderColor = '#f59e0b';
     btnEx.style.background = 'white';   btnEx.style.color = '#6b7280'; btnEx.style.borderColor = '#e5e7eb';
+    document.getElementById('o-product-type').value = 'נוזל גנרטורים';
+    document.getElementById('o-payment').value = 'תשלום במקום';
     document.getElementById('o-walkin-name').focus();
   } else {
     btnEx.style.background = '#2563eb'; btnEx.style.color = 'white'; btnEx.style.borderColor = '#2563eb';
     btnWk.style.background = 'white';   btnWk.style.color = '#6b7280'; btnWk.style.borderColor = '#e5e7eb';
+    document.getElementById('o-product-type').value = 'סולר תחבורה';
+    document.getElementById('o-payment').value = '';
   }
 }
 
@@ -3470,7 +3486,15 @@ async function addOrderManual(sendNow = false) {
   const area          = document.getElementById('o-area').value;
   const extrasSel    = document.getElementById('o-extras').value;
   const ureaQty      = document.getElementById('o-urea-qty').value;
-  const extras       = extrasSel === 'אוריאה' && ureaQty ? `אוריאה: ${ureaQty} י"ח` : extrasSel;
+  const productType  = document.getElementById('o-product-type').value;
+  const payment      = document.getElementById('o-payment').value;
+  const extraBase    = extrasSel === 'אוריאה' && ureaQty ? `אוריאה: ${ureaQty} י"ח` : extrasSel;
+  const extraParts   = [
+    productType !== 'סולר תחבורה' ? productType : '',
+    payment,
+    extraBase,
+  ].filter(Boolean);
+  const extras = extraParts.join(' | ');
   if (!quantity) return alert('יש למלא כמות');
   const res = await fetch('/api/orders', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -3481,6 +3505,8 @@ async function addOrderManual(sendNow = false) {
    'o-walkin-name','o-walkin-phone','o-walkin-site'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  document.getElementById('o-product-type').value = _orderMode === 'walkin' ? 'נוזל גנרטורים' : 'סולר תחבורה';
+  document.getElementById('o-payment').value = _orderMode === 'walkin' ? 'תשלום במקום' : '';
   document.getElementById('o-customer').value = '';
   document.getElementById('o-area').value = '';
   document.getElementById('o-extras').value = '';
