@@ -1484,18 +1484,18 @@ function orderRowHtml(o, showStatus = true, isPast = false) {
 }
 
 function renderActiveOrders() {
-  const orders = _allOrders.filter(o => o.status !== 'הושלם');
-  const container = document.getElementById('orders-by-date-container');
-
-  if (!orders.length) {
-    container.innerHTML = '<div class="card"><p class="empty">אין הזמנות פעילות</p></div>';
-    return;
-  }
-
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const tom = new Date(now); tom.setDate(tom.getDate()+1);
   const tomorrowStr = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
+
+  const orders = _allOrders.filter(o => o.status !== 'הושלם' && (o.order_date || '') === tomorrowStr);
+  const container = document.getElementById('orders-by-date-container');
+
+  if (!orders.length) {
+    container.innerHTML = '<div class="card"><p class="empty">אין הזמנות פעילות למחר</p></div>';
+    return;
+  }
 
   const fmt = d => { if (!d || d === 'ללא תאריך') return d; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; };
   const fmtLiters = n => n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'K' : String(n);
