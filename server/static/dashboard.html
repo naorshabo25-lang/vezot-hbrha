@@ -1489,11 +1489,11 @@ function renderActiveOrders() {
   const tom = new Date(now); tom.setDate(tom.getDate()+1);
   const tomorrowStr = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
 
-  const orders = _allOrders.filter(o => o.status !== 'הושלם' && (o.order_date || '') === tomorrowStr);
+  const orders = _allOrders.filter(o => o.status !== 'הושלם' && ((o.order_date || '') === todayStr || (o.order_date || '') === tomorrowStr));
   const container = document.getElementById('orders-by-date-container');
 
   if (!orders.length) {
-    container.innerHTML = '<div class="card"><p class="empty">אין הזמנות פעילות למחר</p></div>';
+    container.innerHTML = '<div class="card"><p class="empty">אין הזמנות פעילות להיום / מחר</p></div>';
     return;
   }
 
