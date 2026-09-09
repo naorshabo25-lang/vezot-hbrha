@@ -1489,11 +1489,12 @@ function renderActiveOrders() {
   const tom = new Date(now); tom.setDate(tom.getDate()+1);
   const tomorrowStr = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
 
-  const orders = _allOrders.filter(o => o.status !== 'הושלם' && ((o.order_date || '') === todayStr || (o.order_date || '') === tomorrowStr));
+  // כל ההזמנות של היום + מחר (כולל הושלמות — כדי לראות כמות בפועל)
+  const orders = _allOrders.filter(o => (o.order_date || '') === todayStr || (o.order_date || '') === tomorrowStr);
   const container = document.getElementById('orders-by-date-container');
 
   if (!orders.length) {
-    container.innerHTML = '<div class="card"><p class="empty">אין הזמנות פעילות להיום / מחר</p></div>';
+    container.innerHTML = '<div class="card"><p class="empty">אין הזמנות להיום / מחר</p></div>';
     return;
   }
 
@@ -1523,7 +1524,8 @@ function renderActiveOrders() {
   const thead = `<thead><tr style="font-size:0.8em">
     <th style="padding:5px 8px">#</th><th style="padding:5px 8px">לקוח</th>
     <th style="padding:5px 8px">כתובת</th><th style="padding:5px 8px">איש קשר</th>
-    <th style="padding:5px 8px">טלפון</th><th style="padding:5px 8px">כמות</th>
+    <th style="padding:5px 8px">טלפון</th>
+    <th style="padding:5px 8px">כמות / בפועל ✓</th>
     <th style="padding:5px 8px">נהג</th><th style="padding:5px 8px">סטטוס</th>
     <th style="padding:5px 8px">שעת אספקה</th><th style="padding:5px 8px">נכנסה</th><th style="padding:5px 8px">פעולות</th>
   </tr></thead>`;
@@ -1531,18 +1533,42 @@ function renderActiveOrders() {
   container.innerHTML = sorted.map(date => {
     const h = headerFor(date);
     const grp = byDate[date];
-    const totalL = grp.reduce((s, o) => s + parseQty(o.quantity), 0);
+    const done = grp.filter(o => o.status === 'הושלם');
+    const totalOrdered = grp.reduce((s, o) => s + parseQty(o.quantity), 0);
+    const totalReal    = done.reduce((s, o) => s + parseQty(o.actual_quantity), 0);
+    const progressPct  = grp.length ? Math.round(done.length / grp.length * 100) : 0;
+
+    // פס התקדמות
+    const progressBar = `
+      <div style="display:flex;align-items:center;gap:8px;margin-right:auto">
+        <span style="font-size:0.75em;color:#64748b;font-weight:600">${done.length}/${grp.length} הושלמו</span>
+        <div style="width:80px;height:6px;background:#e2e8f0;border-radius:4px;overflow:hidden">
+          <div style="width:${progressPct}%;height:100%;background:#16a34a;border-radius:4px;transition:width 0.3s"></div>
+        </div>
+        ${totalReal ? `<span style="font-size:0.75em;color:#16a34a;font-weight:700">${fmtLiters(totalReal)} ל' סופקו</span>` : ''}
+      </div>`;
+
+    // שורה מיוחדת להושלמות
+    const rowHtml = (o) => {
+      const isCompleted = o.status === 'הושלם';
+      const base = orderRowHtml(o, !isCompleted, date < todayStr);
+      if (!isCompleted) return base;
+      // עטוף בצבע ירוק בהיר
+      return base.replace('<tr ', `<tr style="background:#f0fdf4;opacity:0.85" `);
+    };
+
     return `
       <div style="margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;
           background:${h.bg};border:1px solid ${h.border};border-bottom:none;
-          border-radius:10px 10px 0 0">
+          border-radius:10px 10px 0 0;flex-wrap:wrap">
           <span style="font-weight:800;font-size:0.92em;color:#1e293b">${h.label}</span>
           <span style="font-size:0.75em;font-weight:700;color:#fff;background:${h.badge};
             border-radius:20px;padding:1px 9px">${grp.length} הזמנות</span>
-          <span style="font-size:0.78em;color:#64748b;font-weight:600">${fmtLiters(totalL)} ל'</span>
+          <span style="font-size:0.78em;color:#64748b;font-weight:600">${fmtLiters(totalOrdered)} ל' מוזמן</span>
+          ${progressBar}
           <button onclick="completeAllForDate('${date}')"
-            style="margin-right:auto;font-size:0.75em;font-weight:700;padding:4px 12px;
+            style="font-size:0.75em;font-weight:700;padding:4px 12px;
               background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;
               white-space:nowrap">
             ✓ כל המשימות הושלמו
@@ -1551,7 +1577,7 @@ function renderActiveOrders() {
         <div class="card" style="padding:10px 14px;border-radius:0 0 10px 10px;
           border:1px solid ${h.border};border-top:none;margin-top:0">
           <table>${thead}<tbody>
-            ${grp.map(o => orderRowHtml(o, true, date < todayStr)).join('')}
+            ${grp.map(o => rowHtml(o)).join('')}
           </tbody></table>
         </div>
       </div>`;
