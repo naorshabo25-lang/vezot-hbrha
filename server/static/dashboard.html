@@ -530,7 +530,7 @@
             <input id="o-walkin-site" placeholder="כתובת האתר" style="flex:2" />
           </div>
           <div class="form-row">
-            <input id="o-contact-name" placeholder="שם איש קשר" list="contact-suggestions-list" autocomplete="off" oninput="onContactNameInput(this.value)" />
+            <input id="o-contact-name" placeholder="שם איש קשר" list="contact-suggestions-list" autocomplete="off" oninput="onContactNameInput(this.value)" onchange="onContactNameInput(this.value)" />
             <datalist id="contact-suggestions-list"></datalist>
             <input id="o-contact-phone" placeholder="טל' איש קשר" />
             <input id="o-quantity" type="number" min="1" placeholder="כמות (ליטר)" />
@@ -1055,7 +1055,7 @@
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">
         <label style="font-size:0.82em;font-weight:600;color:#6b7280">שם איש קשר</label>
-        <input id="em-contact-name" list="contact-suggestions-list" autocomplete="off" oninput="onContactNameInput(this.value,'em-contact-phone')" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
+        <input id="em-contact-name" list="contact-suggestions-list" autocomplete="off" oninput="onContactNameInput(this.value,'em-contact-phone')" onchange="onContactNameInput(this.value,'em-contact-phone')" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" />
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">
         <label style="font-size:0.82em;font-weight:600;color:#6b7280">טל' איש קשר</label>
@@ -3635,7 +3635,7 @@ function onContactNameInput(val, phoneFieldId = 'o-contact-phone') {
   );
   if (match && match.contact_phone) {
     const phoneEl = document.getElementById(phoneFieldId);
-    if (phoneEl && !phoneEl.value) phoneEl.value = match.contact_phone;
+    if (phoneEl) phoneEl.value = match.contact_phone;
   }
 }
 
