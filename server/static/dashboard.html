@@ -1488,9 +1488,16 @@ function renderActiveOrders() {
   const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const tom = new Date(now); tom.setDate(tom.getDate()+1);
   const tomorrowStr = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
+  const yest = new Date(now); yest.setDate(yest.getDate()-1);
+  const yesterdayStr = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
 
-  // כל ההזמנות של היום + מחר (כולל הושלמות — כדי לראות כמות בפועל)
-  const orders = _allOrders.filter(o => (o.order_date || '') === todayStr || (o.order_date || '') === tomorrowStr);
+  // כל ההזמנות של אתמול (מושלמות בלבד) + היום + מחר
+  const orders = _allOrders.filter(o => {
+    const d = o.order_date || '';
+    if (d === todayStr || d === tomorrowStr) return true;
+    if (d === yesterdayStr && o.status === 'הושלם') return true; // אתמול מושלמות — לראות כמות בפועל
+    return false;
+  });
   const container = document.getElementById('orders-by-date-container');
 
   if (!orders.length) {
