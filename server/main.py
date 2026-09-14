@@ -2423,6 +2423,41 @@ def delete_fleet_record(rid: int):
     return {"ok": True}
 
 
+# ── Hashavshevet Import ───────────────────────────────────────────────────────
+
+from hashavshevet import parse_trial_balance as _parse_tb
+from fastapi import UploadFile, File as _File
+
+@app.post("/api/hashavshevet/upload")
+async def upload_hashavshevet(file: UploadFile = _File(...)):
+    content = await file.read()
+    try:
+        parsed = _parse_tb(content)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    import json as _json
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO hashavshevet_data (period, data_json) VALUES (?, ?)",
+            (parsed.get("period", ""), _json.dumps(parsed, ensure_ascii=False))
+        )
+    return parsed
+
+@app.get("/api/hashavshevet/latest")
+def get_latest_hashavshevet():
+    import json as _json
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM hashavshevet_data ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    d["data"] = _json.loads(d["data_json"])
+    del d["data_json"]
+    return d
+
+
 # ── WorkPlan persistence + bidirectional sync ────────────────────────────────
 
 import json as _json

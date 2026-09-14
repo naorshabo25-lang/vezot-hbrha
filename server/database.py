@@ -207,6 +207,12 @@ def init_db():
                 created_at   TEXT DEFAULT (datetime('now', 'localtime')),
                 FOREIGN KEY (truck_id) REFERENCES fleet_trucks(id)
             );
+            CREATE TABLE IF NOT EXISTS hashavshevet_data (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                uploaded_at TEXT DEFAULT (datetime('now','localtime')),
+                period      TEXT DEFAULT '',
+                data_json   TEXT NOT NULL
+            );
         """)
 
         conn.executescript("""
