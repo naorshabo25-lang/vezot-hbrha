@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line, ReferenceLine,
@@ -6,6 +7,147 @@ import {
 const fmt    = n => '₪' + Number(n).toLocaleString('he-IL');
 const fmtL   = n => Number(n).toLocaleString('he-IL') + ' ל׳';
 const fmtPct = n => n.toFixed(1) + '%';
+const fmtK   = n => {
+  const abs = Math.abs(n);
+  const s = abs >= 1_000_000
+    ? (abs / 1_000_000).toFixed(2).replace(/\.?0+$/, '') + 'M'
+    : abs >= 1_000 ? (abs / 1_000).toFixed(0) + 'K'
+    : abs.toFixed(0);
+  return (n < 0 ? '-' : '') + '₪' + s;
+};
+
+/* ── Hashavshevet real-data panel ───────────────────────────── */
+function HaPanel() {
+  const [ha, setHa] = useState(null);
+  const SERVER = (window.location.port === '5173' || window.location.port === '5174')
+    ? `http://${window.location.hostname}:8000` : '';
+
+  useEffect(() => {
+    fetch(`${SERVER}/api/hashavshevet/latest`)
+      .then(r => r.json())
+      .then(d => { if (d && d.data) setHa(d); })
+      .catch(() => {});
+  }, []);
+
+  if (!ha) return null;
+
+  const g   = ha.data.groups || {};
+  const sum = (...codes) => codes.reduce((s, c) => s + Math.abs((g[c] || {}).total_net || 0), 0);
+  const abs = Math.abs;
+
+  const revenue     = sum('100');
+  const cogs        = sum('304');
+  const grossProfit = revenue - cogs;
+  const opex        = sum('300','301','305','306','307','390');
+  const salary      = sum('302','391');
+  const finance     = sum('309');
+  const totalExp    = cogs + opex + salary + finance;
+  const netProfit   = revenue - totalExp;
+  const margin      = revenue > 0 ? (netProfit / revenue * 100) : 0;
+
+  const receivable  = sum('500','501','509');
+  const payable     = abs((g['600'] || {}).total_net || 0);
+
+  // Revenue breakdown for mini bar chart
+  const revAccounts = ((g['100'] || {}).accounts || [])
+    .map(a => ({ name: a.name.replace('הכנסות ', '').replace(' תחבורה','').slice(0, 18), value: abs(a.credit || a.net || 0) }))
+    .filter(a => a.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  // Expense breakdown for bars
+  const expItems = [
+    { name: 'עלות דלקים', val: cogs,    color: '#ef4444' },
+    { name: 'שכר',        val: salary,  color: '#f59e0b' },
+    { name: 'תפעול',      val: opex,    color: '#8b5cf6' },
+    { name: 'מימון',      val: finance, color: '#0ea5e9' },
+  ].filter(x => x.val > 0);
+
+  const kpis = [
+    { label: 'הכנסות',     val: revenue,     col: '#1d4ed8' },
+    { label: 'עלות מכר',   val: -cogs,       col: '#b45309' },
+    { label: 'רווח גולמי', val: grossProfit, col: grossProfit >= 0 ? '#15803d' : '#b91c1c' },
+    { label: 'הוצאות',     val: -(opex+salary+finance), col: '#7c3aed' },
+    { label: 'רווח נקי',   val: netProfit,   col: netProfit >= 0 ? '#15803d' : '#b91c1c' },
+    { label: 'מרווח נקי',  val: null, display: margin.toFixed(1) + '%', col: margin >= 5 ? '#15803d' : '#b91c1c' },
+  ];
+
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1.5px solid #1d4ed8',
+      borderRadius: 14, padding: '18px 20px', marginBottom: 24,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 18, fontWeight: 800, color: '#1e293b' }}>📊 מצב פיננסי — חשבשבת</span>
+        <span style={{ fontSize: '0.78em', color: '#64748b', background: '#eff6ff', padding: '2px 10px', borderRadius: 20, border: '1px solid #bfdbfe' }}>
+          {ha.data.period || ha.uploaded_at}
+        </span>
+      </div>
+
+      {/* KPI row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 10, marginBottom: 20 }}>
+        {kpis.map(k => (
+          <div key={k.label} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: '0.72em', color: '#64748b', fontWeight: 600, marginBottom: 3 }}>{k.label}</div>
+            <div style={{ fontSize: '1.05em', fontWeight: 800, color: k.col }}>
+              {k.display ?? fmtK(k.val)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Two columns: receivable/payable + expense bars */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 16, marginBottom: 20 }}>
+        {/* Left: balances */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ fontSize: '0.75em', color: '#15803d', fontWeight: 700 }}>חובות לקוחות — לגביה</div>
+            <div style={{ fontSize: '1.3em', fontWeight: 800, color: '#15803d', marginTop: 4 }}>{fmtK(receivable)}</div>
+            <div style={{ fontSize: '0.72em', color: '#94a3b8' }}>{fmt(receivable)}</div>
+          </div>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ fontSize: '0.75em', color: '#b91c1c', fontWeight: 700 }}>חובות לספקים — לתשלום</div>
+            <div style={{ fontSize: '1.3em', fontWeight: 800, color: '#b91c1c', marginTop: 4 }}>{fmtK(payable)}</div>
+            <div style={{ fontSize: '0.72em', color: '#94a3b8' }}>{fmt(payable)}</div>
+          </div>
+        </div>
+        {/* Right: expense bars */}
+        <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
+          <div style={{ fontSize: '0.8em', fontWeight: 700, color: '#64748b', marginBottom: 10 }}>פירוט הוצאות</div>
+          {expItems.map(e => {
+            const pct = totalExp > 0 ? e.val / totalExp * 100 : 0;
+            return (
+              <div key={e.name} style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <span style={{ fontSize: '0.8em', fontWeight: 600 }}>{e.name}</span>
+                  <span style={{ fontSize: '0.8em', color: e.color, fontWeight: 700 }}>{fmtK(e.val)}</span>
+                </div>
+                <div style={{ height: 7, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: e.color, borderRadius: 4 }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Revenue breakdown mini bar chart */}
+      {revAccounts.length > 0 && (
+        <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
+          <div style={{ fontSize: '0.8em', fontWeight: 700, color: '#64748b', marginBottom: 10 }}>הכנסות לפי מוצר</div>
+          <ResponsiveContainer width="100%" height={120}>
+            <BarChart data={revAccounts} layout="vertical" margin={{ top: 0, right: 60, left: 0, bottom: 0 }}>
+              <XAxis type="number" hide />
+              <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: 'var(--text-2)' }} />
+              <Tooltip formatter={v => fmt(v)} />
+              <Bar dataKey="value" fill="#1d4ed8" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const DEFAULT_DATA = {
   fuelPurchases: [
@@ -324,6 +466,8 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+      <HaPanel />
 
       {/* KPI Grid */}
       <div className="grid-4">
