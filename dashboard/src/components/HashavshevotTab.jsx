@@ -32,6 +32,7 @@ export default function HashavshevotTab() {
   const [uploadedAt, setUploadedAt] = useState('');
   const [period, setPeriod]   = useState('');
   const [activeSection, setActiveSection] = useState('summary');
+  const [debugInfo, setDebugInfo] = useState(null);
   const fileRef = useRef();
 
   const SERVER = (window.location.port === '5173' || window.location.port === '5174')
@@ -63,7 +64,13 @@ export default function HashavshevotTab() {
       const r = await fetch(`${SERVER}/api/hashavshevet/upload`, { method: 'POST', body: form });
       const json = await r.json();
       if (json.error) { setError(json.error); setUploading(false); return; }
-      setData(json.groups || {});
+      if (json._debug) setDebugInfo(json._debug);
+      const grps = json.groups || {};
+      const hasData = Object.keys(grps).length > 0;
+      if (!hasData) {
+        setError(`הקובץ עלה אבל לא נמצאו נתונים. שורה ראשונה: ${json._debug?.first_rows?.[0] || '?'}`);
+      }
+      setData(grps);
       setPeriod(json.period || '');
       setUploadedAt(new Date().toLocaleString('he-IL'));
     } catch (ex) { setError(String(ex)); }
@@ -155,25 +162,44 @@ export default function HashavshevotTab() {
           {period && <div style={{ fontSize: '0.8em', color: '#64748b', marginTop: 2 }}>{period}</div>}
           {uploadedAt && <div style={{ fontSize: '0.75em', color: '#94a3b8' }}>עודכן: {uploadedAt}</div>}
         </div>
-        <label style={{
-          marginRight: 'auto', cursor: 'pointer',
-          background: '#1e40af', color: '#fff',
-          padding: '9px 20px', borderRadius: 8, fontWeight: 700,
-          fontSize: '0.88em', border: 'none',
-          display: 'inline-block',
-          opacity: uploading ? 0.6 : 1,
-        }}>
-          {uploading ? '⏳ מעלה...' : '📁 העלה קובץ Excel מחשבשבת'}
-          <input type="file" accept=".xlsx,.xls" ref={fileRef}
-            onChange={handleUpload} style={{ display: 'none' }} disabled={uploading} />
-        </label>
+        <div style={{ marginRight: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <button
+            onClick={() => { if (!uploading && fileRef.current) fileRef.current.click(); }}
+            disabled={uploading}
+            style={{
+              cursor: uploading ? 'not-allowed' : 'pointer',
+              background: '#1e40af', color: '#fff',
+              padding: '9px 20px', borderRadius: 8, fontWeight: 700,
+              fontSize: '0.88em', border: 'none',
+              opacity: uploading ? 0.6 : 1,
+            }}
+          >
+            {uploading ? '⏳ מעלה...' : '📁 העלה קובץ Excel מחשבשבת'}
+          </button>
+          <input type="file" accept=".xlsx,.xls,.xlsb,.csv" ref={fileRef}
+            onChange={handleUpload} style={{ display: 'none' }} />
+        </div>
       </div>
 
       {error && (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
-          padding: '10px 16px', marginBottom: 16, color: '#b91c1c', fontSize: '0.88em' }}>
-          ❌ שגיאה בפירוס הקובץ: {error}
+          padding: '10px 16px', marginBottom: 8, color: '#b91c1c', fontSize: '0.88em' }}>
+          ❌ {error}
         </div>
+      )}
+      {debugInfo && (
+        <details style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
+          padding: '8px 14px', marginBottom: 16, fontSize: '0.78em', color: '#475569' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 700 }}>🔍 מידע אבחון הקובץ</summary>
+          <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', direction: 'ltr', textAlign: 'left' }}>
+{`שורת כותרת: ${debugInfo.header_row}
+עמודות: ${JSON.stringify(debugInfo.cols)}
+קבוצות שנמצאו: ${debugInfo.groups_found?.join(', ') || 'אין'}
+שורות נתונים: ${debugInfo.total_data_rows}
+5 שורות ראשונות:
+${debugInfo.first_rows?.slice(0,5).join('\n')}`}
+          </pre>
+        </details>
       )}
 
       {loading && !data && (

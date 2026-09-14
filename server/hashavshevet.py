@@ -51,19 +51,21 @@ def parse_trial_balance(file_bytes: bytes) -> dict:
     # Find column positions from header row
     col_group = col_account = col_name = col_debit = col_credit = col_diff = None
     header_idx = 0
+    debug_rows = [' | '.join(str(c) for c in r[:10]) for r in all_rows[:10]]
 
-    for i, row in enumerate(all_rows[:25]):
+    for i, row in enumerate(all_rows[:35]):
         row_s = [str(c).strip() for c in row]
         full = ' '.join(row_s)
-        if 'חובה' in full and 'זכות' in full:
+        if ('חובה' in full or 'Debit' in full) and ('זכות' in full or 'Credit' in full):
             header_idx = i + 1
             for j, s in enumerate(row_s):
-                if s in ('מיון', 'סיווג'):   col_group   = j
-                elif s == 'חשבון':           col_account = j
-                elif 'שם' in s:             col_name    = j
-                elif s == 'חובה':           col_debit   = j
-                elif s == 'זכות':           col_credit  = j
-                elif 'הפרש' in s:           col_diff    = j
+                sl = s.lower()
+                if s in ('מיון', 'סיווג', 'קבוצה') or sl == 'group': col_group   = j
+                elif s in ('חשבון', 'מספר חשבון') or sl in ('account', 'code'): col_account = j
+                elif 'שם' in s or sl in ('name', 'description'):     col_name    = j
+                elif s in ('חובה', 'Debit'):                          col_debit   = j
+                elif s in ('זכות', 'Credit'):                        col_credit  = j
+                elif 'הפרש' in s or 'יתרה' in s or sl == 'balance': col_diff    = j
             break
 
     # Extract period string
@@ -179,4 +181,15 @@ def parse_trial_balance(file_bytes: bytes) -> dict:
             gd['total_credit'] = sum(a['credit'] for a in gd['accounts'])
             gd['total_net']    = sum(a['net']    for a in gd['accounts'])
 
-    return {'period': period, 'groups': groups}
+    return {
+        'period': period,
+        'groups': groups,
+        '_debug': {
+            'header_row': header_idx,
+            'cols': {'group': col_group, 'account': col_account, 'name': col_name,
+                     'debit': col_debit, 'credit': col_credit, 'diff': col_diff},
+            'total_data_rows': len(all_rows) - header_idx,
+            'groups_found': list(groups.keys()),
+            'first_rows': debug_rows,
+        }
+    }
