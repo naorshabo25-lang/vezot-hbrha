@@ -1761,6 +1761,7 @@ async function completeAllForDate(date) {
     .filter(o => (o.order_date || 'ללא תאריך') === date && o.status !== 'הושלם')
     .map(o => o.id);
   if (!ids.length) return;
+  if (!confirm(`לסמן ${ids.length} הזמנות כהושלמו?\nלא ניתן לבטל אוטומטית.`)) return;
   await Promise.all(ids.map(id =>
     fetch(`/api/orders/${id}/status`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
