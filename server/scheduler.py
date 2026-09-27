@@ -83,8 +83,11 @@ def send_admin_schedule():
             admin_lines.append(f"{i}. {o['customer_name']} — {o['site_address']}")
         admin_lines.append("")
     send_whatsapp_message(admin_phone, "\n".join(admin_lines))
-    # שליחה לנהגים מתבצעת רק ידנית דרך כפתור "שלח סידור לנהגים" בדשבורד
-    print(f"[Scheduler] סידור נשלח למנהל — {len(orders)} הזמנות (נהגים ממתינים לאישור ידני)")
+    # בקש אישור מהמנהל לפני שליחה לנהגים
+    send_whatsapp_message(admin_phone,
+        "↩️ לשליחה לנהגים — השב *אשר*\n(ניתן גם מהדשבורד)"
+    )
+    print(f"[Scheduler] סידור נשלח למנהל — {len(orders)} הזמנות (ממתין לאישור)")
 
 
 def start_scheduler(hour: int = 14, minute: int = 0,

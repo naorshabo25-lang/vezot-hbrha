@@ -342,6 +342,63 @@ async def receive_message(request: Request):
         # ── פקודות מנהל ──────────────────────────────────────────────────────
         if msg_type == "text":
             _raw_text = message["text"]["body"].strip()
+
+            # ── אישור שליחה לנהגים ("אשר") ──────────────────────────────────
+            if _raw_text in ("אשר", "אשר שליחה", "שלח לנהגים"):
+                with get_db() as conn:
+                    _s_a = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM settings").fetchall()}
+                _adm_a = _s_a.get("admin_phone", "").strip().replace(" ", "").replace("-", "")
+                if _adm_a.startswith("0"):
+                    _adm_a = "972" + _adm_a[1:]
+                _alt_a = ("0" + phone[3:]) if phone.startswith("972") else ("972" + phone[1:])
+                if phone == _adm_a or _alt_a == _adm_a:
+                    from datetime import date as _da, timedelta as _tda
+                    from whatsapp import send_order_card as _soc_a
+                    _tgt_a = (_da.today() + _tda(days=1)).isoformat()
+                    with get_db() as conn:
+                        _ords_a = [dict(r) for r in conn.execute("""
+                            SELECT o.*, d.name as driver_name, d.phone as driver_phone,
+                                   d.personal_phone as driver_personal_phone
+                            FROM orders o LEFT JOIN drivers d ON o.driver_id=d.id
+                            WHERE o.order_date=?
+                            ORDER BY d.name, o.sort_order, o.delivery_time, o.created_at
+                        """, (_tgt_a,)).fetchall()]
+                    if not _ords_a:
+                        send_whatsapp_message(phone, f"אין הזמנות למחר ({_tgt_a})")
+                        return JSONResponse({"status": "ok"})
+                    _by_d_a = {}
+                    for _o_a in _ords_a:
+                        _by_d_a.setdefault(_o_a["driver_name"] or "ללא נהג", []).append(_o_a)
+                    _sent_a = 0
+                    for _dn_a, _dos_a in _by_d_a.items():
+                        _f_a   = _dos_a[0]
+                        _dp_a  = _fmt_phone(_f_a.get("driver_phone"))
+                        _pp_a  = _fmt_phone(_f_a.get("driver_personal_phone"))
+                        _tp_a  = _pp_a or _dp_a
+                        if not _tp_a:
+                            continue
+                        _hdr_a = f"📋 *סידור יומי — {_tgt_a}*\n{len(_dos_a)} הזמנות:\n"
+                        _ln_a  = []
+                        for _i_a, _oo_a in enumerate(_dos_a, 1):
+                            _ln_a.append(
+                                f"{_i_a}. *{_oo_a['customer_name']}*\n"
+                                f"   📍 {_oo_a['site_address']}\n"
+                                f"   ⛽ {_oo_a['quantity']} ליטר"
+                                + (f"  🕐 {_oo_a['delivery_time']}" if _oo_a.get('delivery_time') else "")
+                            )
+                        send_whatsapp_message(_tp_a, _hdr_a + "\n".join(_ln_a))
+                        _cards_fail_a = []
+                        for _i_a, _oo_a in enumerate(_dos_a, 1):
+                            if not _soc_a(_tp_a, _oo_a, _i_a, len(_dos_a)):
+                                _cards_fail_a.append(_oo_a)
+                        if _cards_fail_a:
+                            send_whatsapp_message(_tp_a,
+                                "⚠️ לא הצלחתי לשלוח כפתורי ביצוע.\n"
+                                "שלח *סידור* לקבלת הכרטיסים מחדש 👇")
+                        _sent_a += 1
+                    send_whatsapp_message(phone, f"✅ סידור נשלח ל-{_sent_a} נהגים ({_tgt_a})")
+                    return JSONResponse({"status": "ok"})
+
             if _raw_text in ("סידור", "שלח סידור", "schedule"):
                 with get_db() as conn:
                     _s = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM settings").fetchall()}
