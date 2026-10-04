@@ -396,6 +396,12 @@ async def receive_message(request: Request):
                                 "⚠️ לא הצלחתי לשלוח כפתורי ביצוע.\n"
                                 "שלח *סידור* לקבלת הכרטיסים מחדש 👇")
                         _sent_a += 1
+                    # סמן שהסידור אושר לתאריך זה
+                    with get_db() as conn:
+                        conn.execute(
+                            "INSERT OR REPLACE INTO settings (key,value) VALUES ('schedule_approved_date',?)",
+                            (_tgt_a,)
+                        )
                     send_whatsapp_message(phone, f"✅ סידור נשלח ל-{_sent_a} נהגים ({_tgt_a})")
                     return JSONResponse({"status": "ok"})
 
@@ -434,7 +440,7 @@ async def receive_message(request: Request):
                         send_whatsapp_message(phone, "\n".join(_lines))
                     return JSONResponse({"status": "ok"})
 
-                # ── נהג שולח "סידור" — שלח לו את ההזמנות שלו ──────────────
+                # ── נהג שולח "סידור" — שלח רק אם המנהל אישר ──────────────
                 else:
                     from datetime import date as _ddate, timedelta as _dtd
                     from whatsapp import send_order_card as _soc_drv
@@ -444,8 +450,14 @@ async def receive_message(request: Request):
                             "SELECT * FROM drivers WHERE phone=? OR phone=? OR personal_phone=? OR personal_phone=?",
                             (phone, _phone_alt2, phone, _phone_alt2)
                         ).fetchone()
+                        _sett_drv = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM settings").fetchall()}
                     if _drv:
                         _tgt2 = (_ddate.today() + _dtd(days=1)).isoformat()
+                        _approved_date = _sett_drv.get("schedule_approved_date", "")
+                        if _approved_date != _tgt2:
+                            # הסידור טרם אושר — אל תשלח
+                            send_whatsapp_message(phone, "⏳ הסידור טרם אושר על ידי המנהל.\nתקבל הודעה ברגע שיאושר.")
+                            return JSONResponse({"status": "ok"})
                         with get_db() as conn:
                             _dorders = [dict(r) for r in conn.execute(
                                 "SELECT * FROM orders WHERE driver_id=? AND order_date=? ORDER BY sort_order, delivery_time, created_at",
