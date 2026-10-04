@@ -512,8 +512,6 @@ export default function WorkPlanDashboard({ data: ext, monthLabel }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-      <HaPanel />
-
       {/* KPI Grid */}
       <div className="grid-4">
         {kpis.map((k, i) => (
