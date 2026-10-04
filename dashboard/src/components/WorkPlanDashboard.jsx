@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line, ReferenceLine,
@@ -18,18 +18,62 @@ const fmtK   = n => {
 
 /* ── Hashavshevet real-data panel ───────────────────────────── */
 function HaPanel() {
-  const [ha, setHa] = useState(null);
+  const [ha, setHa]           = useState(null);
+  const [uploading, setUpl]   = useState(false);
+  const [uploadErr, setErr]   = useState('');
+  const fileRef               = useRef();
   const SERVER = (window.location.port === '5173' || window.location.port === '5174')
     ? `http://${window.location.hostname}:8000` : '';
 
-  useEffect(() => {
+  const reload = () =>
     fetch(`${SERVER}/api/hashavshevet/latest`)
       .then(r => r.json())
       .then(d => { if (d && d.data) setHa(d); })
       .catch(() => {});
-  }, []);
 
-  if (!ha) return null;
+  useEffect(() => { reload(); }, []);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUpl(true); setErr('');
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const r    = await fetch(`${SERVER}/api/hashavshevet/upload`, { method: 'POST', body: form });
+      const json = await r.json();
+      if (json.error) { setErr(json.error); }
+      else { await reload(); }
+    } catch (ex) { setErr(String(ex)); }
+    setUpl(false);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const UploadBtn = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <button
+        onClick={() => !uploading && fileRef.current?.click()}
+        disabled={uploading}
+        style={{ cursor: uploading ? 'not-allowed' : 'pointer', background: '#1e40af', color: '#fff',
+          padding: '6px 14px', borderRadius: 7, fontWeight: 700, fontSize: '0.82em',
+          border: 'none', opacity: uploading ? 0.6 : 1 }}
+      >
+        {uploading ? '⏳ מעלה...' : '📁 עדכן קובץ Excel'}
+      </button>
+      <input type="file" accept=".xlsx,.xls" ref={fileRef} onChange={handleUpload} style={{ display: 'none' }} />
+      {uploadErr && <span style={{ fontSize: '0.75em', color: '#b91c1c' }}>❌ {uploadErr}</span>}
+    </div>
+  );
+
+  if (!ha) return (
+    <div style={{ background: 'var(--surface)', border: '1.5px dashed #cbd5e1',
+      borderRadius: 14, padding: '20px 24px', marginBottom: 24,
+      display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: '0.9em', color: '#64748b', fontWeight: 600 }}>📊 מצב פיננסי — חשבשבת</span>
+      <span style={{ fontSize: '0.82em', color: '#94a3b8' }}>טרם הועלה קובץ</span>
+      <UploadBtn />
+    </div>
+  );
 
   const g   = ha.data.groups || {};
   const sum = (...codes) => codes.reduce((s, c) => s + Math.abs((g[c] || {}).total_net || 0), 0);
@@ -82,6 +126,7 @@ function HaPanel() {
         <span style={{ fontSize: '0.78em', color: '#64748b', background: '#eff6ff', padding: '2px 10px', borderRadius: 20, border: '1px solid #bfdbfe' }}>
           {ha.data.period || ha.uploaded_at}
         </span>
+        <div style={{ marginRight: 'auto' }}><UploadBtn /></div>
       </div>
 
       {/* KPI row */}
