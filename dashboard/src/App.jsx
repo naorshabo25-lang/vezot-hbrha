@@ -12,6 +12,7 @@ import PotentialClientsTab from './components/PotentialClientsTab';
 import SettingsTab from './components/SettingsTab';
 import FleetTab from './components/FleetTab';
 import HashavshevotTab from './components/HashavshevotTab';
+import LockScreen from './components/LockScreen';
 
 const MIGRATION_V = 'workPlanMigration_v4';
 if (!localStorage.getItem(MIGRATION_V)) {
@@ -62,6 +63,9 @@ const getAllMonths = (data) => {
 };
 
 export default function App() {
+  const [unlocked, setUnlocked] = useState(
+    () => sessionStorage.getItem('app_unlocked') === '1'
+  );
   const [tab, setTab] = useState('workplan');
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
@@ -248,6 +252,8 @@ export default function App() {
   const monthLabel = workPlanData?.currentMonthLabel || 'מאי 2026';
   const allMonths  = getAllMonths(workPlanData);
   const isOrders   = tab === 'orders';
+
+  if (!unlocked) return <LockScreen onUnlock={() => setUnlocked(true)} />;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', direction: 'rtl' }}>
