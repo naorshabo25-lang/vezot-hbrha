@@ -184,8 +184,8 @@ def send_end_of_day():
 
 def start_scheduler(hour: int = 14, minute: int = 0,
                     admin_hour: int = None, admin_minute: int = 0,
-                    reminder_hour: int = 13, reminder_minute: int = 0,
-                    end_of_day_hour: int = 19, end_of_day_minute: int = 0):
+                    reminder_hour: int = 12, reminder_minute: int = 0,
+                    end_of_day_hour: int = 15, end_of_day_minute: int = 0):
     scheduler.add_job(
         send_daily_messages,
         CronTrigger(hour=hour, minute=minute, timezone="Asia/Jerusalem"),

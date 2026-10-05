@@ -118,9 +118,9 @@ def startup():
     minute = int(settings.get("daily_minute", 0))
     admin_hour   = int(settings["admin_schedule_hour"])   if settings.get("admin_schedule_hour")   else None
     admin_minute = int(settings.get("admin_schedule_minute", 0))
-    reminder_hour    = int(settings.get("reminder_hour",    13))
+    reminder_hour    = int(settings.get("reminder_hour",    12))
     reminder_minute  = int(settings.get("reminder_minute",  0))
-    end_of_day_hour  = int(settings.get("end_of_day_hour",  19))
+    end_of_day_hour  = int(settings.get("end_of_day_hour",  15))
     end_of_day_minute= int(settings.get("end_of_day_minute",  0))
     start_scheduler(hour, minute, admin_hour, admin_minute,
                     reminder_hour, reminder_minute,
