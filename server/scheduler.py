@@ -90,8 +90,102 @@ def send_admin_schedule():
     print(f"[Scheduler] סידור נשלח למנהל — {len(orders)} הזמנות (ממתין לאישור)")
 
 
+def _fmt_phone_local(p: str) -> str:
+    p = (p or "").strip().replace(" ", "").replace("-", "").lstrip("+")
+    if p.startswith("0"):
+        p = "972" + p[1:]
+    return p
+
+
+def send_midday_reminders():
+    """תזכורת לנהגים עם הזמנות לא מבוצעות במהלך יום העבודה."""
+    from datetime import date
+    from whatsapp import send_order_card as _soc_rem
+    today = date.today().isoformat()
+    with get_db() as conn:
+        pending = [dict(r) for r in conn.execute("""
+            SELECT o.*, d.name as driver_name, d.phone as driver_phone,
+                   d.personal_phone as driver_personal_phone
+            FROM orders o
+            LEFT JOIN drivers d ON o.driver_id = d.id
+            WHERE o.order_date = ? AND (o.status IS NULL OR o.status NOT IN ('הושלם','בוטל'))
+            ORDER BY d.name, o.sort_order, o.delivery_time
+        """, (today,)).fetchall()]
+
+    if not pending:
+        print("[Scheduler] תזכורת: אין הזמנות ממתינות היום")
+        return
+
+    by_driver: dict = {}
+    for o in pending:
+        dk = o.get("driver_name") or "ללא נהג"
+        by_driver.setdefault(dk, []).append(o)
+
+    for driver_name, orders in by_driver.items():
+        phone = _fmt_phone_local(orders[0].get("driver_personal_phone") or "") \
+                or _fmt_phone_local(orders[0].get("driver_phone") or "")
+        if not phone:
+            continue
+        msg = (
+            f"⏰ *תזכורת — הזמנות ממתינות*\n\n"
+            f"יש לך {len(orders)} הזמנות שטרם סומנו כבוצעו:\n\n"
+        )
+        for i, o in enumerate(orders, 1):
+            msg += f"{i}. *{o['customer_name']}*\n   📍 {o['site_address']} — {o['quantity']} ליטר\n"
+        msg += "\nנא לסמן ביצוע ולעדכן פרטים 📋"
+        send_whatsapp_message(phone, msg)
+        # שלח מחדש את כפתורי הביצוע
+        for i, o in enumerate(orders, 1):
+            _soc_rem(phone, o, i, len(orders))
+    print(f"[Scheduler] תזכורת נשלחה ל-{len(by_driver)} נהגים")
+
+
+def send_end_of_day():
+    """בסוף יום — נהגים שלא סגרו הזמנות מקבלים הודעה לפני הסידור מחר."""
+    from datetime import date
+    today = date.today().isoformat()
+    with get_db() as conn:
+        pending = [dict(r) for r in conn.execute("""
+            SELECT o.*, d.name as driver_name, d.phone as driver_phone,
+                   d.personal_phone as driver_personal_phone
+            FROM orders o
+            LEFT JOIN drivers d ON o.driver_id = d.id
+            WHERE o.order_date = ? AND (o.status IS NULL OR o.status NOT IN ('הושלם','בוטל'))
+            ORDER BY d.name
+        """, (today,)).fetchall()]
+
+    if not pending:
+        print("[Scheduler] סגירת יום: כל ההזמנות בוצעו 👍")
+        return
+
+    by_driver: dict = {}
+    for o in pending:
+        dk = o.get("driver_name") or "ללא נהג"
+        by_driver.setdefault(dk, []).append(o)
+
+    for driver_name, orders in by_driver.items():
+        phone = _fmt_phone_local(orders[0].get("driver_personal_phone") or "") \
+                or _fmt_phone_local(orders[0].get("driver_phone") or "")
+        if not phone:
+            continue
+        msg = (
+            f"🔴 *סיום יום עבודה*\n\n"
+            f"יש לך {len(orders)} הזמנות שלא עודכנו:\n\n"
+        )
+        for i, o in enumerate(orders, 1):
+            msg += f"{i}. {o['customer_name']} — {o['site_address']}\n"
+        msg += (
+            f"\n*נא לסגור את יום העבודה.*\n"
+            f"*לפני קבלת סידור למחר!!* 📋"
+        )
+        send_whatsapp_message(phone, msg)
+    print(f"[Scheduler] סגירת יום נשלחה ל-{len(by_driver)} נהגים")
+
+
 def start_scheduler(hour: int = 14, minute: int = 0,
-                    admin_hour: int = None, admin_minute: int = 0):
+                    admin_hour: int = None, admin_minute: int = 0,
+                    reminder_hour: int = 13, reminder_minute: int = 0,
+                    end_of_day_hour: int = 19, end_of_day_minute: int = 0):
     scheduler.add_job(
         send_daily_messages,
         CronTrigger(hour=hour, minute=minute, timezone="Asia/Jerusalem"),
@@ -108,11 +202,23 @@ def start_scheduler(hour: int = 14, minute: int = 0,
             CronTrigger(hour=admin_hour, minute=admin_minute, timezone="Asia/Jerusalem"),
             id="admin_schedule", replace_existing=True,
         )
+    scheduler.add_job(
+        send_midday_reminders,
+        CronTrigger(hour=reminder_hour, minute=reminder_minute, timezone="Asia/Jerusalem"),
+        id="midday_reminders", replace_existing=True,
+    )
+    scheduler.add_job(
+        send_end_of_day,
+        CronTrigger(hour=end_of_day_hour, minute=end_of_day_minute, timezone="Asia/Jerusalem"),
+        id="end_of_day", replace_existing=True,
+    )
     scheduler.start()
     print(f"[Scheduler] הודעות ללקוחות: {hour:02d}:{minute:02d}")
     print(f"[Scheduler] יצירת הזמנות קבועות: 00:10")
     if admin_hour is not None:
         print(f"[Scheduler] סידור למנהל: {admin_hour:02d}:{admin_minute:02d}")
+    print(f"[Scheduler] תזכורת נהגים: {reminder_hour:02d}:{reminder_minute:02d}")
+    print(f"[Scheduler] סגירת יום: {end_of_day_hour:02d}:{end_of_day_minute:02d}")
 
 
 def reschedule(hour: int, minute: int):

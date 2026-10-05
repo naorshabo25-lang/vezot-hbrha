@@ -118,7 +118,13 @@ def startup():
     minute = int(settings.get("daily_minute", 0))
     admin_hour   = int(settings["admin_schedule_hour"])   if settings.get("admin_schedule_hour")   else None
     admin_minute = int(settings.get("admin_schedule_minute", 0))
-    start_scheduler(hour, minute, admin_hour, admin_minute)
+    reminder_hour    = int(settings.get("reminder_hour",    13))
+    reminder_minute  = int(settings.get("reminder_minute",  0))
+    end_of_day_hour  = int(settings.get("end_of_day_hour",  19))
+    end_of_day_minute= int(settings.get("end_of_day_minute",  0))
+    start_scheduler(hour, minute, admin_hour, admin_minute,
+                    reminder_hour, reminder_minute,
+                    end_of_day_hour, end_of_day_minute)
     from recurring import materialize_recurring_orders
     from datetime import date as _d, timedelta as _td
     _tomorrow = (_d.today() + _td(days=1)).isoformat()
@@ -509,9 +515,10 @@ async def receive_message(request: Request):
                             conn.execute("UPDATE orders SET status='הושלם' WHERE id=?", (order_id,))
                     if _is_drv and _ord:
                         send_whatsapp_message(phone,
+                            f"מצויין! 💪\n\n"
                             f"📦 הזמנה #{order_id} — *{_ord['customer_name']}*\n"
                             f"כמות מוזמנת: *{_ord['quantity']} ליטר*\n\n"
-                            f"כמה ליטרים סיפקת בפועל? (הזן מספר)"
+                            f"כמה ליטרים סופקו סה\"כ באתר? (הזן מספר)"
                         )
                     else:
                         send_whatsapp_message(phone, f"✅ הזמנה #{order_id} סומנה כהושלם!")
