@@ -215,7 +215,8 @@ def send_order_card(to_phone: str, order: dict, idx: int = None, total: int = No
             "body": {"text": body},
             "action": {
                 "buttons": [
-                    {"type": "reply", "reply": {"id": f"done_{o['id']}", "title": "✅ ביצוע"}},
+                    {"type": "reply", "reply": {"id": f"done_{o['id']}",   "title": "✅ ביצוע"}},
+                    {"type": "reply", "reply": {"id": f"cancel_{o['id']}", "title": "❌ בוטלה"}},
                 ]
             },
         },

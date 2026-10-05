@@ -524,6 +524,35 @@ async def receive_message(request: Request):
                         send_whatsapp_message(phone, f"✅ הזמנה #{order_id} סומנה כהושלם!")
                     return JSONResponse({"status": "ok"})
 
+                # כפתור "❌ בוטלה"
+                if btn_id.startswith("cancel_"):
+                    import json as _json_cancel
+                    order_id = int(btn_id.split("_")[1])
+                    _pa2 = ("0" + phone[3:]) if phone.startswith("972") else ("972" + phone[1:])
+                    with get_db() as conn:
+                        _is_drv2 = conn.execute(
+                            "SELECT id FROM drivers WHERE phone=? OR phone=? OR personal_phone=? OR personal_phone=?",
+                            (phone, _pa2, phone, _pa2)
+                        ).fetchone()
+                        _ord2 = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+                        if _is_drv2:
+                            conn.execute(
+                                "INSERT OR REPLACE INTO conversation_state "
+                                "(phone, step, pending_order_json, updated_at) "
+                                "VALUES (?, 'driver_awaiting_cancel_reason', ?, datetime('now','localtime'))",
+                                (phone, _json_cancel.dumps({"order_id": order_id}))
+                            )
+                        else:
+                            conn.execute("UPDATE orders SET status='בוטל' WHERE id=?", (order_id,))
+                    if _is_drv2 and _ord2:
+                        send_whatsapp_message(phone,
+                            f"📦 הזמנה #{order_id} — *{_ord2['customer_name']}*\n\n"
+                            f"מה הסיבה לביטול? (הזן טקסט)"
+                        )
+                    else:
+                        send_whatsapp_message(phone, f"❌ הזמנה #{order_id} סומנה כבוטלה.")
+                    return JSONResponse({"status": "ok"})
+
         if msg_type == "text":
             text     = message["text"]["body"].strip()
             reply_id = None
@@ -578,6 +607,39 @@ async def receive_message(request: Request):
                     )
                     conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
                 send_whatsapp_message(phone, f"✅ הזמנה #{_oid} הושלמה — *{_qty_text} ליטר* נקלטו בשעה {_delivery_time}. תודה!")
+            return JSONResponse({"status": "ok"})
+
+        if _drv_state and _drv_state["step"] == "driver_awaiting_cancel_reason" and msg_type == "text":
+            _info_c = _json_drv.loads(_drv_state["pending_order_json"] or "{}")
+            _oid_c  = _info_c.get("order_id")
+            _reason = text.strip()
+            if _oid_c and _reason:
+                with get_db() as conn:
+                    conn.execute(
+                        "UPDATE orders SET status='בוטל', cancel_reason=? WHERE id=?",
+                        (_reason, _oid_c)
+                    )
+                    conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+                send_whatsapp_message(phone, f"❌ הזמנה #{_oid_c} סומנה כבוטלה.\nסיבה: *{_reason}*\nתודה על העדכון!")
+                # הודע למנהל על הביטול
+                try:
+                    with get_db() as conn:
+                        _ord_c = conn.execute("SELECT * FROM orders WHERE id=?", (_oid_c,)).fetchone()
+                        _s_c   = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM settings").fetchall()}
+                    _adm_c = _s_c.get("admin_phone", "").strip().replace(" ", "").replace("-", "").lstrip("+")
+                    if _adm_c.startswith("0"):
+                        _adm_c = "972" + _adm_c[1:]
+                    if _adm_c and _ord_c:
+                        _drv_name = drv.get("name", "נהג")
+                        send_whatsapp_message(_adm_c,
+                            f"⚠️ *הזמנה בוטלה על ידי נהג*\n\n"
+                            f"📦 הזמנה #{_oid_c} — {_ord_c['customer_name']}\n"
+                            f"📍 {_ord_c['site_address']}\n"
+                            f"🚛 נהג: {_drv_name}\n"
+                            f"❌ סיבה: {_reason}"
+                        )
+                except Exception as _e_c:
+                    print(f"[Cancel] שגיאה בהודעה למנהל: {_e_c}")
             return JSONResponse({"status": "ok"})
 
         # נהג ביקש את הסידור שלו
