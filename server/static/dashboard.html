@@ -1487,19 +1487,27 @@ function orderRowHtml(o, showStatus = true, isPast = false) {
     </tr>`;
 }
 
+// אילו תאריכים פתוחים בפעילות
+const _activeOpen = new Set();
+
+function toggleActiveDate(date) {
+  if (_activeOpen.has(date)) _activeOpen.delete(date);
+  else _activeOpen.add(date);
+  renderActiveOrders();
+}
+
 function renderActiveOrders() {
   const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const todayStr    = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const tom = new Date(now); tom.setDate(tom.getDate()+1);
   const tomorrowStr = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
   const yest = new Date(now); yest.setDate(yest.getDate()-1);
-  const yesterdayStr = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
+  const yesterdayStr= `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
 
-  // כל ההזמנות של אתמול (מושלמות בלבד) + היום + מחר
   const orders = _allOrders.filter(o => {
     const d = o.order_date || '';
     if (d === todayStr || d === tomorrowStr) return true;
-    if (d === yesterdayStr && (o.status === 'הושלם' || o.status === 'בוטל')) return true; // אתמול סגורות — לראות פרטים
+    if (d === yesterdayStr && (o.status === 'הושלם' || o.status === 'בוטל')) return true;
     return false;
   });
   const container = document.getElementById('orders-by-date-container');
@@ -1509,27 +1517,21 @@ function renderActiveOrders() {
     return;
   }
 
-  const fmt = d => { if (!d || d === 'ללא תאריך') return d; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; };
-  const fmtLiters = n => n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'K' : String(n);
+  const fmt      = d => { if (!d || d === 'ללא תאריך') return d; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; };
+  const fmtLiters= n => n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'K' : String(n);
 
   const byDate = {};
-  orders.forEach(o => {
-    const d = o.order_date || 'ללא תאריך';
-    if (!byDate[d]) byDate[d] = [];
-    byDate[d].push(o);
-  });
+  orders.forEach(o => { const d = o.order_date || 'ללא תאריך'; (byDate[d] = byDate[d]||[]).push(o); });
+  const sorted = Object.keys(byDate).sort((a,b) => a==='ללא תאריך'?1:b==='ללא תאריך'?-1:b.localeCompare(a));
 
-  const sorted = Object.keys(byDate).sort((a, b) => {
-    if (a === 'ללא תאריך') return 1;
-    if (b === 'ללא תאריך') return -1;
-    return b.localeCompare(a);
-  });
+  // היום ומחר פתוחים כברירת מחדל
+  if (_activeOpen.size === 0) { if(byDate[todayStr]) _activeOpen.add(todayStr); if(byDate[tomorrowStr]) _activeOpen.add(tomorrowStr); }
 
   const headerFor = d => {
-    if (d === todayStr)    return { label: `☀️ היום — ${fmt(d)}`,   bg: '#fef9c3', border: '#fde047', badge: '#b45309' };
-    if (d === tomorrowStr) return { label: `📅 מחר — ${fmt(d)}`,   bg: '#eff6ff', border: '#bfdbfe', badge: '#1d4ed8' };
-    if (d < todayStr)      return { label: `📌 עבר — ${fmt(d)}`,   bg: '#fef2f2', border: '#fecaca', badge: '#b91c1c' };
-    return                        { label: `🗓 ${fmt(d)}`,          bg: '#f0fdf4', border: '#bbf7d0', badge: '#15803d' };
+    if (d === todayStr)    return { label:`☀️ היום — ${fmt(d)}`,  bg:'#fef9c3', border:'#fde047', badge:'#b45309' };
+    if (d === tomorrowStr) return { label:`📅 מחר — ${fmt(d)}`,  bg:'#eff6ff', border:'#bfdbfe', badge:'#1d4ed8' };
+    if (d < todayStr)      return { label:`📌 עבר — ${fmt(d)}`,  bg:'#fef2f2', border:'#fecaca', badge:'#b91c1c' };
+    return                        { label:`🗓 ${fmt(d)}`,         bg:'#f0fdf4', border:'#bbf7d0', badge:'#15803d' };
   };
 
   const thead = `<thead><tr style="font-size:0.8em">
@@ -1542,55 +1544,51 @@ function renderActiveOrders() {
   </tr></thead>`;
 
   container.innerHTML = sorted.map(date => {
-    const h = headerFor(date);
-    const grp = byDate[date];
+    const h    = headerFor(date);
+    const grp  = byDate[date];
+    const isOpen = _activeOpen.has(date);
     const done = grp.filter(o => o.status === 'הושלם');
-    const totalOrdered = grp.reduce((s, o) => s + parseQty(o.quantity), 0);
-    const totalReal    = done.reduce((s, o) => s + parseQty(o.actual_quantity), 0);
+    const totalOrdered = grp.reduce((s,o) => s + parseQty(o.quantity), 0);
+    const totalReal    = done.reduce((s,o) => s + parseQty(o.actual_quantity), 0);
     const progressPct  = grp.length ? Math.round(done.length / grp.length * 100) : 0;
 
-    // פס התקדמות
     const progressBar = `
-      <div style="display:flex;align-items:center;gap:8px;margin-right:auto">
+      <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:0.75em;color:#64748b;font-weight:600">${done.length}/${grp.length} הושלמו</span>
-        <div style="width:80px;height:6px;background:#e2e8f0;border-radius:4px;overflow:hidden">
-          <div style="width:${progressPct}%;height:100%;background:#16a34a;border-radius:4px;transition:width 0.3s"></div>
+        <div style="width:70px;height:6px;background:#e2e8f0;border-radius:4px;overflow:hidden">
+          <div style="width:${progressPct}%;height:100%;background:#16a34a;border-radius:4px"></div>
         </div>
         ${totalReal ? `<span style="font-size:0.75em;color:#16a34a;font-weight:700">${fmtLiters(totalReal)} ל' סופקו</span>` : ''}
       </div>`;
 
-    // שורה מיוחדת להושלמות
-    const rowHtml = (o) => {
+    const rowHtml = o => {
       const isCompleted = o.status === 'הושלם';
       const base = orderRowHtml(o, !isCompleted, date < todayStr);
-      if (!isCompleted) return base;
-      // עטוף בצבע ירוק בהיר
-      return base.replace('<tr ', `<tr style="background:#f0fdf4;opacity:0.85" `);
+      return isCompleted ? base.replace('<tr ', `<tr style="background:#f0fdf4;opacity:0.85" `) : base;
     };
 
     return `
-      <div style="margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;
-          background:${h.bg};border:1px solid ${h.border};border-bottom:none;
-          border-radius:10px 10px 0 0;flex-wrap:wrap">
+      <div style="margin-bottom:6px">
+        <div onclick="toggleActiveDate('${date}')" style="
+          display:flex;align-items:center;gap:10px;padding:9px 16px;
+          background:${h.bg};border:1px solid ${h.border};border-radius:${isOpen?'10px 10px 0 0':'10px'};
+          cursor:pointer;user-select:none;flex-wrap:wrap"
+          onmouseenter="this.style.filter='brightness(0.96)'" onmouseleave="this.style.filter=''">
+          <span style="font-size:0.9em;display:inline-block;transform:rotate(${isOpen?'90':'0'}deg);transition:transform 0.2s">▶</span>
           <span style="font-weight:800;font-size:0.92em;color:#1e293b">${h.label}</span>
-          <span style="font-size:0.75em;font-weight:700;color:#fff;background:${h.badge};
-            border-radius:20px;padding:1px 9px">${grp.length} הזמנות</span>
+          <span style="font-size:0.75em;font-weight:700;color:#fff;background:${h.badge};border-radius:20px;padding:1px 9px">${grp.length} הזמנות</span>
           <span style="font-size:0.78em;color:#64748b;font-weight:600">${fmtLiters(totalOrdered)} ל' מוזמן</span>
           ${progressBar}
-          <button onclick="completeAllForDate('${date}')"
-            style="font-size:0.75em;font-weight:700;padding:4px 12px;
-              background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;
-              white-space:nowrap">
+          <button onclick="event.stopPropagation();completeAllForDate('${date}')"
+            style="font-size:0.75em;font-weight:700;padding:4px 12px;background:#16a34a;color:#fff;
+              border:none;border-radius:6px;cursor:pointer;white-space:nowrap;margin-right:auto">
             ✓ כל המשימות הושלמו
           </button>
         </div>
-        <div class="card" style="padding:10px 14px;border-radius:0 0 10px 10px;
-          border:1px solid ${h.border};border-top:none;margin-top:0">
-          <table>${thead}<tbody>
-            ${grp.map(o => rowHtml(o)).join('')}
-          </tbody></table>
-        </div>
+        ${isOpen ? `
+        <div class="card" style="padding:10px 14px;border-radius:0 0 10px 10px;border:1px solid ${h.border};border-top:none;margin-top:0">
+          <table>${thead}<tbody>${grp.map(o => rowHtml(o)).join('')}</tbody></table>
+        </div>` : ''}
       </div>`;
   }).join('');
 }
@@ -1713,52 +1711,121 @@ function renderCompletedOrders() {
   }).join('');
 }
 
+// מפתחות פתוחים בלפי נהגים: "driverName|date"
+const _driverDateOpen = new Set();
+
+function toggleDriverDate(key) {
+  if (_driverDateOpen.has(key)) _driverDateOpen.delete(key);
+  else _driverDateOpen.add(key);
+  renderOrdersByDriver();
+}
+
 function renderOrdersByDriver() {
   const container = document.getElementById('orders-by-driver-container');
   if (!_allOrders.length) {
     container.innerHTML = '<div class="card"><p class="empty">אין הזמנות</p></div>';
     return;
   }
+
+  const fmt      = d => { if (!d) return '—'; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; };
+  const fmtLiters= n => n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'K' : String(n);
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const tom = new Date(now); tom.setDate(tom.getDate()+1);
+  const tomorrowStr = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
+
   const byDriver = {};
-  _allOrders.forEach(o => {
-    const key = o.driver_name || 'ללא נהג';
-    if (!byDriver[key]) byDriver[key] = [];
-    byDriver[key].push(o);
-  });
+  _allOrders.forEach(o => { const k = o.driver_name||'ללא נהג'; (byDriver[k]=byDriver[k]||[]).push(o); });
 
   container.innerHTML = Object.entries(byDriver).map(([driverName, orders]) => {
-    const totalLiters = orders.reduce((sum, o) => sum + (parseFloat(o.quantity) || 0), 0);
+    const totalLiters    = orders.reduce((s,o) => s + parseQty(o.quantity), 0);
     const completedCount = orders.filter(o => o.status === 'הושלם').length;
-    const rows = orders.map(o => `
-      <tr>
-        <td style="color:#94a3b8;font-size:0.85em">${o.id}</td>
-        <td><strong>${o.customer_name}</strong></td>
-        <td>${o.site_address}</td>
-        <td>${o.contact_name || '—'}</td>
-        <td>${o.contact_phone || '—'}</td>
-        <td><strong>${o.quantity}</strong> ל'</td>
-        <td><select class="status-select" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></td>
-        <td style="color:#94a3b8;font-size:0.85em">${o.created_at ? o.created_at.slice(11,16) : ''}</td>
-        <td><button class="btn btn-danger" onclick="deleteOrder(${o.id})">מחק</button></td>
-      </tr>`).join('');
+    const cancelCount    = orders.filter(o => o.status === 'בוטל').length;
+
+    // קבץ לפי תאריך
+    const byDate = {};
+    orders.forEach(o => { const d = o.order_date||'ללא תאריך'; (byDate[d]=byDate[d]||[]).push(o); });
+    const sortedDates = Object.keys(byDate).sort((a,b) => a==='ללא תאריך'?1:b==='ללא תאריך'?-1:b.localeCompare(a));
+
+    // פתח היום/מחר כברירת מחדל
+    sortedDates.forEach(d => {
+      if ((d === todayStr || d === tomorrowStr) && !_driverDateOpen.has(`${driverName}|${d}`)) {
+        _driverDateOpen.add(`${driverName}|${d}`);
+      }
+    });
+
+    const dateBlocks = sortedDates.map(date => {
+      const grp    = byDate[date];
+      const key    = `${driverName}|${date}`;
+      const isOpen = _driverDateOpen.has(key);
+      const done   = grp.filter(o => o.status === 'הושלם').length;
+      const totalD = grp.reduce((s,o) => s + parseQty(o.quantity), 0);
+      const pct    = grp.length ? Math.round(done/grp.length*100) : 0;
+
+      let dateLabel = fmt(date);
+      if (date === todayStr)    dateLabel = `☀️ היום — ${fmt(date)}`;
+      else if (date === tomorrowStr) dateLabel = `📅 מחר — ${fmt(date)}`;
+      else if (date < todayStr) dateLabel = `📌 ${fmt(date)}`;
+
+      const rows = grp.map(o => `
+        <tr style="font-size:0.82em;${o.status==='הושלם'?'background:#f0fdf4':''}">
+          <td style="color:#94a3b8;padding:5px 8px">${o.id}</td>
+          <td style="padding:5px 8px;font-weight:700">${o.customer_name}</td>
+          <td style="padding:5px 8px;color:#475569">${o.site_address}</td>
+          <td style="padding:5px 8px">
+            <div style="font-weight:700">${o.quantity} ל'</div>
+            ${o.actual_quantity ? `<div style="font-size:0.82em;color:#16a34a;font-weight:700">✓ ${o.actual_quantity} ל'</div>` : ''}
+            ${o.cancel_reason   ? `<div style="font-size:0.78em;color:#be123c">❌ ${o.cancel_reason}</div>` : ''}
+          </td>
+          <td style="padding:5px 8px"><select class="status-select" style="font-size:0.82em" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></td>
+          <td style="padding:5px 8px;color:#64748b;font-size:0.85em">${o.delivery_time||'—'}</td>
+          <td style="padding:4px 6px">
+            <button style="font-size:0.75em;padding:2px 7px;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:5px;cursor:pointer" onclick="deleteOrder(${o.id})">מחק</button>
+          </td>
+        </tr>`).join('');
+
+      return `
+        <div style="margin-bottom:4px">
+          <div onclick="toggleDriverDate('${key.replace(/'/g,'&#39;')}')" style="
+            display:flex;align-items:center;gap:8px;padding:7px 12px;
+            background:#f8fafc;border:1px solid #e2e8f0;border-radius:${isOpen?'8px 8px 0 0':'8px'};
+            cursor:pointer;user-select:none"
+            onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background='#f8fafc'">
+            <span style="font-size:0.85em;display:inline-block;transform:rotate(${isOpen?'90':'0'}deg);transition:transform 0.2s;color:#64748b">▶</span>
+            <span style="font-weight:700;font-size:0.88em;color:#1e293b">${dateLabel}</span>
+            <span style="font-size:0.72em;color:#fff;background:#64748b;border-radius:20px;padding:1px 8px">${grp.length} הזמנות</span>
+            <span style="font-size:0.72em;color:#475569">${fmtLiters(totalD)} ל'</span>
+            <div style="display:flex;align-items:center;gap:5px;margin-right:auto">
+              <span style="font-size:0.7em;color:#64748b">${done}/${grp.length}</span>
+              <div style="width:50px;height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden">
+                <div style="width:${pct}%;height:100%;background:#16a34a;border-radius:3px"></div>
+              </div>
+            </div>
+          </div>
+          ${isOpen ? `
+          <div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;overflow-x:auto">
+            <table style="border-radius:0;font-size:0.9em">
+              <thead><tr style="font-size:0.8em">
+                <th style="padding:4px 8px">#</th><th style="padding:4px 8px">לקוח</th>
+                <th style="padding:4px 8px">כתובת</th><th style="padding:4px 8px">כמות</th>
+                <th style="padding:4px 8px">סטטוס</th><th style="padding:4px 8px">שעת אספקה</th><th style="padding:4px 8px"></th>
+              </tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>` : ''}
+        </div>`;
+    }).join('');
 
     return `
-      <div class="card" style="margin-bottom:20px">
-        <div class="driver-card-header">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span class="driver-name-badge">${driverName}</span>
-            <span class="tag tag-red">${orders.length} הזמנות</span>
-            <span class="tag">${totalLiters} ליטר</span>
-            ${completedCount ? `<span class="tag" style="background:#faf5ff;color:#7e22ce">${completedCount} הושלמו</span>` : ''}
-          </div>
+      <div class="card" style="margin-bottom:16px;padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <span class="driver-name-badge">${driverName}</span>
+          <span class="tag tag-red">${orders.length} הזמנות</span>
+          <span class="tag">${fmtLiters(totalLiters)} ל'</span>
+          ${completedCount ? `<span class="tag" style="background:#f0fdf4;color:#15803d">✅ ${completedCount} הושלמו</span>` : ''}
+          ${cancelCount    ? `<span class="tag" style="background:#fff1f2;color:#be123c">❌ ${cancelCount} בוטלו</span>`    : ''}
         </div>
-        <table>
-          <thead><tr>
-            <th>#</th><th>לקוח</th><th>כתובת אתר</th><th>איש קשר</th>
-            <th>טלפון</th><th>כמות</th><th>סטטוס</th><th>שעה</th><th></th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
+        ${dateBlocks}
       </div>`;
   }).join('');
 }
