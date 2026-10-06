@@ -190,6 +190,7 @@
     .badge-אושר  { background: #f0fdf4; color: #15803d; }
     .badge-נשלח  { background: #eff6ff; color: #1d4ed8; }
     .badge-הושלם { background: #f5f3ff; color: #7c3aed; }
+    .badge-בוטל  { background: #fff1f2; color: #be123c; }
 
     /* ── Sub-tabs ── */
     .orders-subtabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -239,6 +240,7 @@
     .s-אושר  { background: #f0fdf4; color: #15803d; }
     .s-נשלח  { background: #eff6ff; color: #1d4ed8; }
     .s-הושלם { background: #f5f3ff; color: #7c3aed; }
+    .s-בוטל  { background: #fff1f2; color: #be123c; }
 
     /* ── Misc ── */
     .empty { text-align: center; color: var(--text-3); padding: 28px; font-size: 0.88em; }
@@ -1141,7 +1143,7 @@
 <script>
 // (sidebar removed — top navbar)
 
-const STATUS_OPTIONS = ['ממתין','אושר','נשלח','הושלם'];
+const STATUS_OPTIONS = ['ממתין','אושר','נשלח','הושלם','בוטל'];
 
 const WA_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="white" style="vertical-align:middle;margin-left:4px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
 
@@ -1422,7 +1424,7 @@ async function loadOrders() {
   const res = await fetch(url);
   _allOrders = await res.json();
 
-  const counts = { total: _allOrders.length, ממתין: 0, אושר: 0, נשלח: 0, הושלם: 0 };
+  const counts = { total: _allOrders.length, ממתין: 0, אושר: 0, נשלח: 0, הושלם: 0, בוטל: 0 };
   _allOrders.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
 
   const sDefs = [
@@ -1431,6 +1433,7 @@ async function loadOrders() {
     { n: counts['אושר'],     l: 'אושר',  bg:'linear-gradient(135deg,#1d4ed8,#1e40af)' },
     { n: counts['נשלח'],     l: 'נשלח',  bg:'linear-gradient(135deg,#7c3aed,#5b21b6)' },
     { n: counts['הושלם'],    l: 'הושלם', bg:'linear-gradient(135deg,#16a34a,#15803d)' },
+    { n: counts['בוטל'],     l: 'בוטל',  bg:'linear-gradient(135deg,#be123c,#9f1239)' },
   ];
   document.getElementById('stats').innerHTML = sDefs.map(s =>
     `<div style="background:${s.bg};border-radius:10px;padding:8px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 8px rgba(0,0,0,0.15)">
@@ -1466,10 +1469,11 @@ function orderRowHtml(o, showStatus = true, isPast = false) {
       <td style="padding:6px 8px;color:#374151;direction:ltr">${o.contact_phone || '<span style="color:#cbd5e1">—</span>'}</td>
       <td style="padding:6px 8px;color:#0f172a">
         <div style="font-weight:700">${o.quantity} ל'</div>
-        ${o.actual_quantity ? `<div style="font-size:0.82em;font-weight:700;color:#16a34a;margin-top:1px">✓ ${o.actual_quantity} ל'</div>` : ''}
+        ${o.actual_quantity ? `<div style="font-size:0.85em;font-weight:800;color:#16a34a;margin-top:2px;background:#f0fdf4;padding:1px 6px;border-radius:4px;display:inline-block">✓ ${o.actual_quantity} ל' בפועל</div>` : ''}
+        ${o.cancel_reason   ? `<div style="font-size:0.78em;color:#be123c;margin-top:2px" title="סיבת ביטול">❌ ${o.cancel_reason}</div>` : ''}
       </td>
       <td style="padding:6px 8px">${o.driver_name ? `<span class="tag" style="font-size:0.88em">${o.driver_name}</span>` : '<span style="color:#cbd5e1">—</span>'}</td>
-      <td style="padding:6px 8px">${showStatus ? `<select class="status-select" style="font-size:0.82em;padding:3px 6px" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="badge badge-הושלם">הושלם</span>`}</td>
+      <td style="padding:6px 8px">${showStatus ? `<select class="status-select" style="font-size:0.82em;padding:3px 6px" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="badge badge-${o.status}">${o.status}</span>`}</td>
       <td style="padding:6px 8px;color:#64748b;font-size:0.9em;white-space:nowrap">${o.delivery_time || '<span style="color:#cbd5e1">—</span>'}</td>
       <td style="padding:6px 8px;white-space:nowrap">${fmtCreatedAt(o.created_at)}</td>
       <td style="padding:4px 6px;white-space:nowrap">
@@ -1495,7 +1499,7 @@ function renderActiveOrders() {
   const orders = _allOrders.filter(o => {
     const d = o.order_date || '';
     if (d === todayStr || d === tomorrowStr) return true;
-    if (d === yesterdayStr && o.status === 'הושלם') return true; // אתמול מושלמות — לראות כמות בפועל
+    if (d === yesterdayStr && (o.status === 'הושלם' || o.status === 'בוטל')) return true; // אתמול סגורות — לראות פרטים
     return false;
   });
   const container = document.getElementById('orders-by-date-container');
@@ -3055,7 +3059,8 @@ async function loadTasks() {
           </div>
           <div class="task-qty">
             ${o.quantity} ל'
-            ${o.actual_quantity ? `<span style="color:#16a34a;font-size:0.82em;display:block">בפועל: ${o.actual_quantity}</span>` : ''}
+            ${o.actual_quantity ? `<span style="color:#16a34a;font-size:0.82em;font-weight:800;display:block;background:#f0fdf4;border-radius:4px;padding:1px 4px;margin-top:2px">✓ ${o.actual_quantity} ל'</span>` : ''}
+            ${o.cancel_reason   ? `<span style="color:#be123c;font-size:0.75em;display:block;margin-top:2px" title="${o.cancel_reason}">❌ בוטל</span>` : ''}
           </div>
           <select class="status-pill s-${o.status}" onchange="updateTaskStatus(${o.id}, this.value, this)">
             ${STATUS_OPTIONS.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
@@ -3326,7 +3331,7 @@ async function materializeAndReload(btn) {
   }
 }
 
-// רענון אוטומטי כל 45 שניות כשלשונית המשימות פעילה
+// רענון אוטומטי כל 20 שניות כשלשונית המשימות פעילה
 let _tasksRefreshInterval = null;
 function startTasksAutoRefresh() {
   if (_tasksRefreshInterval) return;
@@ -3334,7 +3339,10 @@ function startTasksAutoRefresh() {
     if (document.getElementById('tasks') && document.getElementById('tasks').classList.contains('active')) {
       loadTasks();
     }
-  }, 45000);
+    if (document.getElementById('orders') && document.getElementById('orders').classList.contains('active')) {
+      loadOrders();
+    }
+  }, 20000);
 }
 
 async function updateTaskStatus(id, status, el) {
