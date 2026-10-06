@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const API = (window.location.port === '5173' || window.location.port === '5174') ? `http://${window.location.hostname}:8000` : '';
 
@@ -99,6 +99,8 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [winterSuccessMsg, setWinterSuccessMsg] = useState('');
   const [winterAgents,     setWinterAgents]     = useState([]);
   const [customerListTab,  setCustomerListTab]  = useState('regular'); // 'regular' | 'winter'
+  const [paymentEditId,    setPaymentEditId]    = useState(null);
+  const [paymentForm,      setPaymentForm]      = useState({});
 
   const safeJson = r => r.ok ? r.json() : [];
   const load = () =>
@@ -270,6 +272,33 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
     } catch {
       setWinterError('שגיאה בהוספת לקוח');
     }
+  };
+
+  const VAT = 0.17;
+
+  const openPaymentEdit = (order) => {
+    setPaymentEditId(order.id);
+    setPaymentForm({
+      price_before_vat: order.price_before_vat || '',
+      payment_status:   order.payment_status   || 'לא שולם',
+      payment_method:   order.payment_method   || '',
+      payment_date:     order.payment_date     || '',
+      payment_notes:    order.payment_notes    || '',
+    });
+  };
+
+  const savePayment = async (orderId) => {
+    try {
+      const res = await fetch(`${API}/api/orders/${orderId}/payment`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentForm),
+      });
+      if (!res.ok) throw new Error();
+      const updated = await res.json();
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updated } : o));
+      setPaymentEditId(null);
+    } catch { alert('שגיאה בשמירת תשלום'); }
   };
 
   const openSalePrice = (name) => {
@@ -1248,8 +1277,15 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                     <tbody>
                       {sortedOrders.map(o => {
                         const sc = STATUS_COLORS[o.status] || { bg: '#f8f9fa', color: '#6b7280', border: '#e9ecef' };
+                        const isWinterCustomer = selectedCustomer?.customer_type === 'חורף';
+                        const isPaymentOpen = paymentEditId === o.id;
+                        const pf = isPaymentOpen ? paymentForm : {};
+                        const priceNum = parseFloat(pf.price_before_vat) || 0;
+                        const vatAmt = priceNum * VAT;
+                        const totalAmt = priceNum * (1 + VAT);
                         return (
-                          <tr key={o.id} style={{ borderBottom: '1px solid #f3f4f6' }}
+                          <React.Fragment key={o.id}>
+                          <tr style={{ borderBottom: isPaymentOpen ? 'none' : '1px solid #f3f4f6' }}
                             onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
                             onMouseLeave={e => e.currentTarget.style.background = ''}>
                             <td style={{ padding: '10px 14px', color: '#9ca3af', fontSize: 11 }}>{o.id}</td>
@@ -1289,6 +1325,19 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                                   style={{ padding: '4px 8px', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: '#f0f9ff', color: '#0891b2', border: '1px solid #bae6fd' }}>
                                   🔁
                                 </button>
+                                {isWinterCustomer && (
+                                  <button
+                                    onClick={() => isPaymentOpen ? setPaymentEditId(null) : openPaymentEdit(o)}
+                                    title="מעקב תשלום"
+                                    style={{
+                                      padding: '4px 8px', borderRadius: 6, fontSize: 12, cursor: 'pointer',
+                                      background: isPaymentOpen ? '#fef3c7' : (o.payment_status === 'שולם' ? '#dcfce7' : '#fdf4ff'),
+                                      color: isPaymentOpen ? '#92400e' : (o.payment_status === 'שולם' ? '#166534' : '#7c3aed'),
+                                      border: `1px solid ${isPaymentOpen ? '#fde68a' : (o.payment_status === 'שולם' ? '#bbf7d0' : '#e9d5ff')}`,
+                                    }}>
+                                    💳
+                                  </button>
+                                )}
                                 {deleteOrderConfirmId === o.id ? (
                                   <>
                                     <button onClick={() => handleDeleteOrder(o.id)}
@@ -1305,6 +1354,80 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                               </div>
                             </td>
                           </tr>
+                          {isPaymentOpen && (
+                            <tr style={{ borderBottom: '1px solid #f3f4f6', background: '#fefce8' }}>
+                              <td colSpan={9} style={{ padding: '14px 20px' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end', direction: 'rtl' }}>
+                                  <div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>מחיר לפני מע"מ (₪)</div>
+                                    <input
+                                      type="number" min="0" step="0.01"
+                                      value={pf.price_before_vat ?? ''}
+                                      onChange={e => setPaymentForm(p => ({ ...p, price_before_vat: e.target.value }))}
+                                      style={{ width: 110, padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, fontWeight: 600, textAlign: 'right' }}
+                                    />
+                                  </div>
+                                  <div style={{ fontSize: 12, color: '#6b7280', paddingBottom: 8 }}>
+                                    <div>מע"מ 17%: <strong>₪{vatAmt.toFixed(2)}</strong></div>
+                                    <div>סה"כ כולל מע"מ: <strong style={{ color: '#1e2d3d' }}>₪{totalAmt.toFixed(2)}</strong></div>
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>סטטוס תשלום</div>
+                                    <select
+                                      value={pf.payment_status ?? 'לא שולם'}
+                                      onChange={e => setPaymentForm(p => ({ ...p, payment_status: e.target.value }))}
+                                      style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}>
+                                      {['לא שולם', 'שולם', 'חלקי'].map(s => <option key={s}>{s}</option>)}
+                                    </select>
+                                  </div>
+                                  {(pf.payment_status === 'שולם' || pf.payment_status === 'חלקי') && (
+                                    <>
+                                      <div>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>אמצעי תשלום</div>
+                                        <select
+                                          value={pf.payment_method ?? ''}
+                                          onChange={e => setPaymentForm(p => ({ ...p, payment_method: e.target.value }))}
+                                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}>
+                                          <option value="">בחר...</option>
+                                          {['מזומן', 'העברה', "צ'ק", 'אשראי', 'ביט', 'פייבוקס'].map(m => <option key={m}>{m}</option>)}
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>תאריך תשלום</div>
+                                        <input
+                                          type="date"
+                                          value={pf.payment_date ?? ''}
+                                          onChange={e => setPaymentForm(p => ({ ...p, payment_date: e.target.value }))}
+                                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
+                                        />
+                                      </div>
+                                    </>
+                                  )}
+                                  <div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>הערות</div>
+                                    <input
+                                      type="text"
+                                      value={pf.payment_notes ?? ''}
+                                      onChange={e => setPaymentForm(p => ({ ...p, payment_notes: e.target.value }))}
+                                      placeholder="הערות תשלום..."
+                                      style={{ width: 160, padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
+                                    />
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 8, paddingBottom: 2 }}>
+                                    <button onClick={() => savePayment(o.id)}
+                                      style={{ padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', background: '#1e2d3d', color: '#fff', border: 'none' }}>
+                                      שמור
+                                    </button>
+                                    <button onClick={() => setPaymentEditId(null)}
+                                      style={{ padding: '7px 12px', borderRadius: 8, fontSize: 13, cursor: 'pointer', background: '#f3f4f6', color: '#374151', border: 'none' }}>
+                                      ביטול
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>

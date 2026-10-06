@@ -161,6 +161,17 @@ def init_db():
             conn.execute("ALTER TABLE orders ADD COLUMN cancel_reason TEXT DEFAULT ''")
         except Exception:
             pass
+        for col in [
+            'price_before_vat REAL DEFAULT 0',
+            'payment_status TEXT DEFAULT "לא שולם"',
+            'payment_method TEXT DEFAULT ""',
+            'payment_date TEXT DEFAULT ""',
+            'payment_notes TEXT DEFAULT ""',
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE orders ADD COLUMN {col}")
+            except Exception:
+                pass
         for col in ['tanker_volume TEXT DEFAULT ""', 'truck_number TEXT DEFAULT ""',
                     'personal_phone TEXT DEFAULT ""']:
             try:

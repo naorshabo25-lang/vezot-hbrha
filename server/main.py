@@ -1306,6 +1306,26 @@ def delete_order(order_id: int):
     return {"ok": True}
 
 
+@app.patch("/api/orders/{order_id}/payment")
+async def update_order_payment(order_id: int, request: Request):
+    data = await request.json()
+    price = float(data.get("price_before_vat") or 0)
+    with get_db() as conn:
+        conn.execute(
+            """UPDATE orders SET
+               price_before_vat=?, payment_status=?, payment_method=?, payment_date=?, payment_notes=?
+               WHERE id=?""",
+            (price,
+             data.get("payment_status", "לא שולם"),
+             data.get("payment_method", ""),
+             data.get("payment_date", ""),
+             data.get("payment_notes", ""),
+             order_id)
+        )
+        row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    return dict(row) if row else {"ok": True}
+
+
 @app.get("/api/recurring-orders")
 def get_recurring_orders():
     with get_db() as conn:
