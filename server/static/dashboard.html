@@ -526,10 +526,16 @@
             <input id="o-name" placeholder="שם הלקוח" />
             <input id="o-site" placeholder="כתובת האתר" />
           </div>
-          <div class="form-row" id="o-walkin-row" style="display:none">
-            <input id="o-walkin-name" placeholder="שם לקוח מזדמן *" style="flex:2" />
-            <input id="o-walkin-phone" placeholder="טלפון לקוח" style="flex:1" />
-            <input id="o-walkin-site" placeholder="כתובת האתר" style="flex:2" />
+          <div class="form-row" id="o-walkin-row" style="display:none;flex-direction:column;gap:8px">
+            <select id="o-walkin-select" onchange="onWalkinSelect()" style="flex:1;min-width:220px">
+              <option value="">-- בחר לקוח מזדמן קיים --</option>
+              <option value="new">✏️ לקוח מזדמן חדש...</option>
+            </select>
+            <div id="o-walkin-new-fields" style="display:none;gap:8px;flex-wrap:wrap">
+              <input id="o-walkin-name" placeholder="שם לקוח מזדמן *" style="flex:2" />
+              <input id="o-walkin-phone" placeholder="טלפון לקוח" style="flex:1" />
+              <input id="o-walkin-site" placeholder="כתובת האתר" style="flex:2" />
+            </div>
           </div>
           <div class="form-row">
             <input id="o-contact-name" placeholder="שם איש קשר" list="contact-suggestions-list" autocomplete="off" oninput="onContactNameInput(this.value)" onchange="onContactNameInput(this.value)" />
@@ -3531,9 +3537,17 @@ async function loadCustomerDropdown() {
   _customers = await cRes.json();
   _drivers   = await dRes.json();
 
+  const regularCustomers = _customers.filter(c => c.customer_type !== 'חורף');
+  const winterCustomers  = _customers.filter(c => c.customer_type === 'חורף');
+
   const sel = document.getElementById('o-customer');
   sel.innerHTML = '<option value="">-- בחר לקוח קיים (אופציונלי) --</option>';
-  _customers.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; sel.appendChild(o); });
+  regularCustomers.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; sel.appendChild(o); });
+
+  const walkinSel = document.getElementById('o-walkin-select');
+  walkinSel.innerHTML = '<option value="">-- בחר לקוח מזדמן קיים --</option>';
+  winterCustomers.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; walkinSel.appendChild(o); });
+  const newOpt = document.createElement('option'); newOpt.value = 'new'; newOpt.textContent = '✏️ לקוח מזדמן חדש...'; walkinSel.appendChild(newOpt);
 
   const areas = [...new Set(_drivers.map(d => d.area).filter(Boolean))];
   const areaSel = document.getElementById('o-area');
@@ -3551,6 +3565,25 @@ function fillCustomerData() {
   document.getElementById('o-contact-phone').value = c.last_order_contact_phone || c.order_contact_phone || c.contact_phone || '';
   document.getElementById('o-area').value = c.area || '';
   previewDriver();
+}
+
+function onWalkinSelect() {
+  const val = document.getElementById('o-walkin-select').value;
+  const newFields = document.getElementById('o-walkin-new-fields');
+  if (val === 'new') {
+    newFields.style.display = 'flex';
+    document.getElementById('o-walkin-name').focus();
+  } else {
+    newFields.style.display = 'none';
+    if (val) {
+      const c = _customers.find(x => x.id === parseInt(val));
+      if (c) {
+        document.getElementById('o-contact-name').value  = c.last_order_contact_name || c.contact_name || '';
+        document.getElementById('o-contact-phone').value = c.last_order_contact_phone || c.contact_phone || '';
+        if (c.area) { document.getElementById('o-area').value = c.area; previewDriver(); }
+      }
+    }
+  }
 }
 
 function previewDriver() {
@@ -3581,7 +3614,7 @@ function setOrderMode(mode) {
     btnEx.style.background = 'white';   btnEx.style.color = '#6b7280'; btnEx.style.borderColor = '#e5e7eb';
     document.getElementById('o-product-type').value = 'נוזל גנרטורים';
     document.getElementById('o-payment').value = 'תשלום במקום';
-    document.getElementById('o-walkin-name').focus();
+    document.getElementById('o-walkin-select').focus();
   } else {
     btnEx.style.background = '#2563eb'; btnEx.style.color = 'white'; btnEx.style.borderColor = '#2563eb';
     btnWk.style.background = 'white';   btnWk.style.color = '#6b7280'; btnWk.style.borderColor = '#e5e7eb';
@@ -3593,14 +3626,25 @@ function setOrderMode(mode) {
 async function addOrderManual(sendNow = false) {
   let customer_id, customer_name, site_address, contact_name, contact_phone;
   if (_orderMode === 'walkin') {
-    customer_id   = null;
-    customer_name = document.getElementById('o-walkin-name').value.trim();
-    site_address  = document.getElementById('o-walkin-site').value.trim();
-    contact_name  = document.getElementById('o-contact-name').value.trim();
-    contact_phone = document.getElementById('o-walkin-phone').value.trim() ||
-                    document.getElementById('o-contact-phone').value.trim();
-    if (!customer_name) return alert('יש להזין שם לקוח מזדמן');
-    if (!site_address)  return alert('יש להזין כתובת');
+    const walkinVal = document.getElementById('o-walkin-select').value;
+    if (walkinVal && walkinVal !== 'new') {
+      const c = _customers.find(x => x.id === parseInt(walkinVal));
+      if (!c) return alert('בחר לקוח מזדמן');
+      customer_id   = c.id;
+      customer_name = c.name;
+      site_address  = c.site_address || '';
+      contact_name  = document.getElementById('o-contact-name').value.trim() || c.contact_name || '';
+      contact_phone = document.getElementById('o-contact-phone').value.trim() || c.contact_phone || '';
+    } else {
+      customer_id   = null;
+      customer_name = document.getElementById('o-walkin-name').value.trim();
+      site_address  = document.getElementById('o-walkin-site').value.trim();
+      contact_name  = document.getElementById('o-contact-name').value.trim();
+      contact_phone = document.getElementById('o-walkin-phone').value.trim() ||
+                      document.getElementById('o-contact-phone').value.trim();
+      if (!customer_name) return alert('יש להזין שם לקוח מזדמן');
+      if (!site_address)  return alert('יש להזין כתובת');
+    }
   } else {
     customer_id   = document.getElementById('o-customer').value || null;
     customer_name = document.getElementById('o-name').value.trim();
@@ -3636,6 +3680,8 @@ async function addOrderManual(sendNow = false) {
   document.getElementById('o-product-type').value = _orderMode === 'walkin' ? 'נוזל גנרטורים' : 'סולר תחבורה';
   document.getElementById('o-payment').value = _orderMode === 'walkin' ? 'תשלום במקום' : '';
   document.getElementById('o-customer').value = '';
+  document.getElementById('o-walkin-select').value = '';
+  document.getElementById('o-walkin-new-fields').style.display = 'none';
   document.getElementById('o-area').value = '';
   document.getElementById('o-extras').value = '';
   document.getElementById('o-urea-qty').value = '';
