@@ -35,6 +35,8 @@ const EMPTY_WINTER = {
   ...EMPTY,
   agent_name: '',
   customer_type: 'חורף',
+  id_number: '',
+  email: '',
 };
 
 const EMPTY_ORDER = {
@@ -96,6 +98,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [winterError,      setWinterError]      = useState('');
   const [winterSuccessMsg, setWinterSuccessMsg] = useState('');
   const [winterAgents,     setWinterAgents]     = useState([]);
+  const [customerListTab,  setCustomerListTab]  = useState('regular'); // 'regular' | 'winter'
 
   const safeJson = r => r.ok ? r.json() : [];
   const load = () =>
@@ -132,9 +135,13 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
     setOrderError('');
   }, [selectedId]);
 
-  const filteredCustomers = customers.filter(c =>
+  const regularCustomers = customers.filter(c => c.customer_type !== 'חורף');
+  const winterCustomers  = customers.filter(c => c.customer_type === 'חורף');
+
+  const filteredCustomers = (customerListTab === 'winter' ? winterCustomers : regularCustomers).filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
-    (c.area || '').toLowerCase().includes(search.toLowerCase())
+    (c.area || '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.agent_name || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const selectedCustomer = customers.find(c => c.id === selectedId);
@@ -637,20 +644,22 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
             )}
           </div>
 
-          {/* פרטי לקוח — אותם שדות */}
+          {/* פרטי לקוח */}
           <p style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.8, marginBottom: 10, textTransform: 'uppercase' }}>פרטי לקוח</p>
-          <div className="grid-3-form" style={{ marginBottom: 20 }}>
+          <div className="grid-3-form" style={{ marginBottom: 16 }}>
             {[
-              { key: 'name',          label: 'שם לקוח *',        placeholder: 'שם הלקוח',          type: 'text' },
-              { key: 'contact_name',  label: 'איש קשר',           placeholder: 'שם מלא',             type: 'text' },
-              { key: 'site_address',  label: 'כתובת',              placeholder: 'כתובת מלאה',         type: 'text' },
-              { key: 'phone',         label: 'טלפון *',            placeholder: '05X-XXXXXXX',        type: 'text' },
-              { key: 'contact_phone', label: 'טלפון איש קשר',     placeholder: '05X-XXXXXXX',        type: 'text' },
-              { key: 'area',          label: 'אזור',               placeholder: 'ירושלים / מודיעין',  type: 'text' },
+              { key: 'name',          label: 'שם לקוח *',          placeholder: 'שם הלקוח',          type: 'text' },
+              { key: 'id_number',     label: 'ת.ז / ח.פ',          placeholder: '000000000',          type: 'text' },
+              { key: 'phone',         label: 'טלפון *',             placeholder: '05X-XXXXXXX',       type: 'text' },
+              { key: 'email',         label: 'מייל',                placeholder: 'name@example.com',  type: 'email' },
+              { key: 'site_address',  label: 'כתובת',               placeholder: 'רחוב, מספר, עיר',  type: 'text' },
+              { key: 'area',          label: 'אזור',                placeholder: 'ירושלים / מודיעין', type: 'text' },
+              { key: 'contact_name',  label: 'איש קשר',             placeholder: 'שם מלא',            type: 'text' },
+              { key: 'contact_phone', label: 'טלפון איש קשר',      placeholder: '05X-XXXXXXX',       type: 'text' },
             ].map(({ key, label, placeholder, type }) => (
               <div key={key}>
                 <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>{label}</label>
-                <input type={type} style={inputStyle} value={winterForm[key]} placeholder={placeholder}
+                <input type={type} style={inputStyle} value={winterForm[key] || ''} placeholder={placeholder}
                   onChange={e => setWinterForm(f => ({ ...f, [key]: e.target.value }))} />
               </div>
             ))}
@@ -800,19 +809,43 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
 
         {/* רשימת לקוחות */}
         <Card style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', background: '#f8fafc' }}>
+          {/* טאבים: קבועים / מזדמנים */}
+          <div style={{ display: 'flex', borderBottom: '2px solid #f3f4f6', background: '#f8fafc' }}>
+            {[
+              { id: 'regular', label: 'קבועים', count: regularCustomers.length },
+              { id: 'winter',  label: '❄️ מזדמנים', count: winterCustomers.length },
+            ].map(tab => {
+              const active = customerListTab === tab.id;
+              return (
+                <button key={tab.id}
+                  onClick={() => { setCustomerListTab(tab.id); setSelectedId(null); setSearch(''); }}
+                  style={{
+                    flex: 1, padding: '11px 8px', border: 'none', cursor: 'pointer',
+                    fontFamily: 'inherit', fontSize: 12, fontWeight: active ? 800 : 600,
+                    background: 'transparent',
+                    color: active ? (tab.id === 'winter' ? '#1d4ed8' : '#1e2d3d') : '#9ca3af',
+                    borderBottom: active ? `3px solid ${tab.id === 'winter' ? '#2563eb' : '#1e2d3d'}` : '3px solid transparent',
+                    transition: 'all 0.15s',
+                  }}>
+                  {tab.label} <span style={{ fontSize: 10, opacity: 0.7 }}>({tab.count})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid #f3f4f6', background: '#f8fafc' }}>
             <input
               style={{ ...inputStyle, border: '1px solid #e9ecef', fontSize: 12, padding: '7px 10px' }}
-              placeholder="חיפוש לקוח..."
+              placeholder={customerListTab === 'winter' ? 'חיפוש לפי שם / סוכן...' : 'חיפוש לקוח...'}
               value={search}
               onChange={e => setSearch(e.target.value)} />
-            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6, fontWeight: 600 }}>
-              {filteredCustomers.length} לקוחות
-            </div>
           </div>
-          <div className="customer-list" style={{ maxHeight: 540, overflowY: 'auto' }}>
+
+          <div className="customer-list" style={{ maxHeight: 500, overflowY: 'auto' }}>
             {filteredCustomers.length === 0 ? (
-              <div style={{ padding: 24, color: '#9ca3af', fontSize: 13, textAlign: 'center' }}>לא נמצאו לקוחות</div>
+              <div style={{ padding: 24, color: '#9ca3af', fontSize: 13, textAlign: 'center' }}>
+                {customerListTab === 'winter' ? '❄️ אין לקוחות מזדמנים עדיין' : 'לא נמצאו לקוחות'}
+              </div>
             ) : filteredCustomers.map(c => {
               const count      = orders.filter(o => o.customer_id === c.id).length;
               const isSelected = selectedId === c.id;
@@ -821,16 +854,18 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
               return (
                 <div key={c.id} style={{
                   display: 'flex', alignItems: 'center',
-                  background: isSelected ? '#1e2d3d' : 'transparent',
+                  background: isSelected ? (customerListTab === 'winter' ? '#1e3a5f' : '#1e2d3d') : 'transparent',
                   borderBottom: '1px solid #f3f4f6', transition: 'background 0.12s',
                 }}
                   onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
                   onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}>
                   <div onClick={() => setSelectedId(isSelected ? null : c.id)}
-                    style={{ flex: 1, padding: '12px 16px', cursor: 'pointer', textAlign: 'right' }}>
+                    style={{ flex: 1, padding: '10px 14px', cursor: 'pointer', textAlign: 'right' }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: isSelected ? '#fff' : '#1e2d3d', marginBottom: 2 }}>{c.name}</div>
                     <div style={{ fontSize: 11, color: isSelected ? 'rgba(200,210,220,0.75)' : '#9ca3af' }}>
-                      {c.area ? `${c.area} · ` : ''}{count} הזמנות
+                      {c.area ? `${c.area} · ` : ''}
+                      {customerListTab === 'winter' && c.agent_name ? `סוכן: ${c.agent_name} · ` : ''}
+                      {count} הזמנות
                     </div>
                   </div>
                   <button
@@ -869,12 +904,14 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                 <div className="grid-3-form" style={{ marginBottom: 12 }}>
                   {[
                     { key: 'name',                label: 'שם לקוח/חברה *',        placeholder: 'שם החברה / הלקוח' },
-                    { key: 'contact_name',        label: 'איש קשר',               placeholder: 'שם מלא' },
-                    { key: 'site_address',        label: 'כתובת',                  placeholder: 'כתובת מלאה' },
+                    { key: 'id_number',           label: 'ת.ז / ח.פ',             placeholder: '000000000' },
                     { key: 'phone',               label: 'טלפון',                  placeholder: '05X-XXXXXXX' },
-                    { key: 'contact_phone',       label: 'טלפון איש קשר',         placeholder: '05X-XXXXXXX' },
-                    { key: 'area',                label: 'אזור',                   placeholder: 'ירושלים / מודיעין' },
                     { key: 'email',               label: 'מייל',                   placeholder: 'example@mail.com' },
+                    { key: 'contact_name',        label: 'איש קשר',               placeholder: 'שם מלא' },
+                    { key: 'contact_phone',       label: 'טלפון איש קשר',         placeholder: '05X-XXXXXXX' },
+                    { key: 'site_address',        label: 'כתובת',                  placeholder: 'כתובת מלאה' },
+                    { key: 'area',                label: 'אזור',                   placeholder: 'ירושלים / מודיעין' },
+                    { key: 'agent_name',          label: 'סוכן מכירות',           placeholder: 'שם הסוכן' },
                     { key: 'order_contact_name',  label: 'איש קשר להזמנות',       placeholder: 'שם מלא' },
                     { key: 'order_contact_phone', label: 'טלפון איש קשר להזמנות', placeholder: '05X-XXXXXXX' },
                   ].map(({ key, label, placeholder }) => (
@@ -916,12 +953,21 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                   <div>
                     <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1e2d3d', marginBottom: 8 }}>{selectedCustomer.name}</h2>
                     <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+                      {selectedCustomer.customer_type === 'חורף' && selectedCustomer.agent_name && (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '2px 10px' }}>
+                          ❄️ מזדמן · סוכן: {selectedCustomer.agent_name}
+                        </span>
+                      )}
+                      {selectedCustomer.customer_type === 'חורף' && !selectedCustomer.agent_name && (
+                        <span style={{ fontSize: 12, color: '#2563eb', background: '#eff6ff', borderRadius: 20, padding: '2px 10px' }}>❄️ מזדמן</span>
+                      )}
                       {selectedCustomer.phone         && <span style={{ fontSize: 13, color: '#6b7280' }}>📞 {selectedCustomer.phone}</span>}
                       {selectedCustomer.area          && <span style={{ fontSize: 13, color: '#6b7280' }}>📍 {selectedCustomer.area}</span>}
                       {selectedCustomer.contact_name  && <span style={{ fontSize: 13, color: '#6b7280' }}>👤 {selectedCustomer.contact_name}</span>}
                       {selectedCustomer.contact_phone && <span style={{ fontSize: 13, color: '#6b7280' }}>📱 {selectedCustomer.contact_phone}</span>}
                       {selectedCustomer.site_address  && <span style={{ fontSize: 13, color: '#6b7280' }}>🏠 {selectedCustomer.site_address}</span>}
                       {selectedCustomer.email         && <span style={{ fontSize: 13, color: '#6b7280' }}>✉️ {selectedCustomer.email}</span>}
+                      {selectedCustomer.id_number     && <span style={{ fontSize: 13, color: '#6b7280' }}>🪪 ת.ז/ח.פ: {selectedCustomer.id_number}</span>}
                       {selectedCustomer.order_contact_name && (
                         <span style={{ fontSize: 13, color: '#0891b2', fontWeight: 600, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 20, padding: '2px 10px' }}>
                           🚚 איש קשר להזמנות: {selectedCustomer.order_contact_name}

@@ -1515,12 +1515,12 @@ async def add_customer(request: Request):
         conn.execute(
             """INSERT INTO customers
                (name, phone, area, site_address, contact_name, contact_phone,
-                email, order_contact_name, order_contact_phone, agent_name, customer_type)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                email, order_contact_name, order_contact_phone, agent_name, customer_type, id_number)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (body["name"], body.get("phone", ""), body.get("area", ""),
              body.get("site_address", ""), body.get("contact_name", ""), body.get("contact_phone", ""),
              body.get("email", ""), body.get("order_contact_name", ""), body.get("order_contact_phone", ""),
-             body.get("agent_name", ""), body.get("customer_type", "")),
+             body.get("agent_name", ""), body.get("customer_type", ""), body.get("id_number", "")),
         )
     return {"ok": True}
 
@@ -1532,13 +1532,13 @@ async def update_customer(cid: int, request: Request):
         conn.execute(
             """UPDATE customers SET
                name=?, phone=?, area=?, site_address=?, contact_name=?, contact_phone=?,
-               email=?, order_contact_name=?, order_contact_phone=?, agent_name=?, customer_type=?
+               email=?, order_contact_name=?, order_contact_phone=?, agent_name=?, customer_type=?, id_number=?
                WHERE id=?""",
             (body["name"], body.get("phone", ""), body.get("area", ""),
              body.get("site_address", ""), body.get("contact_name", ""),
              body.get("contact_phone", ""), body.get("email", ""),
              body.get("order_contact_name", ""), body.get("order_contact_phone", ""),
-             body.get("agent_name", ""), body.get("customer_type", ""), cid),
+             body.get("agent_name", ""), body.get("customer_type", ""), body.get("id_number", ""), cid),
         )
     return {"ok": True}
 

@@ -112,7 +112,7 @@ def init_db():
             pass
         for col in ['site_address', 'contact_name', 'contact_phone', 'email',
                     'order_contact_name', 'order_contact_phone', 'phone2',
-                    'agent_name', 'customer_type']:
+                    'agent_name', 'customer_type', 'id_number']:
             try:
                 conn.execute(f"ALTER TABLE customers ADD COLUMN {col} TEXT DEFAULT ''")
             except Exception:
