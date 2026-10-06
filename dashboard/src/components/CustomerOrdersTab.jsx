@@ -1418,7 +1418,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                                       onChange={e => setPaymentForm(p => ({ ...p, payment_method: e.target.value }))}
                                       style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}>
                                       <option value="">בחר...</option>
-                                      {['מזומן', 'העברה', "צ'ק", 'אשראי', 'ביט', 'פייבוקס'].map(m => <option key={m}>{m}</option>)}
+                                      {['מזומן', 'העברה', "צ'ק", 'אשראי'].map(m => <option key={m}>{m}</option>)}
                                     </select>
                                   </div>
                                   {/* תאריך תשלום */}
