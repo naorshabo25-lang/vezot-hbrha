@@ -494,6 +494,7 @@ async def receive_message(request: Request):
                     import json as _json_done
                     order_id = int(btn_id.split("_")[1])
                     _pa = ("0" + phone[3:]) if phone.startswith("972") else ("972" + phone[1:])
+                    print(f"[Done] phone={phone} order_id={order_id}")
                     with get_db() as conn:
                         _is_drv = conn.execute(
                             "SELECT id FROM drivers WHERE phone=? OR phone=? OR personal_phone=? OR personal_phone=?",
@@ -508,8 +509,10 @@ async def receive_message(request: Request):
                                 "VALUES (?, 'driver_awaiting_qty', ?, datetime('now','localtime'))",
                                 (phone, _json_done.dumps({"order_id": order_id}))
                             )
+                            print(f"[Done] state saved for phone={phone} order_id={order_id}")
                         else:
                             conn.execute("UPDATE orders SET status='הושלם' WHERE id=?", (order_id,))
+                            print(f"[Done] לא נמצא נהג ל-phone={phone}")
                     if _is_drv and _ord:
                         send_whatsapp_message(phone,
                             f"מצויין! 💪\n\n"
@@ -581,6 +584,7 @@ async def receive_message(request: Request):
     if driver_row:
         import json as _json_drv
         drv = dict(driver_row)
+        print(f"[Driver] זוהה נהג: {drv.get('name')} phone={phone} msg_type={msg_type}")
 
         # בדוק אם הנהג ממתין לאישור כמות
         with get_db() as conn:
@@ -588,10 +592,15 @@ async def receive_message(request: Request):
                 "SELECT * FROM conversation_state WHERE phone=?", (phone,)
             ).fetchone()
 
+        print(f"[Driver] drv_state={'נמצא step='+_drv_state['step'] if _drv_state else 'לא נמצא'}")
+
         if _drv_state and _drv_state["step"] == "driver_awaiting_qty" and msg_type == "text":
-            _info = _json_drv.loads(_drv_state["pending_order_json"] or "{}")
+            _pending_json = _drv_state["pending_order_json"] if "pending_order_json" in _drv_state.keys() else None
+            print(f"[Driver] awaiting_qty: pending_json={_pending_json!r} text={text!r}")
+            _info = _json_drv.loads(_pending_json or "{}")
             _oid  = _info.get("order_id")
             _qty_text = text.strip()
+            print(f"[Driver] oid={_oid} qty_text={_qty_text!r}")
             if _oid and _qty_text:
                 from datetime import datetime as _dt
                 import pytz as _pytz
@@ -603,6 +612,7 @@ async def receive_message(request: Request):
                         (_qty_text, _delivery_time, _oid)
                     )
                     conn.execute("DELETE FROM conversation_state WHERE phone=?", (phone,))
+                print(f"[Driver] הזמנה #{_oid} עודכנה — {_qty_text} ליטר")
                 send_whatsapp_message(phone, f"✅ הזמנה #{_oid} הושלמה — *{_qty_text} ליטר* נקלטו בשעה {_delivery_time}. תודה!")
             return JSONResponse({"status": "ok"})
 
