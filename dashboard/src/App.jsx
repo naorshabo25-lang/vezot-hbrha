@@ -67,7 +67,8 @@ export default function App() {
   const [unlocked, setUnlocked] = useState(
     () => sessionStorage.getItem('app_unlocked') === '1'
   );
-  const [tab, setTab] = useState('workplan');
+  const [tab, setTab] = useState('customers');
+  const [financialSubTab, setFinancialSubTab] = useState('workplan');
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
@@ -313,23 +314,6 @@ export default function App() {
               />
             );
           })()}
-          {tab === 'workplan' && (
-            <WorkPlanDashboard data={workPlanData} monthLabel={monthLabel} />
-          )}
-          {tab === 'expenses' && (
-            <WorkPlanExpenses
-              data={workPlanData} onChange={handleWorkPlanChange}
-              monthId={monthId} monthLabel={monthLabel}
-              allMonths={allMonths} onMonthSwitch={handleMonthSwitch} onNewMonth={handleNewMonth}
-            />
-          )}
-          {tab === 'revenue' && (
-            <WorkPlanRevenue
-              data={workPlanData} onChange={handleWorkPlanChange}
-              monthId={monthId} monthLabel={monthLabel}
-              allMonths={allMonths} onMonthSwitch={handleMonthSwitch} onNewMonth={handleNewMonth}
-            />
-          )}
           {tab === 'customers' && (
             <CustomerOrdersTab onChange={handleWorkPlanChange} workPlanData={workPlanData} />
           )}
@@ -349,7 +333,48 @@ export default function App() {
             <PotentialClientsTab />
           )}
           {tab === 'financial' && (
-            <HashavshevotTab />
+            <>
+              {/* sub-tabs */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 4, borderBottom: '2px solid #e5e7eb', paddingBottom: 0 }}>
+                {[
+                  { id: 'workplan', label: 'תמונת מצב', icon: '⛽' },
+                  { id: 'expenses', label: 'הוצאות',    icon: '📋' },
+                  { id: 'revenue',  label: 'הכנסות',    icon: '📈' },
+                  { id: 'reports',  label: 'דוחות',     icon: '📊' },
+                ].map(s => (
+                  <button key={s.id} onClick={() => setFinancialSubTab(s.id)}
+                    style={{
+                      padding: '8px 18px', borderRadius: '8px 8px 0 0', fontSize: 13, fontWeight: financialSubTab === s.id ? 700 : 500,
+                      cursor: 'pointer', border: 'none', borderBottom: financialSubTab === s.id ? '2px solid #1e2d3d' : '2px solid transparent',
+                      background: financialSubTab === s.id ? '#fff' : 'transparent',
+                      color: financialSubTab === s.id ? '#1e2d3d' : '#6b7280',
+                      marginBottom: -2,
+                    }}>
+                    {s.icon} {s.label}
+                  </button>
+                ))}
+              </div>
+              {financialSubTab === 'workplan' && (
+                <WorkPlanDashboard data={workPlanData} monthLabel={monthLabel} />
+              )}
+              {financialSubTab === 'expenses' && (
+                <WorkPlanExpenses
+                  data={workPlanData} onChange={handleWorkPlanChange}
+                  monthId={monthId} monthLabel={monthLabel}
+                  allMonths={allMonths} onMonthSwitch={handleMonthSwitch} onNewMonth={handleNewMonth}
+                />
+              )}
+              {financialSubTab === 'revenue' && (
+                <WorkPlanRevenue
+                  data={workPlanData} onChange={handleWorkPlanChange}
+                  monthId={monthId} monthLabel={monthLabel}
+                  allMonths={allMonths} onMonthSwitch={handleMonthSwitch} onNewMonth={handleNewMonth}
+                />
+              )}
+              {financialSubTab === 'reports' && (
+                <HashavshevotTab />
+              )}
+            </>
           )}
           {tab === 'fleet' && (
             <FleetTab />

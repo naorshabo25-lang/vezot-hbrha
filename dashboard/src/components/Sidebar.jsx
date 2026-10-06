@@ -1,13 +1,10 @@
 import LiveClock from './LiveClock';
 
 const NAV = [
-  { id: 'workplan',   label: 'תמונת מצב',          icon: '⛽' },
-  { id: 'expenses',   label: 'הוצאות',             icon: '📋' },
-  { id: 'revenue',    label: 'הכנסות',             icon: '📈' },
   { id: 'customers',  label: 'לקוחות והזמנות',     icon: '👥' },
   { id: 'potential',  label: 'לקוחות פוטנציאלים',  icon: '🎯' },
   { id: 'obligo',     label: 'אובליגו',            icon: '💳' },
-  { id: 'financial',  label: 'דוחות כספיים',        icon: '📊' },
+  { id: 'financial',  label: 'דוחות פיננסים',      icon: '📊' },
   { id: 'fleet',      label: 'צי מכליות',          icon: '🛢️' },
   { id: 'orders',     label: 'מערכת הזמנות',       icon: '🚛' },
   { id: 'import',     label: 'ייבוא/ייצוא',        icon: '⇅'  },
