@@ -131,6 +131,11 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [customerListTab,  setCustomerListTab]  = useState('regular'); // 'regular' | 'winter'
   const [paymentEditId,    setPaymentEditId]    = useState(null);
   const [paymentForm,      setPaymentForm]      = useState({});
+  const [showQuickOrder,      setShowQuickOrder]      = useState(false);
+  const [quickOrderCustId,    setQuickOrderCustId]    = useState('');
+  const [quickOrderForm,      setQuickOrderForm]      = useState({ site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: todayISO(), area: '' });
+  const [quickOrderError,     setQuickOrderError]     = useState('');
+  const [quickOrderSuccess,   setQuickOrderSuccess]   = useState('');
 
   const safeJson = r => r.ok ? r.json() : [];
   const load = () =>
@@ -474,6 +479,35 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
     setShowOrderForm(true);
   };
 
+  const handleQuickAddOrder = async () => {
+    if (!quickOrderCustId) return setQuickOrderError('נא לבחור לקוח');
+    if (!quickOrderForm.quantity || +quickOrderForm.quantity <= 0) return setQuickOrderError('נא להזין כמות תקינה');
+    const cust = customers.find(c => c.id === +quickOrderCustId);
+    if (!cust) return setQuickOrderError('לקוח לא נמצא');
+    try {
+      const res = await fetch(`${API}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id:   cust.id,
+          customer_name: cust.name,
+          site_address:  quickOrderForm.site_address.trim() || cust.site_address || '',
+          contact_name:  quickOrderForm.contact_name.trim() || cust.contact_name || cust.name,
+          contact_phone: quickOrderForm.contact_phone.trim() || cust.contact_phone || '',
+          quantity:      quickOrderForm.quantity,
+          order_date:    quickOrderForm.order_date || todayISO(),
+          area:          quickOrderForm.area || cust.area || '',
+        }),
+      });
+      if (!res.ok) throw new Error();
+      await load();
+      setQuickOrderSuccess(`✓ הזמנה נוצרה ללקוח ${cust.name}`);
+      setQuickOrderForm({ site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: todayISO(), area: '' });
+      setQuickOrderCustId('');
+      setTimeout(() => { setQuickOrderSuccess(''); setShowQuickOrder(false); }, 3000);
+    } catch { setQuickOrderError('שגיאה ביצירת ההזמנה'); }
+  };
+
   const handleAddOrder = async () => {
     if (!orderForm.site_address.trim()) return setOrderError('נא להזין כתובת אתר');
     if (!orderForm.contact_name.trim()) return setOrderError('נא להזין איש קשר');
@@ -628,16 +662,96 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Btn variant="primary" onClick={() => { setShowForm(v => !v); setShowWinterForm(false); setError(''); }}
+          <Btn variant="primary" onClick={() => { setShowForm(v => !v); setShowWinterForm(false); setShowQuickOrder(false); setError(''); }}
             style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10 }}>
             {showForm ? '✕ ביטול' : '+ לקוח קבוע חדש'}
           </Btn>
-          <Btn variant="blue" onClick={() => { setShowWinterForm(v => !v); setShowForm(false); setWinterError(''); }}
+          <Btn variant="blue" onClick={() => { setShowWinterForm(v => !v); setShowForm(false); setShowQuickOrder(false); setWinterError(''); }}
             style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10 }}>
             {showWinterForm ? '✕ ביטול' : '❄️ לקוח מזדמן חדש'}
           </Btn>
+          <Btn onClick={() => { setShowQuickOrder(v => !v); setShowForm(false); setShowWinterForm(false); setQuickOrderError(''); setQuickOrderSuccess(''); }}
+            style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10, background: showQuickOrder ? '#f3f4f6' : 'linear-gradient(135deg,#0f766e,#0d9488)', color: showQuickOrder ? '#374151' : '#fff', border: 'none', boxShadow: showQuickOrder ? 'none' : '0 2px 8px rgba(13,148,136,0.3)' }}>
+            {showQuickOrder ? '✕ ביטול' : '🚛 הזמנה ❄️ מזדמן'}
+          </Btn>
         </div>
       </div>
+
+      {/* ─── טופס הזמנה מהירה ללקוח מזדמן ─── */}
+      {showQuickOrder && (
+        <div style={{ background: '#fff', borderRadius: 16, padding: 24, border: '2px solid #99f6e4', boxShadow: '0 2px 12px rgba(13,148,136,0.1)' }}>
+          <h3 style={{ fontSize: 14, fontWeight: 800, color: '#0f766e', margin: '0 0 18px' }}>🚛 הזמנה חדשה ❄️ — לקוח מזדמן</h3>
+          {quickOrderSuccess && (
+            <div style={{ marginBottom: 14, padding: '10px 16px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>{quickOrderSuccess}</span>
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+            {/* בחירת לקוח */}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#0f766e', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>❄️ לקוח מזדמן *</label>
+              <select style={{ ...inputStyle, borderColor: '#99f6e4', background: '#f0fdfa' }}
+                value={quickOrderCustId}
+                onChange={e => {
+                  const cust = customers.find(c => c.id === +e.target.value);
+                  setQuickOrderCustId(e.target.value);
+                  if (cust) setQuickOrderForm(f => ({
+                    ...f,
+                    site_address:  cust.site_address  || '',
+                    contact_name:  cust.order_contact_name  || cust.contact_name  || '',
+                    contact_phone: cust.order_contact_phone || cust.contact_phone || '',
+                    area:          cust.area || '',
+                  }));
+                }}>
+                <option value="">— בחר לקוח מזדמן —</option>
+                {winterCustomers.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}{c.agent_name ? ` (${c.agent_name})` : ''}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>כתובת אספקה</label>
+              <input style={inputStyle} value={quickOrderForm.site_address} placeholder="כתובת מלאה"
+                onChange={e => setQuickOrderForm(f => ({ ...f, site_address: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>איש קשר</label>
+              <input style={inputStyle} value={quickOrderForm.contact_name} placeholder="שם מלא"
+                onChange={e => setQuickOrderForm(f => ({ ...f, contact_name: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>טלפון</label>
+              <input style={inputStyle} value={quickOrderForm.contact_phone} placeholder="05X-XXXXXXX"
+                onChange={e => setQuickOrderForm(f => ({ ...f, contact_phone: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>כמות (ליטרים) *</label>
+              <input type="number" min="1" style={inputStyle} value={quickOrderForm.quantity} placeholder="0"
+                onChange={e => setQuickOrderForm(f => ({ ...f, quantity: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>תאריך</label>
+              <input type="date" style={inputStyle} value={quickOrderForm.order_date}
+                onChange={e => setQuickOrderForm(f => ({ ...f, order_date: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>אזור</label>
+              <select style={{ ...inputStyle, background: '#fff' }} value={quickOrderForm.area}
+                onChange={e => setQuickOrderForm(f => ({ ...f, area: e.target.value }))}>
+                <option value="">-- בחר אזור --</option>
+                {driverAreas.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+          </div>
+          {quickOrderError && <p style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, margin: '12px 0 0' }}>{quickOrderError}</p>}
+          <div style={{ marginTop: 16 }}>
+            <button onClick={handleQuickAddOrder}
+              style={{ padding: '10px 28px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', background: 'linear-gradient(135deg,#0f766e,#0d9488)', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(13,148,136,0.3)' }}>
+              שמור הזמנה
+            </button>
+          </div>
+        </div>
+      )}
 
       <>
 
