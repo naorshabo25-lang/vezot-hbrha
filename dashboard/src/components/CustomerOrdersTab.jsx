@@ -1064,16 +1064,34 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                       </div>
                     </div>
                     {/* מונים */}
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      <div style={{ background: '#f8fafc', border: '1px solid #e9ecef', borderRadius: 12, padding: '10px 18px', textAlign: 'center', minWidth: 64 }}>
-                        <div style={{ fontSize: 20, fontWeight: 800, color: '#1e2d3d', lineHeight: 1 }}>{customerOrders.length}</div>
-                        <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3, fontWeight: 600 }}>הזמנות</div>
-                      </div>
-                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '10px 18px', textAlign: 'center', minWidth: 64 }}>
-                        <div style={{ fontSize: 20, fontWeight: 800, color: '#16a34a', lineHeight: 1 }}>{completedOrders}</div>
-                        <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3, fontWeight: 600 }}>הושלמו</div>
-                      </div>
-                    </div>
+                    {(() => {
+                      const openAcc = selectedCustomer.customer_type === 'חורף'
+                        ? customerOrders.filter(o => o.status === 'הושלם' && (!o.payment_status || o.payment_status === 'לא שולם' || o.payment_status === 'חלקי'))
+                        : [];
+                      return (
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+                          <div style={{ background: '#f8fafc', border: '1px solid #e9ecef', borderRadius: 12, padding: '10px 18px', textAlign: 'center', minWidth: 64 }}>
+                            <div style={{ fontSize: 20, fontWeight: 800, color: '#1e2d3d', lineHeight: 1 }}>{customerOrders.length}</div>
+                            <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3, fontWeight: 600 }}>הזמנות</div>
+                          </div>
+                          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '10px 18px', textAlign: 'center', minWidth: 64 }}>
+                            <div style={{ fontSize: 20, fontWeight: 800, color: '#16a34a', lineHeight: 1 }}>{completedOrders}</div>
+                            <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3, fontWeight: 600 }}>הושלמו</div>
+                          </div>
+                          {openAcc.length > 0 && (
+                            <div style={{
+                              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                              borderRadius: 12, padding: '10px 16px', textAlign: 'center', minWidth: 72,
+                              boxShadow: '0 3px 10px rgba(245,158,11,0.35)',
+                              animation: 'pulse-debt 2s ease-in-out infinite',
+                            }}>
+                              <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', lineHeight: 1 }}>{openAcc.length}</div>
+                              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', marginTop: 3, fontWeight: 700 }}>💳 לא שולם</div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
                 {/* ─ שורת פעולות ─ */}

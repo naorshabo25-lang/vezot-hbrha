@@ -80,6 +80,11 @@ input:focus, select:focus, textarea:focus {
 button { transition: all 0.15s cubic-bezier(.4,0,.2,1); }
 button:active { transform: scale(0.96); }
 
+@keyframes pulse-debt {
+  0%, 100% { box-shadow: 0 3px 10px rgba(245,158,11,0.35); transform: scale(1); }
+  50%       { box-shadow: 0 4px 16px rgba(245,158,11,0.6);  transform: scale(1.03); }
+}
+
 ::-webkit-scrollbar         { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track   { background: transparent; }
 ::-webkit-scrollbar-thumb   { background: rgba(99,102,241,0.2); border-radius: 99px; }
