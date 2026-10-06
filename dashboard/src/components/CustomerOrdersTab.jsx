@@ -580,24 +580,6 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
 
       <>
 
-      {/* כפתור סנכרון */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <button
-          onClick={syncAllCustomers}
-          disabled={syncing}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px',
-            borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
-            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none',
-            opacity: syncing ? 0.7 : 1,
-          }}
-        >
-          {syncing ? '⏳ מסנכרן...' : '🔄 סנכרן לקוחות למערכת'}
-        </button>
-        {syncMsg && (
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>✓ {syncMsg}</span>
-        )}
-      </div>
 
       {/* כפתורי הוספת לקוח */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
