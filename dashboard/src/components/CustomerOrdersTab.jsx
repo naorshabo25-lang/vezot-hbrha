@@ -279,6 +279,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const openPaymentEdit = (order) => {
     setPaymentEditId(order.id);
     setPaymentForm({
+      price_per_liter:  order.price_per_liter  || '',
       price_before_vat: order.price_before_vat || '',
       payment_status:   order.payment_status   || 'לא שולם',
       payment_method:   order.payment_method   || '',
@@ -289,10 +290,15 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
 
   const savePayment = async (orderId) => {
     try {
+      const order = orders.find(o => o.id === orderId);
+      const litersForSave = parseFloat(order?.actual_quantity || order?.quantity) || 0;
+      const pplForSave = parseFloat(paymentForm.price_per_liter) || 0;
+      const priceToSave = pplForSave > 0 ? litersForSave * pplForSave : (parseFloat(paymentForm.price_before_vat) || 0);
+      const payload = { ...paymentForm, price_before_vat: priceToSave };
       const res = await fetch(`${API}/api/orders/${orderId}/payment`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(paymentForm),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error();
       const updated = await res.json();
@@ -1280,7 +1286,11 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                         const isWinterCustomer = selectedCustomer?.customer_type === 'חורף';
                         const isPaymentOpen = paymentEditId === o.id;
                         const pf = isPaymentOpen ? paymentForm : {};
-                        const priceNum = parseFloat(pf.price_before_vat) || 0;
+                        const liters = parseFloat(o.actual_quantity || o.quantity) || 0;
+                        const pricePerLiter = parseFloat(pf.price_per_liter) || 0;
+                        const priceNum = pricePerLiter > 0
+                          ? liters * pricePerLiter
+                          : (parseFloat(pf.price_before_vat) || 0);
                         const vatAmt = priceNum * VAT;
                         const totalAmt = priceNum * (1 + VAT);
                         return (
@@ -1358,19 +1368,39 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                             <tr style={{ borderBottom: '1px solid #f3f4f6', background: '#fefce8' }}>
                               <td colSpan={9} style={{ padding: '14px 20px' }}>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end', direction: 'rtl' }}>
+                                  {/* ליטרים */}
                                   <div>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>מחיר לפני מע"מ (₪)</div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>ליטרים</div>
+                                    <div style={{ width: 80, padding: '6px 10px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 13, fontWeight: 700, background: '#f9fafb', color: '#374151', textAlign: 'right' }}>
+                                      {o.actual_quantity || o.quantity} ל'
+                                    </div>
+                                  </div>
+                                  {/* מחיר לליטר */}
+                                  <div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>מחיר לליטר (₪)</div>
                                     <input
-                                      type="number" min="0" step="0.01"
-                                      value={pf.price_before_vat ?? ''}
-                                      onChange={e => setPaymentForm(p => ({ ...p, price_before_vat: e.target.value }))}
-                                      style={{ width: 110, padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, fontWeight: 600, textAlign: 'right' }}
+                                      type="number" min="0" step="0.001"
+                                      value={pf.price_per_liter ?? ''}
+                                      onChange={e => setPaymentForm(p => ({ ...p, price_per_liter: e.target.value, price_before_vat: (parseFloat(e.target.value) || 0) * liters || '' }))}
+                                      style={{ width: 100, padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, fontWeight: 600, textAlign: 'right' }}
                                     />
                                   </div>
-                                  <div style={{ fontSize: 12, color: '#6b7280', paddingBottom: 8 }}>
-                                    <div>מע"מ 18%: <strong>₪{vatAmt.toFixed(2)}</strong></div>
-                                    <div>סה"כ כולל מע"מ: <strong style={{ color: '#1e2d3d' }}>₪{totalAmt.toFixed(2)}</strong></div>
+                                  {/* סיכום מחירים */}
+                                  <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '8px 14px', fontSize: 12, color: '#6b7280', minWidth: 160 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                                      <span>לפני מע"מ:</span>
+                                      <strong>₪{priceNum.toFixed(2)}</strong>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 3 }}>
+                                      <span>מע"מ 18%:</span>
+                                      <strong>₪{vatAmt.toFixed(2)}</strong>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 5, borderTop: '1px solid #e5e7eb', paddingTop: 5, color: '#1e2d3d', fontWeight: 800, fontSize: 13 }}>
+                                      <span>סה"כ:</span>
+                                      <span>₪{totalAmt.toFixed(2)}</span>
+                                    </div>
                                   </div>
+                                  {/* סטטוס תשלום */}
                                   <div>
                                     <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>סטטוס תשלום</div>
                                     <select
@@ -1380,29 +1410,28 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                                       {['לא שולם', 'שולם', 'חלקי'].map(s => <option key={s}>{s}</option>)}
                                     </select>
                                   </div>
-                                  {(pf.payment_status === 'שולם' || pf.payment_status === 'חלקי') && (
-                                    <>
-                                      <div>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>אמצעי תשלום</div>
-                                        <select
-                                          value={pf.payment_method ?? ''}
-                                          onChange={e => setPaymentForm(p => ({ ...p, payment_method: e.target.value }))}
-                                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}>
-                                          <option value="">בחר...</option>
-                                          {['מזומן', 'העברה', "צ'ק", 'אשראי', 'ביט', 'פייבוקס'].map(m => <option key={m}>{m}</option>)}
-                                        </select>
-                                      </div>
-                                      <div>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>תאריך תשלום</div>
-                                        <input
-                                          type="date"
-                                          value={pf.payment_date ?? ''}
-                                          onChange={e => setPaymentForm(p => ({ ...p, payment_date: e.target.value }))}
-                                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
-                                        />
-                                      </div>
-                                    </>
-                                  )}
+                                  {/* אמצעי תשלום — תמיד גלוי */}
+                                  <div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>אמצעי תשלום</div>
+                                    <select
+                                      value={pf.payment_method ?? ''}
+                                      onChange={e => setPaymentForm(p => ({ ...p, payment_method: e.target.value }))}
+                                      style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}>
+                                      <option value="">בחר...</option>
+                                      {['מזומן', 'העברה', "צ'ק", 'אשראי', 'ביט', 'פייבוקס'].map(m => <option key={m}>{m}</option>)}
+                                    </select>
+                                  </div>
+                                  {/* תאריך תשלום */}
+                                  <div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>תאריך תשלום</div>
+                                    <input
+                                      type="date"
+                                      value={pf.payment_date ?? ''}
+                                      onChange={e => setPaymentForm(p => ({ ...p, payment_date: e.target.value }))}
+                                      style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
+                                    />
+                                  </div>
+                                  {/* הערות */}
                                   <div>
                                     <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 4 }}>הערות</div>
                                     <input

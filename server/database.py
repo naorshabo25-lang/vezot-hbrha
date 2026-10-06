@@ -163,6 +163,7 @@ def init_db():
             pass
         for col in [
             'price_before_vat REAL DEFAULT 0',
+            'price_per_liter REAL DEFAULT 0',
             'payment_status TEXT DEFAULT "לא שולם"',
             'payment_method TEXT DEFAULT ""',
             'payment_date TEXT DEFAULT ""',

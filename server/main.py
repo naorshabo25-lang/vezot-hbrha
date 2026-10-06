@@ -1309,13 +1309,15 @@ def delete_order(order_id: int):
 @app.patch("/api/orders/{order_id}/payment")
 async def update_order_payment(order_id: int, request: Request):
     data = await request.json()
+    price_per_liter = float(data.get("price_per_liter") or 0)
     price = float(data.get("price_before_vat") or 0)
     with get_db() as conn:
         conn.execute(
             """UPDATE orders SET
-               price_before_vat=?, payment_status=?, payment_method=?, payment_date=?, payment_notes=?
+               price_per_liter=?, price_before_vat=?, payment_status=?, payment_method=?, payment_date=?, payment_notes=?
                WHERE id=?""",
-            (price,
+            (price_per_liter,
+             price,
              data.get("payment_status", "לא שולם"),
              data.get("payment_method", ""),
              data.get("payment_date", ""),
