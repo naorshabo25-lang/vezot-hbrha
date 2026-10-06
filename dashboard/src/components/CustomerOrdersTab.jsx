@@ -274,7 +274,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
     }
   };
 
-  const VAT = 0.17;
+  const VAT = 0.18;
 
   const openPaymentEdit = (order) => {
     setPaymentEditId(order.id);
@@ -1368,7 +1368,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                                     />
                                   </div>
                                   <div style={{ fontSize: 12, color: '#6b7280', paddingBottom: 8 }}>
-                                    <div>מע"מ 17%: <strong>₪{vatAmt.toFixed(2)}</strong></div>
+                                    <div>מע"מ 18%: <strong>₪{vatAmt.toFixed(2)}</strong></div>
                                     <div>סה"כ כולל מע"מ: <strong style={{ color: '#1e2d3d' }}>₪{totalAmt.toFixed(2)}</strong></div>
                                   </div>
                                   <div>
