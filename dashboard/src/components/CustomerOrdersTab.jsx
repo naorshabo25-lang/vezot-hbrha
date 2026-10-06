@@ -891,29 +891,55 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                 {customerListTab === 'winter' ? '❄️ אין לקוחות מזדמנים עדיין' : 'לא נמצאו לקוחות'}
               </div>
             ) : filteredCustomers.map(c => {
-              const count      = orders.filter(o => o.customer_id === c.id).length;
-              const isSelected = selectedId === c.id;
-              const isSending  = sendingMsgId === c.id;
-              const isSent     = sentMsgId === c.id;
-              const bg = avatarColor(c.name);
+              const count        = orders.filter(o => o.customer_id === c.id).length;
+              const isSelected   = selectedId === c.id;
+              const isSending    = sendingMsgId === c.id;
+              const isSent       = sentMsgId === c.id;
+              const bg           = avatarColor(c.name);
+              const unpaidOrders = customerListTab === 'winter'
+                ? orders.filter(o => o.customer_id === c.id && o.status === 'הושלם' && (!o.payment_status || o.payment_status === 'לא שולם' || o.payment_status === 'חלקי'))
+                : [];
+              const hasDebt = unpaidOrders.length > 0;
               return (
                 <div key={c.id} onClick={() => setSelectedId(isSelected ? null : c.id)} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-                  background: isSelected ? (customerListTab === 'winter' ? '#1a3a6b' : '#1e2d3d') : 'transparent',
-                  borderBottom: '1px solid #f3f4f6', cursor: 'pointer', transition: 'background 0.12s',
+                  background: isSelected ? (customerListTab === 'winter' ? '#1a3a6b' : '#1e2d3d') : hasDebt ? '#fffbeb' : 'transparent',
+                  borderBottom: '1px solid #f3f4f6',
+                  borderRight: hasDebt && !isSelected ? '3px solid #f59e0b' : '3px solid transparent',
+                  cursor: 'pointer', transition: 'background 0.12s',
                 }}
-                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f5f7fb'; }}
-                  onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}>
+                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = hasDebt ? '#fef3c7' : '#f5f7fb'; }}
+                  onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = hasDebt ? '#fffbeb' : 'transparent'; }}>
                   {/* אווטאר */}
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 10, background: isSelected ? 'rgba(255,255,255,0.18)' : bg,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0, letterSpacing: -0.5,
-                  }}>
-                    {initials(c.name)}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10, background: isSelected ? 'rgba(255,255,255,0.18)' : bg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: -0.5,
+                    }}>
+                      {initials(c.name)}
+                    </div>
+                    {hasDebt && !isSelected && (
+                      <div style={{
+                        position: 'absolute', top: -4, left: -4,
+                        width: 16, height: 16, borderRadius: '50%',
+                        background: '#f59e0b', border: '2px solid #fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 9, color: '#fff', fontWeight: 900, lineHeight: 1,
+                      }}>
+                        {unpaidOrders.length}
+                      </div>
+                    )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: isSelected ? '#fff' : '#1e2d3d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: isSelected ? '#fff' : '#1e2d3d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</span>
+                      {hasDebt && !isSelected && (
+                        <span style={{ fontSize: 10, fontWeight: 800, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 6, padding: '1px 6px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          💳 חשבון פתוח
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 11, color: isSelected ? 'rgba(200,215,235,0.8)' : '#9ca3af', marginTop: 1 }}>
                       {c.area ? `${c.area} · ` : ''}
                       {customerListTab === 'winter' && c.agent_name ? `${c.agent_name} · ` : ''}
