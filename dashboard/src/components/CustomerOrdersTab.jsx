@@ -31,6 +31,12 @@ const EMPTY = {
   intendedLiters: '', dailyLiters: '', creditLimit: '', currentBalance: '', paymentTerms: '',
 };
 
+const EMPTY_WINTER = {
+  ...EMPTY,
+  agent_name: '',
+  customer_type: 'חורף',
+};
+
 const EMPTY_ORDER = {
   site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: '', area: '',
 };
@@ -85,6 +91,12 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [recurringActionError, setRecurringActionError] = useState('');
   const [deleteRecurringConfirmId, setDeleteRecurringConfirmId] = useState(null);
 
+  const [showWinterForm,   setShowWinterForm]   = useState(false);
+  const [winterForm,       setWinterForm]       = useState(EMPTY_WINTER);
+  const [winterError,      setWinterError]      = useState('');
+  const [winterSuccessMsg, setWinterSuccessMsg] = useState('');
+  const [winterAgents,     setWinterAgents]     = useState([]);
+
   const safeJson = r => r.ok ? r.json() : [];
   const load = () =>
     Promise.all([
@@ -100,7 +112,11 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
       setLoading(false);
     }).catch(() => setLoading(false));
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    fetch(`${API}/api/winter-agents`).then(r => r.ok ? r.json() : [])
+      .then(a => setWinterAgents(Array.isArray(a) ? a : [])).catch(() => {});
+  }, []);
 
   const loadSites = (cid) =>
     fetch(`${API}/api/customers/${cid}/sites`)
@@ -213,6 +229,39 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
       setTimeout(() => setSuccessMsg(''), 5000);
     } catch {
       setError('שגיאה בהוספת לקוח');
+    }
+  };
+
+  const handleAddWinter = async () => {
+    if (!winterForm.name.trim())  return setWinterError('נא להזין שם לקוח');
+    if (!winterForm.phone.trim()) return setWinterError('נא להזין מספר טלפון');
+    try {
+      const res = await fetch(`${API}/api/customers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...winterForm, customer_type: 'חורף' }),
+      });
+      if (!res.ok) throw new Error();
+      const addedName = winterForm.name.trim();
+      if (onChange) {
+        onChange(prev => {
+          const base = prev || {};
+          const clients = Array.isArray(base.clients) ? base.clients : [];
+          const already = clients.some(c => c.name === addedName);
+          return {
+            ...base,
+            clients: already ? clients : [...clients, { name: addedName, liters: 0, dailyLiters: 0, profit: 0 }],
+          };
+        });
+      }
+      await load();
+      setWinterForm(EMPTY_WINTER);
+      setWinterError('');
+      setShowWinterForm(false);
+      setWinterSuccessMsg(`הלקוח "${addedName}" נוסף כלקוח מזדמן (חורף) ✓`);
+      setTimeout(() => setWinterSuccessMsg(''), 5000);
+    } catch {
+      setWinterError('שגיאה בהוספת לקוח');
     }
   };
 
@@ -508,10 +557,13 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
         )}
       </div>
 
-      {/* הוספת לקוח */}
+      {/* כפתורי הוספת לקוח */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+
+      {/* לקוח קבוע */}
       <div>
         <button
-          onClick={() => { setShowForm(v => !v); setError(''); }}
+          onClick={() => { setShowForm(v => !v); setShowWinterForm(false); setError(''); }}
           style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px',
             borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
@@ -519,8 +571,114 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
           }}
           onMouseEnter={e => e.currentTarget.style.background = '#2e4560'}
           onMouseLeave={e => e.currentTarget.style.background = '#1e2d3d'}>
-          {showForm ? '✕ ביטול' : '+ הוספת לקוח חדש'}
+          {showForm ? '✕ ביטול' : '+ לקוח חדש (קבוע)'}
         </button>
+      </div>
+
+      {/* לקוח מזדמן חורף */}
+      <div>
+        <button
+          onClick={() => { setShowWinterForm(v => !v); setShowForm(false); setWinterError(''); }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px',
+            borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            background: showWinterForm ? '#1e40af' : '#2563eb', color: '#fff', border: 'none',
+          }}>
+          {showWinterForm ? '✕ ביטול' : '❄️ לקוח מזדמן (חורף) חדש'}
+        </button>
+      </div>
+
+      </div>
+
+      {/* טופס לקוח מזדמן חורף */}
+      {showWinterForm && (
+        <div style={{
+          marginTop: 14, background: '#fff', borderRadius: 14, padding: 24,
+          border: '2px solid #bfdbfe', boxShadow: '0 2px 12px rgba(37,99,235,0.09)',
+        }}>
+          <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1e40af', marginBottom: 16 }}>
+            ❄️ הוספת לקוח מזדמן (חורף)
+          </h3>
+
+          {/* שדה סוכן */}
+          <div style={{ marginBottom: 18, background: '#eff6ff', borderRadius: 10, padding: '14px 16px', border: '1px solid #bfdbfe' }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', letterSpacing: 0.5, display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+              👤 סוכן מכירות
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <select
+                value={winterForm.agent_name}
+                onChange={e => setWinterForm(f => ({ ...f, agent_name: e.target.value }))}
+                style={{ ...inputStyle, flex: 1 }}>
+                <option value="">— ללא סוכן —</option>
+                {winterAgents.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
+                <option value="__custom__">✏️ הזן ידנית...</option>
+              </select>
+              {winterForm.agent_name === '__custom__' && (
+                <input style={{ ...inputStyle, flex: 1 }} placeholder="שם הסוכן"
+                  onChange={e => setWinterForm(f => ({ ...f, agent_name: e.target.value === '__custom__' ? '' : e.target.value }))} />
+              )}
+            </div>
+            {winterAgents.length === 0 && (
+              <p style={{ fontSize: 11, color: '#6b7280', marginTop: 6, marginBottom: 0 }}>
+                להוספת סוכנים: <a href="#" style={{ color: '#2563eb' }}
+                  onClick={async e => {
+                    e.preventDefault();
+                    const name = window.prompt('שם הסוכן החדש:');
+                    if (!name?.trim()) return;
+                    await fetch(`${API}/api/winter-agents`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ name: name.trim() }),
+                    });
+                    fetch(`${API}/api/winter-agents`).then(r => r.json())
+                      .then(a => setWinterAgents(Array.isArray(a) ? a : []));
+                  }}>הוסף סוכן</a>
+              </p>
+            )}
+          </div>
+
+          {/* פרטי לקוח — אותם שדות */}
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.8, marginBottom: 10, textTransform: 'uppercase' }}>פרטי לקוח</p>
+          <div className="grid-3-form" style={{ marginBottom: 20 }}>
+            {[
+              { key: 'name',          label: 'שם לקוח *',        placeholder: 'שם הלקוח',          type: 'text' },
+              { key: 'contact_name',  label: 'איש קשר',           placeholder: 'שם מלא',             type: 'text' },
+              { key: 'site_address',  label: 'כתובת',              placeholder: 'כתובת מלאה',         type: 'text' },
+              { key: 'phone',         label: 'טלפון *',            placeholder: '05X-XXXXXXX',        type: 'text' },
+              { key: 'contact_phone', label: 'טלפון איש קשר',     placeholder: '05X-XXXXXXX',        type: 'text' },
+              { key: 'area',          label: 'אזור',               placeholder: 'ירושלים / מודיעין',  type: 'text' },
+            ].map(({ key, label, placeholder, type }) => (
+              <div key={key}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>{label}</label>
+                <input type={type} style={inputStyle} value={winterForm[key]} placeholder={placeholder}
+                  onChange={e => setWinterForm(f => ({ ...f, [key]: e.target.value }))} />
+              </div>
+            ))}
+          </div>
+
+          {winterError && <p style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{winterError}</p>}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={handleAddWinter}
+              style={{ padding: '10px 28px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', background: '#2563eb', color: '#fff', border: 'none' }}>
+              שמור לקוח חורף
+            </button>
+            <button onClick={() => { setShowWinterForm(false); setWinterError(''); }}
+              style={{ padding: '10px 20px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', background: '#f3f4f6', color: '#374151', border: 'none' }}>
+              ביטול
+            </button>
+          </div>
+        </div>
+      )}
+
+      {winterSuccessMsg && (
+        <div style={{ padding: '12px 18px', borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#1d4ed8' }}>{winterSuccessMsg}</span>
+        </div>
+      )}
+
+      {/* טופס לקוח קבוע */}
+      <div>
+        <button style={{ display: 'none' }} />
 
         {successMsg && (
         <div style={{
@@ -545,7 +703,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
             marginTop: 14, background: '#fff', borderRadius: 14, padding: 24,
             border: '1px solid #e9ecef', boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
           }}>
-            <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1e2d3d', marginBottom: 16 }}>הוספת לקוח חדש</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1e2d3d', marginBottom: 16 }}>הוספת לקוח קבוע חדש</h3>
 
             {/* פרטי לקוח */}
             <p style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.8, marginBottom: 10, textTransform: 'uppercase' }}>פרטי לקוח</p>

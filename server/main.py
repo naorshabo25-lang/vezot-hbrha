@@ -1513,10 +1513,14 @@ async def add_customer(request: Request):
     body = await request.json()
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO customers (name, phone, area, site_address, contact_name, contact_phone, email, order_contact_name, order_contact_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            """INSERT INTO customers
+               (name, phone, area, site_address, contact_name, contact_phone,
+                email, order_contact_name, order_contact_phone, agent_name, customer_type)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (body["name"], body.get("phone", ""), body.get("area", ""),
              body.get("site_address", ""), body.get("contact_name", ""), body.get("contact_phone", ""),
-             body.get("email", ""), body.get("order_contact_name", ""), body.get("order_contact_phone", "")),
+             body.get("email", ""), body.get("order_contact_name", ""), body.get("order_contact_phone", ""),
+             body.get("agent_name", ""), body.get("customer_type", "")),
         )
     return {"ok": True}
 
@@ -1526,11 +1530,15 @@ async def update_customer(cid: int, request: Request):
     body = await request.json()
     with get_db() as conn:
         conn.execute(
-            "UPDATE customers SET name=?, phone=?, area=?, site_address=?, contact_name=?, contact_phone=?, email=?, order_contact_name=?, order_contact_phone=? WHERE id=?",
+            """UPDATE customers SET
+               name=?, phone=?, area=?, site_address=?, contact_name=?, contact_phone=?,
+               email=?, order_contact_name=?, order_contact_phone=?, agent_name=?, customer_type=?
+               WHERE id=?""",
             (body["name"], body.get("phone", ""), body.get("area", ""),
              body.get("site_address", ""), body.get("contact_name", ""),
              body.get("contact_phone", ""), body.get("email", ""),
-             body.get("order_contact_name", ""), body.get("order_contact_phone", ""), cid),
+             body.get("order_contact_name", ""), body.get("order_contact_phone", ""),
+             body.get("agent_name", ""), body.get("customer_type", ""), cid),
         )
     return {"ok": True}
 

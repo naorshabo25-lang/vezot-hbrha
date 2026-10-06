@@ -9,7 +9,6 @@ const NAV = [
   { id: 'obligo',     label: 'אובליגו',            icon: '💳' },
   { id: 'financial',  label: 'דוחות כספיים',        icon: '📊' },
   { id: 'fleet',      label: 'צי מכליות',          icon: '🛢️' },
-  { id: 'winter',     label: 'לקוחות חורף',         icon: '❄️' },
   { id: 'orders',     label: 'מערכת הזמנות',       icon: '🚛' },
   { id: 'import',     label: 'ייבוא/ייצוא',        icon: '⇅'  },
   { id: 'settings',   label: 'הגדרות',             icon: '⚙'  },

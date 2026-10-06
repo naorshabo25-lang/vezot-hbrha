@@ -354,9 +354,6 @@ export default function App() {
           {tab === 'fleet' && (
             <FleetTab />
           )}
-          {tab === 'winter' && (
-            <WinterCustomersTab />
-          )}
           {tab === 'settings' && (
             <SettingsTab />
           )}
