@@ -4,14 +4,44 @@ const API = (window.location.port === '5173' || window.location.port === '5174')
 
 const Card = ({ children, style = {} }) => (
   <div style={{
-    background: '#fff', borderRadius: 14, padding: 22,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.07)', border: '1px solid #e9ecef', ...style,
+    background: '#fff', borderRadius: 16, padding: 22,
+    boxShadow: '0 2px 8px rgba(14,22,40,0.06), 0 1px 2px rgba(14,22,40,0.04)',
+    border: '1px solid #f0f2f7', ...style,
   }}>{children}</div>
 );
 
+const SectionLabel = ({ children }) => (
+  <div style={{ fontSize: 10, fontWeight: 800, color: '#9ca3af', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10, paddingRight: 8, borderRight: '3px solid #e5e7eb' }}>
+    {children}
+  </div>
+);
+
+const Btn = ({ children, onClick, variant = 'default', disabled, title, style: s = {} }) => {
+  const variants = {
+    primary:  { background: '#1e2d3d', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(30,45,61,0.25)' },
+    blue:     { background: '#2563eb', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(37,99,235,0.3)' },
+    ghost:    { background: '#f8fafc', color: '#374151', border: '1px solid #e9ecef' },
+    danger:   { background: '#fff5f5', color: '#dc2626', border: '1px solid #fecaca' },
+    success:  { background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' },
+    cyan:     { background: '#f0f9ff', color: '#0891b2', border: '1px solid #bae6fd' },
+    default:  { background: '#f3f4f6', color: '#374151', border: 'none' },
+  };
+  return (
+    <button onClick={onClick} disabled={disabled} title={title} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700,
+      cursor: disabled ? 'default' : 'pointer', whiteSpace: 'nowrap',
+      opacity: disabled ? 0.6 : 1, transition: 'all 0.15s', ...variants[variant], ...s,
+    }}>
+      {children}
+    </button>
+  );
+};
+
 const inputStyle = {
-  padding: '9px 12px', borderRadius: 8, border: '1px solid #e9ecef',
+  padding: '9px 12px', borderRadius: 9, border: '1px solid #e5e7eb',
   fontSize: 13, background: '#fff', color: '#1e2d3d', outline: 'none', width: '100%',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
 };
 
 const STATUS_OPTIONS = ['ממתין', 'אושר', 'נשלח', 'הושלם'];
@@ -575,44 +605,41 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
     </div>
   );
 
+  const initials = (name = '') => name.trim().slice(0, 2) || '?';
+  const avatarColor = (name = '') => {
+    const colors = ['#1e2d3d','#2563eb','#7c3aed','#0891b2','#16a34a','#ca8a04','#dc2626','#0f766e'];
+    let h = 0; for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    return colors[Math.abs(h) % colors.length];
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
+      {/* ─── Page Header ──────────────────────────────────── */}
+      <div style={{
+        background: '#fff', borderRadius: 16, padding: '18px 24px',
+        boxShadow: '0 2px 8px rgba(14,22,40,0.06)', border: '1px solid #f0f2f7',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14,
+      }}>
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 800, color: '#1e2d3d', margin: 0, letterSpacing: -0.3 }}>👥 לקוחות והזמנות</h1>
+          <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 3, margin: 0 }}>
+            {regularCustomers.length} לקוחות קבועים · {winterCustomers.length} לקוחות מזדמנים · {orders.length} הזמנות
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Btn variant="primary" onClick={() => { setShowForm(v => !v); setShowWinterForm(false); setError(''); }}
+            style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10 }}>
+            {showForm ? '✕ ביטול' : '+ לקוח קבוע חדש'}
+          </Btn>
+          <Btn variant="blue" onClick={() => { setShowWinterForm(v => !v); setShowForm(false); setWinterError(''); }}
+            style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10 }}>
+            {showWinterForm ? '✕ ביטול' : '❄️ לקוח מזדמן חדש'}
+          </Btn>
+        </div>
+      </div>
+
       <>
-
-
-      {/* כפתורי הוספת לקוח */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-
-      {/* לקוח קבוע */}
-      <div>
-        <button
-          onClick={() => { setShowForm(v => !v); setShowWinterForm(false); setError(''); }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px',
-            borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
-            background: '#1e2d3d', color: '#fff', border: 'none',
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = '#2e4560'}
-          onMouseLeave={e => e.currentTarget.style.background = '#1e2d3d'}>
-          {showForm ? '✕ ביטול' : '+ לקוח חדש (קבוע)'}
-        </button>
-      </div>
-
-      {/* לקוח מזדמן חורף */}
-      <div>
-        <button
-          onClick={() => { setShowWinterForm(v => !v); setShowForm(false); setWinterError(''); }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px',
-            borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
-            background: showWinterForm ? '#1e40af' : '#2563eb', color: '#fff', border: 'none',
-          }}>
-          {showWinterForm ? '✕ ביטול' : '❄️ לקוח מזדמן (חורף) חדש'}
-        </button>
-      </div>
-
-      </div>
 
       {/* טופס לקוח מזדמן חורף */}
       {showWinterForm && (
@@ -827,33 +854,33 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
         {/* רשימת לקוחות */}
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           {/* טאבים: קבועים / מזדמנים */}
-          <div style={{ display: 'flex', borderBottom: '2px solid #f3f4f6', background: '#f8fafc' }}>
-            {[
-              { id: 'regular', label: 'קבועים', count: regularCustomers.length },
-              { id: 'winter',  label: '❄️ מזדמנים', count: winterCustomers.length },
-            ].map(tab => {
-              const active = customerListTab === tab.id;
-              return (
-                <button key={tab.id}
-                  onClick={() => { setCustomerListTab(tab.id); setSelectedId(null); setSearch(''); }}
-                  style={{
-                    flex: 1, padding: '11px 8px', border: 'none', cursor: 'pointer',
-                    fontFamily: 'inherit', fontSize: 12, fontWeight: active ? 800 : 600,
-                    background: 'transparent',
-                    color: active ? (tab.id === 'winter' ? '#1d4ed8' : '#1e2d3d') : '#9ca3af',
-                    borderBottom: active ? `3px solid ${tab.id === 'winter' ? '#2563eb' : '#1e2d3d'}` : '3px solid transparent',
-                    transition: 'all 0.15s',
-                  }}>
-                  {tab.label} <span style={{ fontSize: 10, opacity: 0.7 }}>({tab.count})</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid #f3f4f6', background: '#f8fafc' }}>
+          <div style={{ padding: '12px 14px 0', background: '#f8fafc', borderBottom: '1px solid #f0f2f7' }}>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+              {[
+                { id: 'regular', label: 'קבועים', count: regularCustomers.length },
+                { id: 'winter',  label: '❄️ מזדמנים', count: winterCustomers.length },
+              ].map(t => {
+                const active = customerListTab === t.id;
+                return (
+                  <button key={t.id}
+                    onClick={() => { setCustomerListTab(t.id); setSelectedId(null); setSearch(''); }}
+                    style={{
+                      flex: 1, padding: '7px 6px', border: 'none', cursor: 'pointer',
+                      fontFamily: 'inherit', fontSize: 12, fontWeight: active ? 800 : 600,
+                      borderRadius: '8px 8px 0 0',
+                      background: active ? '#fff' : 'transparent',
+                      color: active ? (t.id === 'winter' ? '#1d4ed8' : '#1e2d3d') : '#9ca3af',
+                      boxShadow: active ? '0 -1px 4px rgba(0,0,0,0.05), inset 0 -2px 0 ' + (t.id === 'winter' ? '#2563eb' : '#1e2d3d') : 'none',
+                      transition: 'all 0.15s',
+                    }}>
+                    {t.label} <span style={{ fontSize: 10, background: active ? (t.id === 'winter' ? '#eff6ff' : '#f3f4f6') : 'transparent', borderRadius: 20, padding: '1px 5px', color: active ? (t.id === 'winter' ? '#2563eb' : '#6b7280') : '#c4c9d4' }}>{t.count}</span>
+                  </button>
+                );
+              })}
+            </div>
             <input
-              style={{ ...inputStyle, border: '1px solid #e9ecef', fontSize: 12, padding: '7px 10px' }}
-              placeholder={customerListTab === 'winter' ? 'חיפוש לפי שם / סוכן...' : 'חיפוש לקוח...'}
+              style={{ ...inputStyle, border: '1px solid #e9ecef', fontSize: 12, padding: '7px 10px', marginBottom: 10 }}
+              placeholder={customerListTab === 'winter' ? '🔍 חיפוש שם / סוכן...' : '🔍 חיפוש לקוח...'}
               value={search}
               onChange={e => setSearch(e.target.value)} />
           </div>
@@ -868,32 +895,39 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
               const isSelected = selectedId === c.id;
               const isSending  = sendingMsgId === c.id;
               const isSent     = sentMsgId === c.id;
+              const bg = avatarColor(c.name);
               return (
-                <div key={c.id} style={{
-                  display: 'flex', alignItems: 'center',
-                  background: isSelected ? (customerListTab === 'winter' ? '#1e3a5f' : '#1e2d3d') : 'transparent',
-                  borderBottom: '1px solid #f3f4f6', transition: 'background 0.12s',
+                <div key={c.id} onClick={() => setSelectedId(isSelected ? null : c.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                  background: isSelected ? (customerListTab === 'winter' ? '#1a3a6b' : '#1e2d3d') : 'transparent',
+                  borderBottom: '1px solid #f3f4f6', cursor: 'pointer', transition: 'background 0.12s',
                 }}
-                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f5f7fb'; }}
                   onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}>
-                  <div onClick={() => setSelectedId(isSelected ? null : c.id)}
-                    style={{ flex: 1, padding: '10px 14px', cursor: 'pointer', textAlign: 'right' }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: isSelected ? '#fff' : '#1e2d3d', marginBottom: 2 }}>{c.name}</div>
-                    <div style={{ fontSize: 11, color: isSelected ? 'rgba(200,210,220,0.75)' : '#9ca3af' }}>
+                  {/* אווטאר */}
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, background: isSelected ? 'rgba(255,255,255,0.18)' : bg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0, letterSpacing: -0.5,
+                  }}>
+                    {initials(c.name)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: isSelected ? '#fff' : '#1e2d3d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                    <div style={{ fontSize: 11, color: isSelected ? 'rgba(200,215,235,0.8)' : '#9ca3af', marginTop: 1 }}>
                       {c.area ? `${c.area} · ` : ''}
-                      {customerListTab === 'winter' && c.agent_name ? `סוכן: ${c.agent_name} · ` : ''}
-                      {count} הזמנות
+                      {customerListTab === 'winter' && c.agent_name ? `${c.agent_name} · ` : ''}
+                      {count > 0 ? `${count} הזמנות` : 'אין הזמנות'}
                     </div>
                   </div>
                   <button
                     onClick={e => { e.stopPropagation(); sendOrderMessage(c); }}
                     disabled={isSending || isSent}
-                    title="שלח הודעת הזמנה ללקוח"
+                    title="שלח הודעת הזמנה"
                     style={{
-                      flexShrink: 0, margin: '0 8px', padding: '5px 8px', borderRadius: 7,
-                      fontSize: 14, cursor: isSending || isSent ? 'default' : 'pointer',
-                      border: 'none', lineHeight: 1,
-                      background: isSent ? '#f0fdf4' : isSelected ? 'rgba(255,255,255,0.12)' : '#f0f9ff',
+                      flexShrink: 0, padding: '4px 8px', borderRadius: 7, fontSize: 13,
+                      cursor: isSending || isSent ? 'default' : 'pointer', border: 'none', lineHeight: 1,
+                      background: isSent ? 'rgba(34,197,94,0.2)' : isSelected ? 'rgba(255,255,255,0.15)' : '#f0f9ff',
                       color: isSent ? '#16a34a' : '#0891b2',
                       opacity: isSending ? 0.5 : 1,
                     }}>
@@ -907,9 +941,10 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
 
         {/* צד ימין — פרטי לקוח + הזמנות */}
         {!selectedCustomer ? (
-          <Card style={{ textAlign: 'center', padding: 64 }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>👈</div>
-            <p style={{ color: '#9ca3af', fontSize: 14 }}>בחר לקוח מהרשימה כדי לראות את ההזמנות שלו</p>
+          <Card style={{ textAlign: 'center', padding: '64px 32px', border: '2px dashed #e9ecef', background: '#fafbfc', boxShadow: 'none' }}>
+            <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>👥</div>
+            <p style={{ color: '#9ca3af', fontSize: 15, fontWeight: 600 }}>בחר לקוח מהרשימה</p>
+            <p style={{ color: '#d1d5db', fontSize: 13, marginTop: 6 }}>לצפייה בפרטים, הזמנות ואתרי אספקה</p>
           </Card>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -965,120 +1000,97 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                 </div>
               </Card>
             ) : (
-              <Card>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
-                  <div>
-                    <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1e2d3d', marginBottom: 8 }}>{selectedCustomer.name}</h2>
-                    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-                      {selectedCustomer.customer_type === 'חורף' && selectedCustomer.agent_name && (
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '2px 10px' }}>
-                          ❄️ מזדמן · סוכן: {selectedCustomer.agent_name}
-                        </span>
-                      )}
-                      {selectedCustomer.customer_type === 'חורף' && !selectedCustomer.agent_name && (
-                        <span style={{ fontSize: 12, color: '#2563eb', background: '#eff6ff', borderRadius: 20, padding: '2px 10px' }}>❄️ מזדמן</span>
-                      )}
-                      {selectedCustomer.phone         && <span style={{ fontSize: 13, color: '#6b7280' }}>📞 {selectedCustomer.phone}</span>}
-                      {selectedCustomer.area          && <span style={{ fontSize: 13, color: '#6b7280' }}>📍 {selectedCustomer.area}</span>}
-                      {selectedCustomer.contact_name  && <span style={{ fontSize: 13, color: '#6b7280' }}>👤 {selectedCustomer.contact_name}</span>}
-                      {selectedCustomer.contact_phone && <span style={{ fontSize: 13, color: '#6b7280' }}>📱 {selectedCustomer.contact_phone}</span>}
-                      {selectedCustomer.site_address  && <span style={{ fontSize: 13, color: '#6b7280' }}>🏠 {selectedCustomer.site_address}</span>}
-                      {selectedCustomer.email         && <span style={{ fontSize: 13, color: '#6b7280' }}>✉️ {selectedCustomer.email}</span>}
-                      {selectedCustomer.id_number     && <span style={{ fontSize: 13, color: '#6b7280' }}>🪪 ת.ז/ח.פ: {selectedCustomer.id_number}</span>}
-                      {selectedCustomer.order_contact_name && (
-                        <span style={{ fontSize: 13, color: '#0891b2', fontWeight: 600, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 20, padding: '2px 10px' }}>
-                          🚚 איש קשר להזמנות: {selectedCustomer.order_contact_name}
-                          {selectedCustomer.order_contact_phone ? ` · ${selectedCustomer.order_contact_phone}` : ''}
-                        </span>
-                      )}
+              <Card style={{ padding: 0, overflow: 'hidden' }}>
+                {/* ─ כותרת לקוח ─ */}
+                <div style={{ padding: '18px 22px', borderBottom: '1px solid #f3f4f6' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                    {/* אווטאר גדול */}
+                    <div style={{
+                      width: 50, height: 50, borderRadius: 14, flexShrink: 0,
+                      background: avatarColor(selectedCustomer.name),
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: -0.5,
+                    }}>
+                      {initials(selectedCustomer.name)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <h2 style={{ fontSize: 17, fontWeight: 800, color: '#1e2d3d', margin: 0 }}>{selectedCustomer.name}</h2>
+                        {selectedCustomer.customer_type === 'חורף' && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '2px 10px' }}>
+                            ❄️ {selectedCustomer.agent_name ? `סוכן: ${selectedCustomer.agent_name}` : 'מזדמן'}
+                          </span>
+                        )}
+                      </div>
+                      {/* פרטי קשר בשורה */}
+                      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 6 }}>
+                        {selectedCustomer.phone         && <span style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>📞 {selectedCustomer.phone}</span>}
+                        {selectedCustomer.area          && <span style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>📍 {selectedCustomer.area}</span>}
+                        {selectedCustomer.site_address  && <span style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>🏠 {selectedCustomer.site_address}</span>}
+                        {selectedCustomer.email         && <span style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>✉️ {selectedCustomer.email}</span>}
+                        {selectedCustomer.id_number     && <span style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>🪪 {selectedCustomer.id_number}</span>}
+                        {selectedCustomer.contact_name  && <span style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>👤 {selectedCustomer.contact_name}{selectedCustomer.contact_phone ? ` · ${selectedCustomer.contact_phone}` : ''}</span>}
+                        {selectedCustomer.order_contact_name && (
+                          <span style={{ fontSize: 12, color: '#0891b2', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            🚚 {selectedCustomer.order_contact_name}{selectedCustomer.order_contact_phone ? ` · ${selectedCustomer.order_contact_phone}` : ''}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {/* מונים */}
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <div style={{ background: '#f8fafc', border: '1px solid #e9ecef', borderRadius: 12, padding: '10px 18px', textAlign: 'center', minWidth: 64 }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: '#1e2d3d', lineHeight: 1 }}>{customerOrders.length}</div>
+                        <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3, fontWeight: 600 }}>הזמנות</div>
+                      </div>
+                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '10px 18px', textAlign: 'center', minWidth: 64 }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: '#16a34a', lineHeight: 1 }}>{completedOrders}</div>
+                        <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3, fontWeight: 600 }}>הושלמו</div>
+                      </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                    {/* מחיר מכירה */}
-                    {salePriceEdit?.name === selectedCustomer.name ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, padding: '8px 12px' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#0891b2', whiteSpace: 'nowrap' }}>מחיר מכירה ₪/ל׳</span>
-                        <input
-                          type="number" step="0.001" min="0"
-                          value={salePriceEdit.value}
-                          onChange={e => setSalePriceEdit(p => ({ ...p, value: e.target.value }))}
-                          style={{ width: 90, padding: '5px 8px', borderRadius: 6, border: '1px solid #bae6fd', fontSize: 13, fontWeight: 700, color: '#0891b2', outline: 'none' }}
-                          autoFocus
-                        />
-                        <button onClick={saveSalePrice}
-                          style={{ background: salePriceSaved ? '#16a34a' : '#0891b2', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                          {salePriceSaved ? '✓' : 'שמור'}
-                        </button>
-                        <button onClick={() => setSalePriceEdit(null)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 16 }}>✕</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => openSalePrice(selectedCustomer.name)}
-                        style={{ padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', background: '#f0f9ff', color: '#0891b2', border: '1px solid #bae6fd', whiteSpace: 'nowrap' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#e0f2fe'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#f0f9ff'}>
-                        💲 {(workPlanData?.clients || []).find(c => c.name === selectedCustomer.name)?.salePrice
-                          ? `מחיר מכירה: ₪${(workPlanData.clients.find(c => c.name === selectedCustomer.name).salePrice).toFixed(3)}`
-                          : 'הגדר מחיר מכירה'}
+                </div>
+                {/* ─ שורת פעולות ─ */}
+                <div style={{ padding: '12px 22px', background: '#fafbfc', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {/* מחיר מכירה */}
+                  {salePriceEdit?.name === selectedCustomer.name ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 9, padding: '6px 12px' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#0891b2' }}>₪/ל׳</span>
+                      <input type="number" step="0.001" min="0" value={salePriceEdit.value}
+                        onChange={e => setSalePriceEdit(p => ({ ...p, value: e.target.value }))}
+                        style={{ width: 80, padding: '4px 7px', borderRadius: 6, border: '1px solid #bae6fd', fontSize: 13, fontWeight: 700, color: '#0891b2', outline: 'none' }} autoFocus />
+                      <button onClick={saveSalePrice} style={{ background: salePriceSaved ? '#16a34a' : '#0891b2', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                        {salePriceSaved ? '✓' : 'שמור'}
                       </button>
-                    )}
-                    <button onClick={() => toggleWhatsapp(selectedCustomer)}
-                      title={selectedCustomer.whatsapp_enabled ? 'לחץ להשבית הודעות וואטסאפ' : 'לחץ להפעיל הודעות וואטסאפ'}
-                      style={{
-                        padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-                        background: selectedCustomer.whatsapp_enabled ? '#f0fdf4' : '#f9fafb',
-                        color: selectedCustomer.whatsapp_enabled ? '#16a34a' : '#9ca3af',
-                        border: `1px solid ${selectedCustomer.whatsapp_enabled ? '#bbf7d0' : '#e5e7eb'}`,
-                      }}>
-                      {selectedCustomer.whatsapp_enabled ? '💬 וואטסאפ פעיל' : '💬 וואטסאפ כבוי'}
-                    </button>
-                    <button
-                      onClick={() => sendOrderMessage(selectedCustomer)}
-                      disabled={sendingMsgId === selectedCustomer.id || sentMsgId === selectedCustomer.id}
-                      style={{
-                        padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-                        background: sentMsgId === selectedCustomer.id ? '#f0fdf4' : '#fefce8',
-                        color: sentMsgId === selectedCustomer.id ? '#16a34a' : '#ca8a04',
-                        border: `1px solid ${sentMsgId === selectedCustomer.id ? '#bbf7d0' : '#fde68a'}`,
-                        opacity: sendingMsgId === selectedCustomer.id ? 0.6 : 1,
-                      }}>
-                      {sentMsgId === selectedCustomer.id ? '✓ נשלח!' : sendingMsgId === selectedCustomer.id ? '⏳ שולח...' : '📨 שלח הודעת הזמנה'}
-                    </button>
-                    <button onClick={() => startEdit(selectedCustomer)}
-                      style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', background: '#f0f9ff', color: '#0891b2', border: '1px solid #bae6fd' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#e0f2fe'}
-                      onMouseLeave={e => e.currentTarget.style.background = '#f0f9ff'}>
-                      ✎ עריכה
-                    </button>
-                    {deleteConfirmId === selectedCustomer.id ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 8, padding: '6px 12px' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626' }}>למחוק את הלקוח?</span>
-                        <button onClick={() => handleDeleteCustomer(selectedCustomer.id)}
-                          style={{ padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', background: '#dc2626', color: '#fff', border: 'none' }}>
-                          מחק
-                        </button>
-                        <button onClick={() => setDeleteConfirmId(null)}
-                          style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', background: '#f3f4f6', color: '#374151', border: 'none' }}>
-                          ביטול
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setDeleteConfirmId(selectedCustomer.id)}
-                        style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', background: '#fff5f5', color: '#dc2626', border: '1px solid #fecaca' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#fff5f5'}>
-                        🗑 מחיקה
-                      </button>
-                    )}
-                    <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, padding: '10px 20px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: '#0891b2' }}>{customerOrders.length}</div>
-                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>סה"כ הזמנות</div>
+                      <button onClick={() => setSalePriceEdit(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 15, lineHeight: 1 }}>✕</button>
                     </div>
-                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 20px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a' }}>{completedOrders}</div>
-                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>הושלמו</div>
+                  ) : (
+                    <Btn variant="cyan" onClick={() => openSalePrice(selectedCustomer.name)}>
+                      💲 {(workPlanData?.clients || []).find(c => c.name === selectedCustomer.name)?.salePrice
+                        ? `₪${(workPlanData.clients.find(c => c.name === selectedCustomer.name).salePrice).toFixed(3)}`
+                        : 'מחיר מכירה'}
+                    </Btn>
+                  )}
+                  <Btn variant={selectedCustomer.whatsapp_enabled ? 'success' : 'ghost'} onClick={() => toggleWhatsapp(selectedCustomer)}
+                    title={selectedCustomer.whatsapp_enabled ? 'כבה וואטסאפ' : 'הפעל וואטסאפ'}>
+                    💬 {selectedCustomer.whatsapp_enabled ? 'וואטסאפ פעיל' : 'וואטסאפ כבוי'}
+                  </Btn>
+                  <Btn variant="ghost"
+                    onClick={() => sendOrderMessage(selectedCustomer)}
+                    disabled={sendingMsgId === selectedCustomer.id || sentMsgId === selectedCustomer.id}
+                    style={{ background: sentMsgId === selectedCustomer.id ? '#f0fdf4' : '#fefce8', color: sentMsgId === selectedCustomer.id ? '#16a34a' : '#ca8a04', border: '1px solid ' + (sentMsgId === selectedCustomer.id ? '#bbf7d0' : '#fde68a') }}>
+                    {sentMsgId === selectedCustomer.id ? '✓ נשלח!' : sendingMsgId === selectedCustomer.id ? '⏳...' : '📨 שלח הזמנה'}
+                  </Btn>
+                  <Btn variant="cyan" onClick={() => startEdit(selectedCustomer)}>✎ עריכה</Btn>
+                  {deleteConfirmId === selectedCustomer.id ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 8, padding: '5px 10px' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626' }}>למחוק?</span>
+                      <button onClick={() => handleDeleteCustomer(selectedCustomer.id)} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: '#dc2626', color: '#fff', border: 'none' }}>מחק</button>
+                      <button onClick={() => setDeleteConfirmId(null)} style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: '#f3f4f6', color: '#374151', border: 'none' }}>ביטול</button>
                     </div>
-                  </div>
+                  ) : (
+                    <Btn variant="danger" onClick={() => setDeleteConfirmId(selectedCustomer.id)}>🗑 מחיקה</Btn>
+                  )}
                 </div>
               </Card>
             )}
