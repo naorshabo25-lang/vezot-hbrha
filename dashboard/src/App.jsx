@@ -12,6 +12,7 @@ import PotentialClientsTab from './components/PotentialClientsTab';
 import SettingsTab from './components/SettingsTab';
 import FleetTab from './components/FleetTab';
 import HashavshevotTab from './components/HashavshevotTab';
+import WinterCustomersTab from './components/WinterCustomersTab';
 import LockScreen from './components/LockScreen';
 
 const MIGRATION_V = 'workPlanMigration_v4';
@@ -352,6 +353,9 @@ export default function App() {
           )}
           {tab === 'fleet' && (
             <FleetTab />
+          )}
+          {tab === 'winter' && (
+            <WinterCustomersTab />
           )}
           {tab === 'settings' && (
             <SettingsTab />

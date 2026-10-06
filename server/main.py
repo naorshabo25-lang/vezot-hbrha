@@ -1644,6 +1644,134 @@ def delete_driver(did: int):
     return {"ok": True}
 
 
+# ──────────────────────────────────────────────
+#  Winter Orders API
+# ──────────────────────────────────────────────
+
+@app.get("/api/winter-orders")
+def get_winter_orders():
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM winter_orders ORDER BY created_at DESC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/winter-orders")
+async def create_winter_order(request: Request):
+    data = await request.json()
+    qty   = float(data.get("quantity", 0) or 0)
+    price = float(data.get("price_per_unit", 0) or 0)
+    total = round(qty * price, 2)
+    with get_db() as conn:
+        cur = conn.execute(
+            """INSERT INTO winter_orders
+               (agent_name, customer_name, customer_phone, address, city,
+                contact_name, contact_phone, product, quantity, price_per_unit,
+                total_price, payment_method, delivery_date, status, notes)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                data.get("agent_name", ""),
+                data.get("customer_name", ""),
+                data.get("customer_phone", ""),
+                data.get("address", ""),
+                data.get("city", ""),
+                data.get("contact_name", ""),
+                data.get("contact_phone", ""),
+                data.get("product", "נפט"),
+                qty, price, total,
+                data.get("payment_method", "מזומן"),
+                data.get("delivery_date", ""),
+                data.get("status", "ממתין"),
+                data.get("notes", ""),
+            )
+        )
+        new_id = cur.lastrowid
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM winter_orders WHERE id=?", (new_id,)).fetchone()
+    return dict(row)
+
+
+@app.put("/api/winter-orders/{oid}")
+async def update_winter_order(oid: int, request: Request):
+    data = await request.json()
+    qty   = float(data.get("quantity", 0) or 0)
+    price = float(data.get("price_per_unit", 0) or 0)
+    total = round(qty * price, 2)
+    with get_db() as conn:
+        conn.execute(
+            """UPDATE winter_orders SET
+               agent_name=?, customer_name=?, customer_phone=?, address=?, city=?,
+               contact_name=?, contact_phone=?, product=?, quantity=?, price_per_unit=?,
+               total_price=?, payment_method=?, delivery_date=?, status=?, notes=?
+               WHERE id=?""",
+            (
+                data.get("agent_name", ""),
+                data.get("customer_name", ""),
+                data.get("customer_phone", ""),
+                data.get("address", ""),
+                data.get("city", ""),
+                data.get("contact_name", ""),
+                data.get("contact_phone", ""),
+                data.get("product", "נפט"),
+                qty, price, total,
+                data.get("payment_method", "מזומן"),
+                data.get("delivery_date", ""),
+                data.get("status", "ממתין"),
+                data.get("notes", ""),
+                oid,
+            )
+        )
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM winter_orders WHERE id=?", (oid,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    return dict(row)
+
+
+@app.delete("/api/winter-orders/{oid}")
+def delete_winter_order(oid: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM winter_orders WHERE id=?", (oid,))
+    return {"ok": True}
+
+
+@app.get("/api/winter-agents")
+def get_winter_agents():
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM winter_agents WHERE active=1 ORDER BY name"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/winter-agents")
+async def create_winter_agent(request: Request):
+    data = await request.json()
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name required")
+    with get_db() as conn:
+        try:
+            cur = conn.execute(
+                "INSERT INTO winter_agents (name, phone) VALUES (?,?)",
+                (name, data.get("phone", ""))
+            )
+            new_id = cur.lastrowid
+        except Exception:
+            raise HTTPException(status_code=409, detail="agent already exists")
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM winter_agents WHERE id=?", (new_id,)).fetchone()
+    return dict(row)
+
+
+@app.delete("/api/winter-agents/{aid}")
+def delete_winter_agent(aid: int):
+    with get_db() as conn:
+        conn.execute("UPDATE winter_agents SET active=0 WHERE id=?", (aid,))
+    return {"ok": True}
+
+
 @app.get("/api/settings")
 def get_settings():
     with get_db() as conn:

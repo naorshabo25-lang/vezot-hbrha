@@ -254,6 +254,34 @@ def init_db():
                 FOREIGN KEY (customer_id) REFERENCES customers(id)
             );
 
+            CREATE TABLE IF NOT EXISTS winter_orders (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                agent_name       TEXT DEFAULT '',
+                customer_name    TEXT NOT NULL DEFAULT '',
+                customer_phone   TEXT DEFAULT '',
+                address          TEXT DEFAULT '',
+                city             TEXT DEFAULT '',
+                contact_name     TEXT DEFAULT '',
+                contact_phone    TEXT DEFAULT '',
+                product          TEXT DEFAULT 'נפט',
+                quantity         REAL DEFAULT 0,
+                price_per_unit   REAL DEFAULT 0,
+                total_price      REAL DEFAULT 0,
+                payment_method   TEXT DEFAULT 'מזומן',
+                delivery_date    TEXT DEFAULT '',
+                status           TEXT DEFAULT 'ממתין',
+                notes            TEXT DEFAULT '',
+                created_at       TEXT DEFAULT (datetime('now', 'localtime'))
+            );
+
+            CREATE TABLE IF NOT EXISTS winter_agents (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                name       TEXT NOT NULL UNIQUE,
+                phone      TEXT DEFAULT '',
+                active     INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT (datetime('now', 'localtime'))
+            );
+
             CREATE TABLE IF NOT EXISTS email_campaigns (
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
                 subject      TEXT NOT NULL,
