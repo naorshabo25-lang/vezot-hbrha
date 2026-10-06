@@ -184,7 +184,6 @@ def send_end_of_day():
 
 def start_scheduler(hour: int = 14, minute: int = 0,
                     admin_hour: int = None, admin_minute: int = 0,
-                    reminder_hour: int = 12, reminder_minute: int = 0,
                     end_of_day_hour: int = 15, end_of_day_minute: int = 0):
     scheduler.add_job(
         send_daily_messages,
@@ -202,11 +201,7 @@ def start_scheduler(hour: int = 14, minute: int = 0,
             CronTrigger(hour=admin_hour, minute=admin_minute, timezone="Asia/Jerusalem"),
             id="admin_schedule", replace_existing=True,
         )
-    scheduler.add_job(
-        send_midday_reminders,
-        CronTrigger(hour=reminder_hour, minute=reminder_minute, timezone="Asia/Jerusalem"),
-        id="midday_reminders", replace_existing=True,
-    )
+    # תזכורת רק בסוף יום — רק הזמנות ללא ביצוע/ביטול
     scheduler.add_job(
         send_end_of_day,
         CronTrigger(hour=end_of_day_hour, minute=end_of_day_minute, timezone="Asia/Jerusalem"),
@@ -217,8 +212,7 @@ def start_scheduler(hour: int = 14, minute: int = 0,
     print(f"[Scheduler] יצירת הזמנות קבועות: 00:10")
     if admin_hour is not None:
         print(f"[Scheduler] סידור למנהל: {admin_hour:02d}:{admin_minute:02d}")
-    print(f"[Scheduler] תזכורת נהגים: {reminder_hour:02d}:{reminder_minute:02d}")
-    print(f"[Scheduler] סגירת יום: {end_of_day_hour:02d}:{end_of_day_minute:02d}")
+    print(f"[Scheduler] סגירת יום (ביצוע לא מדווח): {end_of_day_hour:02d}:{end_of_day_minute:02d}")
 
 
 def reschedule(hour: int, minute: int):
