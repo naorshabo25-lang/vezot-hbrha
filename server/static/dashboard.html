@@ -3572,17 +3572,23 @@ function onWalkinSelect() {
   const newFields = document.getElementById('o-walkin-new-fields');
   if (val === 'new') {
     newFields.style.display = 'flex';
+    document.getElementById('o-walkin-name').value = '';
+    document.getElementById('o-walkin-phone').value = '';
+    document.getElementById('o-walkin-site').value = '';
     document.getElementById('o-walkin-name').focus();
+  } else if (val) {
+    const c = _customers.find(x => x.id === parseInt(val));
+    if (c) {
+      newFields.style.display = 'flex';
+      document.getElementById('o-walkin-name').value  = c.name;
+      document.getElementById('o-walkin-phone').value = c.contact_phone || c.phone || '';
+      document.getElementById('o-walkin-site').value  = c.site_address || '';
+      document.getElementById('o-contact-name').value  = c.last_order_contact_name || c.contact_name || '';
+      document.getElementById('o-contact-phone').value = c.last_order_contact_phone || c.contact_phone || '';
+      if (c.area) { document.getElementById('o-area').value = c.area; previewDriver(); }
+    }
   } else {
     newFields.style.display = 'none';
-    if (val) {
-      const c = _customers.find(x => x.id === parseInt(val));
-      if (c) {
-        document.getElementById('o-contact-name').value  = c.last_order_contact_name || c.contact_name || '';
-        document.getElementById('o-contact-phone').value = c.last_order_contact_phone || c.contact_phone || '';
-        if (c.area) { document.getElementById('o-area').value = c.area; previewDriver(); }
-      }
-    }
   }
 }
 
