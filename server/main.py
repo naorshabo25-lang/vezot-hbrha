@@ -501,6 +501,8 @@ async def receive_message(request: Request):
                             (phone, _pa, phone, _pa)
                         ).fetchone()
                         _ord = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+                        # עדכן סטטוס מיד — גם לפני קבלת כמות
+                        conn.execute("UPDATE orders SET status='הושלם' WHERE id=?", (order_id,))
                         if _is_drv:
                             # שמור מצב "ממתין לכמות בפועל"
                             conn.execute(
@@ -509,10 +511,9 @@ async def receive_message(request: Request):
                                 "VALUES (?, 'driver_awaiting_qty', ?, datetime('now','localtime'))",
                                 (phone, _json_done.dumps({"order_id": order_id}))
                             )
-                            print(f"[Done] state saved for phone={phone} order_id={order_id}")
+                            print(f"[Done] status=הושלם + state saved for phone={phone} order_id={order_id}")
                         else:
-                            conn.execute("UPDATE orders SET status='הושלם' WHERE id=?", (order_id,))
-                            print(f"[Done] לא נמצא נהג ל-phone={phone}")
+                            print(f"[Done] status=הושלם (נהג לא זוהה) phone={phone}")
                     if _is_drv and _ord:
                         send_whatsapp_message(phone,
                             f"מצויין! 💪\n\n"
