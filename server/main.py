@@ -373,12 +373,15 @@ async def receive_message(request: Request):
                     for _o_a in _ords_a:
                         _by_d_a.setdefault(_o_a["driver_name"] or "ללא נהג", []).append(_o_a)
                     _sent_a = 0
+                    print(f"[אשר] שולח לנהגים: {list(_by_d_a.keys())}")
                     for _dn_a, _dos_a in _by_d_a.items():
                         _f_a   = _dos_a[0]
                         _dp_a  = _fmt_phone(_f_a.get("driver_phone"))
                         _pp_a  = _fmt_phone(_f_a.get("driver_personal_phone"))
                         _tp_a  = _pp_a or _dp_a
+                        print(f"[אשר] נהג: {_dn_a} | טלפון: {_dp_a} | אישי: {_pp_a} | יעד: {_tp_a}")
                         if not _tp_a:
+                            print(f"[אשר] *** נהג {_dn_a} — אין טלפון, מדלג ***")
                             continue
                         _hdr_a = f"📋 *סידור יומי — {_tgt_a}*\n{len(_dos_a)} הזמנות:\n"
                         _ln_a  = []
