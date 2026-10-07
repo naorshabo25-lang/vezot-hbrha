@@ -46,48 +46,56 @@ def materialize_tomorrow():
 
 def send_admin_schedule():
     from datetime import date as dt, timedelta
-    print("[Scheduler] שולח סידור יומי למנהל...")
-    with get_db() as conn:
-        settings    = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
-        admin_phone = settings.get("admin_phone", "").strip().replace(" ", "").replace("-", "")
-        if not admin_phone:
-            print("[Scheduler] לא הוגדר טלפון מנהל — מדלג")
+    print("[Scheduler] *** send_admin_schedule הופעל ***")
+    try:
+        with get_db() as conn:
+            settings    = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
+            admin_phone = settings.get("admin_phone", "").strip().replace(" ", "").replace("-", "")
+            if not admin_phone:
+                print("[Scheduler] לא הוגדר טלפון מנהל — מדלג")
+                return
+            if admin_phone.startswith("0"):
+                admin_phone = "972" + admin_phone[1:]
+            target_date = (dt.today() + timedelta(days=1)).isoformat()
+            print(f"[Scheduler] טלפון מנהל: {admin_phone} | תאריך יעד: {target_date}")
+            orders = conn.execute("""
+                SELECT o.*, d.name as driver_name, d.phone as driver_phone,
+                       d.personal_phone as driver_personal_phone
+                FROM orders o LEFT JOIN drivers d ON o.driver_id = d.id
+                WHERE o.order_date = ?
+                ORDER BY d.name, o.sort_order, o.delivery_time, o.created_at
+            """, (target_date,)).fetchall()
+
+        orders = [dict(o) for o in orders]
+        print(f"[Scheduler] נמצאו {len(orders)} הזמנות ל-{target_date}")
+
+        if not orders:
+            ok = send_whatsapp_message(admin_phone, f"📋 סידור יומי — {target_date}\n\nאין הזמנות למחר.")
+            print(f"[Scheduler] אין הזמנות — נשלחה הודעה למנהל: {'✓' if ok else '✗ נכשל'}")
             return
-        if admin_phone.startswith("0"):
-            admin_phone = "972" + admin_phone[1:]
-        target_date = (dt.today() + timedelta(days=1)).isoformat()
-        orders = conn.execute("""
-            SELECT o.*, d.name as driver_name, d.phone as driver_phone,
-                   d.personal_phone as driver_personal_phone
-            FROM orders o LEFT JOIN drivers d ON o.driver_id = d.id
-            WHERE o.order_date = ?
-            ORDER BY d.name, o.sort_order, o.delivery_time, o.created_at
-        """, (target_date,)).fetchall()
 
-    orders = [dict(o) for o in orders]
+        by_driver = {}
+        for o in orders:
+            name = o["driver_name"] or "ללא נהג"
+            by_driver.setdefault(name, []).append(o)
 
-    if not orders:
-        send_whatsapp_message(admin_phone, f"📋 סידור יומי — {target_date}\n\nאין הזמנות למחר.")
-        return
-
-    by_driver = {}
-    for o in orders:
-        name = o["driver_name"] or "ללא נהג"
-        by_driver.setdefault(name, []).append(o)
-
-    # שלח למנהל — רשימת טקסט ממוספרת (ללא כרטיסים)
-    admin_lines = [f"📋 *{target_date}* — {len(orders)} הזמנות\n"]
-    for driver_name, driver_orders in by_driver.items():
-        admin_lines.append(f"*{driver_name}:*")
-        for i, o in enumerate(driver_orders, 1):
-            admin_lines.append(f"{i}. {o['customer_name']} — {o['site_address']}")
-        admin_lines.append("")
-    send_whatsapp_message(admin_phone, "\n".join(admin_lines))
-    # בקש אישור מהמנהל לפני שליחה לנהגים
-    send_whatsapp_message(admin_phone,
-        "↩️ לשליחה לנהגים — השב *אשר*\n(ניתן גם מהדשבורד)"
-    )
-    print(f"[Scheduler] סידור נשלח למנהל — {len(orders)} הזמנות (ממתין לאישור)")
+        admin_lines = [f"📋 *{target_date}* — {len(orders)} הזמנות\n"]
+        for driver_name, driver_orders in by_driver.items():
+            admin_lines.append(f"*{driver_name}:*")
+            for i, o in enumerate(driver_orders, 1):
+                admin_lines.append(f"{i}. {o['customer_name']} — {o['site_address']}")
+            admin_lines.append("")
+        ok1 = send_whatsapp_message(admin_phone, "\n".join(admin_lines))
+        print(f"[Scheduler] הודעת סידור למנהל: {'✓' if ok1 else '✗ נכשל'}")
+        ok2 = send_whatsapp_message(admin_phone,
+            "↩️ לשליחה לנהגים — השב *אשר*\n(ניתן גם מהדשבורד)"
+        )
+        print(f"[Scheduler] הודעת אישור למנהל: {'✓' if ok2 else '✗ נכשל'}")
+        print(f"[Scheduler] סידור נשלח למנהל — {len(orders)} הזמנות (ממתין לאישור)")
+    except Exception as e:
+        print(f"[Scheduler] *** שגיאה ב-send_admin_schedule: {e} ***")
+        import traceback
+        traceback.print_exc()
 
 
 def _fmt_phone_local(p: str) -> str:
@@ -211,7 +219,9 @@ def start_scheduler(hour: int = 14, minute: int = 0,
     print(f"[Scheduler] הודעות ללקוחות: {hour:02d}:{minute:02d}")
     print(f"[Scheduler] יצירת הזמנות קבועות: 00:10")
     if admin_hour is not None:
-        print(f"[Scheduler] סידור למנהל: {admin_hour:02d}:{admin_minute:02d}")
+        print(f"[Scheduler] *** סידור למנהל רשום לשעה: {admin_hour:02d}:{admin_minute:02d} ***")
+    else:
+        print("[Scheduler] *** סידור למנהל: לא הוגדר (admin_schedule_hour חסר/ריק) ***")
     print(f"[Scheduler] סגירת יום (ביצוע לא מדווח): {end_of_day_hour:02d}:{end_of_day_minute:02d}")
 
 
