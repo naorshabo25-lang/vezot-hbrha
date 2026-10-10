@@ -144,10 +144,20 @@ function TruckModal({ truck, drivers, onClose, onSave }) {
   );
 }
 
-function RecordModal({ truckId, preCategory, onClose, onSave }) {
-  const [cat, setCat] = useState(preCategory || 'טיפול');
+// categories that can only have ONE record (no duplicate adds)
+const SINGLE_CATS = new Set(['טסט', 'ביקורת_חורף', 'רישיון_חומס', 'ביטוח']);
+
+function RecordModal({ truckId, preCategory, existingRecord, onClose, onSave }) {
+  const isEdit = !!existingRecord;
+  const [cat, setCat] = useState(existingRecord?.category || preCategory || 'טיפול');
   const cfg = CAT_MAP[cat] || CATS[0];
-  const [form, setForm] = useState({ title: '', event_date: '', expiry_date: '', cost: '', notes: '' });
+  const [form, setForm] = useState({
+    title:      existingRecord?.title       || '',
+    event_date: existingRecord?.event_date  || '',
+    expiry_date:existingRecord?.expiry_date || '',
+    cost:       existingRecord?.cost        != null ? String(existingRecord.cost) : '',
+    notes:      existingRecord?.notes       || '',
+  });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -162,14 +172,27 @@ function RecordModal({ truckId, preCategory, onClose, onSave }) {
   };
 
   const showImageUpload = cat === 'טסט' || cat === 'ביקורת_חורף' || cat === 'רישיון_חומס' || cat === 'הוצאת_מוסך' || cat === 'ביטוח';
+  const existingImage = existingRecord?.image_path;
 
   async function save() {
     setSaving(true);
+    let recordId = existingRecord?.id;
     const body = { truck_id: truckId, category: cat, ...form, cost: parseFloat(form.cost) || 0 };
-    const res = await fetch(`${SERVER}/api/fleet/records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await res.json();
-    if (imageFile && data.id) {
-      await fetch(`${SERVER}/api/fleet/records/${data.id}/upload-image`, {
+
+    if (isEdit) {
+      await fetch(`${SERVER}/api/fleet/records/${recordId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+    } else {
+      const res = await fetch(`${SERVER}/api/fleet/records`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      recordId = data.id;
+    }
+
+    if (imageFile && recordId) {
+      await fetch(`${SERVER}/api/fleet/records/${recordId}/upload-image`, {
         method: 'POST',
         headers: { 'Content-Type': imageFile.type || 'image/jpeg' },
         body: imageFile,
@@ -183,12 +206,21 @@ function RecordModal({ truckId, preCategory, onClose, onSave }) {
     <div onClick={e => e.target === e.currentTarget && onClose()} style={overlay}>
       <div style={modal}>
         <button onClick={onClose} style={closeBtn}>✕</button>
-        <h3 style={{ margin: '0 0 18px', fontSize: 15, color: 'var(--text-1)' }}>➕ הוסף רשומה</h3>
+        <h3 style={{ margin: '0 0 18px', fontSize: 15, color: 'var(--text-1)' }}>
+          {isEdit ? '✏️ עריכת רשומה' : '➕ הוסף רשומה'}
+        </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <select value={cat} onChange={e => setCat(e.target.value)} style={inp}>
-            {CATS.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
-            <option value="הוצאת_מוסך">🔧 הוצאת מוסך</option>
-          </select>
+          {!isEdit && (
+            <select value={cat} onChange={e => setCat(e.target.value)} style={inp}>
+              {CATS.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+              <option value="הוצאת_מוסך">🔧 הוצאת מוסך</option>
+            </select>
+          )}
+          {isEdit && (
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', paddingBottom: 4 }}>
+              {CAT_MAP[cat]?.icon} {CAT_MAP[cat]?.label || cat}
+            </div>
+          )}
           <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="כותרת / תיאור" style={inp} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={lbl}>תאריך ביצוע</label>
@@ -212,12 +244,29 @@ function RecordModal({ truckId, preCategory, onClose, onSave }) {
           {showImageUpload && (
             <div style={{ border: '1.5px dashed var(--border, #e5e7eb)', borderRadius: 10, padding: 12 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>
-                {cat === 'הוצאת_מוסך' ? '📎 צרף צילום חשבונית (אופציונלי)' : '📎 צרף צילום רישיון / מסמך (אופציונלי)'}
+                {cat === 'הוצאת_מוסך' ? '📎 צילום חשבונית' : '📎 צילום רישיון / מסמך'}
               </div>
+
+              {/* Show existing image */}
+              {existingImage && !imageFile && (
+                <div style={{ marginBottom: 10 }}>
+                  {existingImage.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                    <img src={`${SERVER}${existingImage}`} alt="מסמך קיים"
+                      style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 8, objectFit: 'contain', border: '1px solid var(--border)', display: 'block', marginBottom: 6 }} />
+                  ) : (
+                    <a href={`${SERVER}${existingImage}`} target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, background: '#f0f9ff', border: '1px solid #bae6fd', color: '#0369a1', fontSize: 13, fontWeight: 600, textDecoration: 'none', marginBottom: 6 }}>
+                      📄 פתח מסמך קיים
+                    </a>
+                  )}
+                  <div style={{ fontSize: 11, color: '#9ca3af' }}>לחץ להחלפה:</div>
+                </div>
+              )}
+
               <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={onFileChange} />
               <button type="button" onClick={() => fileRef.current?.click()}
                 style={{ padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: 'var(--bg-2,#f3f4f6)', border: '1px solid var(--border,#e5e7eb)', color: 'var(--text-1)' }}>
-                {imageFile ? '🔄 החלף קובץ' : '📷 בחר תמונה / PDF'}
+                {existingImage || imageFile ? '🔄 החלף קובץ' : '📷 בחר תמונה / PDF'}
               </button>
               {imageFile && (
                 <span style={{ fontSize: 12, color: '#059669', marginRight: 10, fontWeight: 600 }}>✓ {imageFile.name}</span>
@@ -241,6 +290,7 @@ function RecordModal({ truckId, preCategory, onClose, onSave }) {
 
 function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
   const [records, setRecords] = useState(null);
+  const [editingRecord, setEditingRecord] = useState(null);
 
   useEffect(() => { loadRecs(); }, [truck.id]);
 
@@ -276,6 +326,14 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
 
   return (
     <div style={{ border: '1.5px solid var(--border)', borderRadius: 14, overflow: 'hidden', marginBottom: 16, background: 'var(--card-bg)' }}>
+      {editingRecord && (
+        <RecordModal
+          truckId={truck.id}
+          existingRecord={editingRecord}
+          onClose={() => setEditingRecord(null)}
+          onSave={() => { setEditingRecord(null); loadRecs(); }}
+        />
+      )}
       {/* Header */}
       <div style={{ background: 'var(--bg-2, #f8fafc)', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -318,7 +376,11 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
           const rec = byCategory[c.id];
           const days = rec?.expiry_date ? daysLeft(rec.expiry_date) : null;
           return (
-            <div key={c.id} onClick={() => onAddRecord(truck.id, c.id)}
+            <div key={c.id}
+              onClick={() => {
+                if (rec && SINGLE_CATS.has(c.id)) { setEditingRecord(rec); }
+                else { onAddRecord(truck.id, c.id); }
+              }}
               style={{ border: '1.5px solid var(--border)', borderRadius: 10, padding: '9px 13px', minWidth: 130, flex: 1, cursor: 'pointer', transition: 'border-color .15s' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--red)'}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
