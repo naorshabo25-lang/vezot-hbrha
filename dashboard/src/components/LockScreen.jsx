@@ -51,7 +51,7 @@ export default function LockScreen({ onUnlock }) {
 
       <div style={{ textAlign: 'center' }}>
         <div style={{ color: '#e53935', fontSize: '1.4em', fontWeight: 800, letterSpacing: 1 }}>
-          זאת הברכה דלקים
+          מערכת ניהול וזאת הברכה דלקים ושמנים בע"מ
         </div>
         <div style={{ color: '#475569', fontSize: '0.85em', marginTop: 4 }}>
           הזן סיסמא להמשך
