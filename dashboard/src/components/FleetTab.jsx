@@ -37,6 +37,10 @@ function chip(bg, color) {
 }
 
 function TruckModal({ truck, drivers, onClose, onSave }) {
+  const parseCompartments = (raw) => {
+    try { return JSON.parse(raw || '[]'); } catch { return []; }
+  };
+
   const [form, setForm] = useState({
     name: truck?.name || '',
     plate_number: truck?.plate_number || '',
@@ -44,11 +48,37 @@ function TruckModal({ truck, drivers, onClose, onSave }) {
     tanker_volume: truck?.tanker_volume || '',
     notes: truck?.notes || '',
   });
+  const [compartments, setCompartments] = useState(() => parseCompartments(truck?.compartments));
+
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const setNumCompartments = (n) => {
+    const num = Math.max(0, Math.min(12, parseInt(n) || 0));
+    setCompartments(prev => {
+      const arr = [...prev];
+      while (arr.length < num) arr.push(0);
+      return arr.slice(0, num);
+    });
+  };
+
+  const setCompartmentVal = (i, v) => {
+    setCompartments(prev => {
+      const arr = [...prev];
+      arr[i] = parseInt(v) || 0;
+      return arr;
+    });
+  };
+
+  const totalFromCompartments = compartments.reduce((s, v) => s + (parseInt(v) || 0), 0);
 
   async function save() {
     if (!form.name.trim()) { alert('יש להזין שם משאית'); return; }
-    const body = { ...form, driver_id: form.driver_id || null };
+    const body = {
+      ...form,
+      driver_id: form.driver_id || null,
+      compartments,
+      tanker_volume: form.tanker_volume || (totalFromCompartments > 0 ? String(totalFromCompartments) : ''),
+    };
     const url = truck ? `${SERVER}/api/fleet/trucks/${truck.id}` : `${SERVER}/api/fleet/trucks`;
     await fetch(url, { method: truck ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     onSave();
@@ -56,7 +86,7 @@ function TruckModal({ truck, drivers, onClose, onSave }) {
 
   return (
     <div onClick={e => e.target === e.currentTarget && onClose()} style={overlay}>
-      <div style={modal}>
+      <div style={{ ...modal, maxHeight: '90vh', overflowY: 'auto' }}>
         <button onClick={onClose} style={closeBtn}>✕</button>
         <h3 style={{ margin: '0 0 18px', fontSize: 15, color: 'var(--text-1)' }}>{truck ? '✏️ עריכת משאית' : '🚛 הוסף משאית'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -66,7 +96,43 @@ function TruckModal({ truck, drivers, onClose, onSave }) {
             <option value="">-- ללא נהג קבוע --</option>
             {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
-          <input value={form.tanker_volume} onChange={e => set('tanker_volume', e.target.value)} placeholder="נפח מכלית (ליטר)" style={inp} />
+          <input value={form.tanker_volume} onChange={e => set('tanker_volume', e.target.value)} placeholder="נפח מכלית כולל (ליטר)" style={inp} />
+
+          {/* Compartments */}
+          <div style={{ background: '#f8fafc', borderRadius: 10, padding: 14, border: '1px solid #e9ecef' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: compartments.length > 0 ? 12 : 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', whiteSpace: 'nowrap' }}>מספר תאים:</label>
+              <input
+                type="number" min="0" max="12"
+                value={compartments.length || ''}
+                onChange={e => setNumCompartments(e.target.value)}
+                placeholder="0"
+                style={{ ...inp, width: 70, textAlign: 'center' }}
+              />
+              {totalFromCompartments > 0 && (
+                <span style={{ fontSize: 12, color: '#059669', fontWeight: 700 }}>
+                  סה"כ: {totalFromCompartments.toLocaleString()} ל׳
+                </span>
+              )}
+            </div>
+            {compartments.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                {compartments.map((val, i) => (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <label style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>תא {i + 1}</label>
+                    <input
+                      type="number" min="0"
+                      value={val || ''}
+                      onChange={e => setCompartmentVal(i, e.target.value)}
+                      placeholder="ליטר"
+                      style={{ ...inp, textAlign: 'center' }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <textarea value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="הערות" rows={2} style={{ ...inp, resize: 'vertical' }} />
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
@@ -176,6 +242,21 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
               {truck.driver_name && <span> · נהג: {truck.driver_name}</span>}
               {truck.tanker_volume && <span> · {truck.tanker_volume} ל׳</span>}
             </div>
+            {(() => {
+              try {
+                const cmps = JSON.parse(truck.compartments || '[]');
+                if (!cmps.length) return null;
+                return (
+                  <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {cmps.map((v, i) => (
+                      <span key={i} style={{ background: 'var(--bg-2,#f3f4f6)', borderRadius: 4, padding: '2px 6px', fontWeight: 600 }}>
+                        ת{i+1}: {Number(v).toLocaleString()}
+                      </span>
+                    ))}
+                  </div>
+                );
+              } catch { return null; }
+            })()}
           </div>
           {worstDays !== null && <StatusChip days={worstDays} />}
         </div>

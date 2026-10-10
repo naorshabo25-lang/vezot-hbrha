@@ -2666,23 +2666,27 @@ def get_fleet_trucks():
 
 @app.post("/api/fleet/trucks")
 async def add_fleet_truck(request: Request):
+    import json as _json
     body = await request.json()
+    compartments = _json.dumps(body.get("compartments") or [])
     with get_db() as conn:
         cur = conn.execute(
-            "INSERT INTO fleet_trucks (name, plate_number, driver_id, tanker_volume, notes) VALUES (?,?,?,?,?)",
+            "INSERT INTO fleet_trucks (name, plate_number, driver_id, tanker_volume, notes, compartments) VALUES (?,?,?,?,?,?)",
             (body.get("name",""), body.get("plate_number",""),
-             body.get("driver_id") or None, body.get("tanker_volume",""), body.get("notes",""))
+             body.get("driver_id") or None, body.get("tanker_volume",""), body.get("notes",""), compartments)
         )
     return {"ok": True, "id": cur.lastrowid}
 
 @app.put("/api/fleet/trucks/{tid}")
 async def update_fleet_truck(tid: int, request: Request):
+    import json as _json
     body = await request.json()
+    compartments = _json.dumps(body.get("compartments") or [])
     with get_db() as conn:
         conn.execute(
-            "UPDATE fleet_trucks SET name=?, plate_number=?, driver_id=?, tanker_volume=?, notes=? WHERE id=?",
+            "UPDATE fleet_trucks SET name=?, plate_number=?, driver_id=?, tanker_volume=?, notes=?, compartments=? WHERE id=?",
             (body.get("name",""), body.get("plate_number",""),
-             body.get("driver_id") or None, body.get("tanker_volume",""), body.get("notes",""), tid)
+             body.get("driver_id") or None, body.get("tanker_volume",""), body.get("notes",""), compartments, tid)
         )
     return {"ok": True}
 
