@@ -291,8 +291,9 @@ function RecordModal({ truckId, preCategory, existingRecord, onClose, onSave }) 
 function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
   const [records, setRecords] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
+  const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => { loadRecs(); }, [truck.id]);
+  useEffect(() => { if (expanded && !records) loadRecs(); }, [expanded]);
 
   async function loadRecs() {
     const r = await fetch(`${SERVER}/api/fleet/records/${truck.id}`);
@@ -334,10 +335,13 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
           onSave={() => { setEditingRecord(null); loadRecs(); }}
         />
       )}
-      {/* Header */}
-      <div style={{ background: 'var(--bg-2, #f8fafc)', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+      {/* Header — clickable to expand/collapse */}
+      <div
+        onClick={() => { setExpanded(v => !v); if (!records && !expanded) loadRecs(); }}
+        style={{ background: 'var(--bg-2, #f8fafc)', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 26 }}>🚛</span>
+          <span style={{ fontSize: 22, transition: 'transform .2s', transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', display: 'inline-block', color: 'var(--text-2)' }}>▾</span>
+          <span style={{ fontSize: 24 }}>🚛</span>
           <div>
             <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-1)' }}>{truck.name}</div>
             <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
@@ -361,14 +365,18 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
               } catch { return null; }
             })()}
           </div>
-          {worstDays !== null && <StatusChip days={worstDays} />}
+          {worstDays !== null && records && <StatusChip days={worstDays} />}
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => onAddRecord(truck.id)} className="btn btn-primary btn-sm">+ רשומה</button>
+        <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+          <button onClick={() => { onAddRecord(truck.id); if (!expanded) { setExpanded(true); loadRecs(); } }} className="btn btn-primary btn-sm">+ רשומה</button>
           <button onClick={() => onEdit(truck)} className="btn btn-soft btn-sm">✏️</button>
           <button onClick={() => onDelete(truck.id)} className="btn btn-sm" style={{ background: '#fee2e2', color: '#dc2626', border: 'none' }}>🗑️</button>
         </div>
       </div>
+
+      {/* Expandable body */}
+      {expanded && (
+      <>
 
       {/* Category grid */}
       <div style={{ padding: '14px 18px 6px', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -446,6 +454,9 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
           </div>
         )}
       </div>
+
+      </> /* end expanded */
+      )}
     </div>
   );
 }
