@@ -1,5 +1,38 @@
 import { useState, useEffect, useRef } from 'react';
 
+function TankerIcon({ size = 40 }) {
+  const s = size;
+  return (
+    <svg width={s} height={s * 0.6} viewBox="0 0 80 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Tank cylinder */}
+      <rect x="4" y="10" width="48" height="20" rx="10" fill="#3b82f6"/>
+      <ellipse cx="4" cy="20" rx="10" ry="10" fill="#2563eb"/>
+      <ellipse cx="52" cy="20" rx="10" ry="10" fill="#2563eb"/>
+      {/* Tank shine */}
+      <rect x="8" y="13" width="44" height="5" rx="3" fill="#93c5fd" opacity="0.5"/>
+      {/* Fuel cap on top */}
+      <rect x="24" y="5" width="8" height="5" rx="2" fill="#1d4ed8"/>
+      {/* Chassis / frame */}
+      <rect x="0" y="29" width="76" height="3" rx="1" fill="#374151"/>
+      {/* Cab */}
+      <rect x="57" y="14" width="18" height="15" rx="3" fill="#1e40af"/>
+      {/* Windshield */}
+      <rect x="58" y="11" width="14" height="7" rx="2" fill="#1e40af"/>
+      <rect x="59" y="12" width="12" height="5" rx="1.5" fill="#bfdbfe"/>
+      {/* Wheels */}
+      <circle cx="14" cy="36" r="7" fill="#1f2937"/>
+      <circle cx="14" cy="36" r="3.5" fill="#6b7280"/>
+      <circle cx="14" cy="36" r="1.5" fill="#d1d5db"/>
+      <circle cx="38" cy="36" r="7" fill="#1f2937"/>
+      <circle cx="38" cy="36" r="3.5" fill="#6b7280"/>
+      <circle cx="38" cy="36" r="1.5" fill="#d1d5db"/>
+      <circle cx="66" cy="36" r="6" fill="#1f2937"/>
+      <circle cx="66" cy="36" r="3" fill="#6b7280"/>
+      <circle cx="66" cy="36" r="1.2" fill="#d1d5db"/>
+    </svg>
+  );
+}
+
 const SERVER = (window.location.port === '5173' || window.location.port === '5174')
   ? `http://${window.location.hostname}:8000`
   : '';
@@ -340,8 +373,8 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
         onClick={() => { setExpanded(v => !v); if (!records && !expanded) loadRecs(); }}
         style={{ background: 'var(--bg-2, #f8fafc)', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 22, transition: 'transform .2s', transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', display: 'inline-block', color: 'var(--text-2)' }}>▾</span>
-          <span style={{ fontSize: 24 }}>🚛</span>
+          <span style={{ transition: 'transform .2s', transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', display: 'inline-block', color: 'var(--text-2)', fontSize: 18, lineHeight: 1 }}>▾</span>
+          <TankerIcon size={52} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-1)' }}>{truck.name}</div>
             <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
@@ -502,13 +535,13 @@ export default function FleetTab() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--text-1)' }}>🚛 ניהול צי מכליות</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 8 }}><TankerIcon size={36} /> ניהול צי מכליות</h2>
         <button className="btn btn-primary" onClick={() => setTruckModal({})}>+ הוסף משאית</button>
       </div>
 
       {trucks.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-2)' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🚛</div>
+          <div style={{ marginBottom: 12 }}><TankerIcon size={80} /></div>
           <div>אין משאיות. לחץ "הוסף משאית" להתחלה.</div>
         </div>
       )}
