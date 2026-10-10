@@ -50,7 +50,7 @@ export default function LockScreen({ onUnlock }) {
       />
 
       <div style={{ textAlign: 'center' }}>
-        <div style={{ color: '#e53935', fontSize: '1.4em', fontWeight: 800, letterSpacing: 1 }}>
+        <div style={{ color: '#e53935', fontSize: '1.1em', fontWeight: 800, letterSpacing: 0.5 }}>
           מערכת ניהול וזאת הברכה דלקים ושמנים בע"מ
         </div>
         <div style={{ color: '#475569', fontSize: '0.85em', marginTop: 4 }}>
