@@ -2736,6 +2736,25 @@ def delete_fleet_record(rid: int):
         conn.execute("DELETE FROM fleet_records WHERE id=?", (rid,))
     return {"ok": True}
 
+_FLEET_UPLOADS = os.path.join(os.path.dirname(__file__), "static", "fleet-uploads")
+os.makedirs(_FLEET_UPLOADS, exist_ok=True)
+
+@app.post("/api/fleet/records/{rid}/upload-image")
+async def upload_fleet_record_image(rid: int, request: Request):
+    import uuid, mimetypes
+    content_type = request.headers.get("content-type", "")
+    ext = mimetypes.guess_extension(content_type.split(";")[0].strip()) or ".jpg"
+    if ext == ".jpe": ext = ".jpg"
+    filename = f"fleet_{rid}_{uuid.uuid4().hex[:8]}{ext}"
+    filepath = os.path.join(_FLEET_UPLOADS, filename)
+    body = await request.body()
+    with open(filepath, "wb") as f:
+        f.write(body)
+    img_path = f"/static/fleet-uploads/{filename}"
+    with get_db() as conn:
+        conn.execute("UPDATE fleet_records SET image_path=? WHERE id=?", (img_path, rid))
+    return {"ok": True, "image_path": img_path}
+
 
 # ── Hashavshevet Import ───────────────────────────────────────────────────────
 

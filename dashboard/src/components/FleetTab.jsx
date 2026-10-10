@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const SERVER = (window.location.port === '5173' || window.location.port === '5174')
   ? `http://${window.location.hostname}:8000`
@@ -148,11 +148,34 @@ function RecordModal({ truckId, preCategory, onClose, onSave }) {
   const [cat, setCat] = useState(preCategory || 'טיפול');
   const cfg = CAT_MAP[cat] || CATS[0];
   const [form, setForm] = useState({ title: '', event_date: '', expiry_date: '', cost: '', notes: '' });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const fileRef = useRef(null);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
+  const onFileChange = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setImageFile(f);
+    setImagePreview(URL.createObjectURL(f));
+  };
+
+  const showImageUpload = cat === 'טסט' || cat === 'ביקורת_חורף' || cat === 'רישיון_חומס' || cat === 'הוצאת_מוסך' || cat === 'ביטוח';
+
   async function save() {
+    setSaving(true);
     const body = { truck_id: truckId, category: cat, ...form, cost: parseFloat(form.cost) || 0 };
-    await fetch(`${SERVER}/api/fleet/records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetch(`${SERVER}/api/fleet/records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (imageFile && data.id) {
+      await fetch(`${SERVER}/api/fleet/records/${data.id}/upload-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': imageFile.type || 'image/jpeg' },
+        body: imageFile,
+      });
+    }
+    setSaving(false);
     onSave();
   }
 
@@ -184,10 +207,32 @@ function RecordModal({ truckId, preCategory, onClose, onSave }) {
             </div>
           )}
           <textarea value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="הערות" rows={2} style={{ ...inp, resize: 'vertical' }} />
+
+          {/* Image upload */}
+          {showImageUpload && (
+            <div style={{ border: '1.5px dashed var(--border, #e5e7eb)', borderRadius: 10, padding: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>
+                {cat === 'הוצאת_מוסך' ? '📎 צרף צילום חשבונית (אופציונלי)' : '📎 צרף צילום רישיון / מסמך (אופציונלי)'}
+              </div>
+              <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={onFileChange} />
+              <button type="button" onClick={() => fileRef.current?.click()}
+                style={{ padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: 'var(--bg-2,#f3f4f6)', border: '1px solid var(--border,#e5e7eb)', color: 'var(--text-1)' }}>
+                {imageFile ? '🔄 החלף קובץ' : '📷 בחר תמונה / PDF'}
+              </button>
+              {imageFile && (
+                <span style={{ fontSize: 12, color: '#059669', marginRight: 10, fontWeight: 600 }}>✓ {imageFile.name}</span>
+              )}
+              {imagePreview && imageFile?.type?.startsWith('image/') && (
+                <div style={{ marginTop: 10 }}>
+                  <img src={imagePreview} alt="preview" style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 8, objectFit: 'contain', border: '1px solid var(--border)' }} />
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
           <button onClick={onClose} className="btn btn-soft">ביטול</button>
-          <button onClick={save} className="btn btn-primary">שמור</button>
+          <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? 'שומר...' : 'שמור'}</button>
         </div>
       </div>
     </div>
@@ -284,7 +329,13 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
                   <div style={{ fontSize: 11, color: 'var(--text-2)' }}>
                     {c.hasExpiry && rec.expiry_date ? `עד ${fmtDate(rec.expiry_date)}` : rec.event_date ? `ביצוע: ${fmtDate(rec.event_date)}` : '—'}
                   </div>
-                  <div style={{ marginTop: 5 }}><StatusChip days={days} /></div>
+                  <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <StatusChip days={days} />
+                    {rec.image_path && (
+                      <a href={`${SERVER}${rec.image_path}`} target="_blank" rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()} title="פתח מסמך" style={{ fontSize: 14, textDecoration: 'none' }}>📎</a>
+                    )}
+                  </div>
                 </>
               ) : (
                 <div style={{ marginTop: 4 }}><StatusChip days={null} /></div>
@@ -304,7 +355,7 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ color: 'var(--text-2)' }}>
-                  <th style={th}>תאריך</th><th style={th}>תיאור</th><th style={th}>עלות</th><th style={{ width: 30 }}></th>
+                  <th style={th}>תאריך</th><th style={th}>תיאור</th><th style={th}>עלות</th><th style={th}>מסמך</th><th style={{ width: 30 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -313,6 +364,11 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
                     <td style={td}>{fmtDate(r.event_date)}</td>
                     <td style={td}>{r.title || r.notes || '—'}</td>
                     <td style={td}>₪{(r.cost || 0).toLocaleString()}</td>
+                    <td style={td}>
+                      {r.image_path
+                        ? <a href={`${SERVER}${r.image_path}`} target="_blank" rel="noopener noreferrer" title="פתח מסמך" style={{ fontSize: 16, textDecoration: 'none' }}>📎</a>
+                        : <span style={{ color: 'var(--text-2)', fontSize: 11 }}>—</span>}
+                    </td>
                     <td style={td}><button onClick={() => delRecord(r.id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}>🗑️</button></td>
                   </tr>
                 ))}

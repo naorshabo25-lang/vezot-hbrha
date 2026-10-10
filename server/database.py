@@ -188,6 +188,10 @@ def init_db():
         except Exception:
             pass
         try:
+            conn.execute("ALTER TABLE fleet_records ADD COLUMN image_path TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
             conn.execute("ALTER TABLE drivers ADD COLUMN is_terminal_driver INTEGER DEFAULT 0")
         except Exception:
             pass
