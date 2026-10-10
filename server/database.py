@@ -121,6 +121,10 @@ def init_db():
             conn.execute("ALTER TABLE potential_customers ADD COLUMN notes TEXT DEFAULT ''")
         except Exception:
             pass
+        try:
+            conn.execute("ALTER TABLE potential_customers ADD COLUMN category TEXT DEFAULT 'building'")
+        except Exception:
+            pass
         for col in ['last_msg_id TEXT DEFAULT ""', 'msg_read INTEGER DEFAULT 0']:
             try:
                 conn.execute(f"ALTER TABLE customers ADD COLUMN {col}")

@@ -2090,24 +2090,26 @@ async def import_excel(request: Request):
 
 
 @app.get("/api/potential-customers")
-def get_potential_customers(q: str = Query(default=""), limit: int = Query(default=50), offset: int = Query(default=0)):
+def get_potential_customers(q: str = Query(default=""), limit: int = Query(default=50), offset: int = Query(default=0), category: str = Query(default="")):
     with get_db() as conn:
         order = "ORDER BY (notes IS NOT NULL AND notes != '') DESC, name"
+        cat_clause = "AND (category = ? OR (? = 'building' AND (category IS NULL OR category = '')))" if category else ""
+        cat_params = (category, category) if category else ()
         if q:
             pattern = f"%{q}%"
             total = conn.execute(
-                "SELECT COUNT(*) FROM potential_customers WHERE active=1 AND (name LIKE ? OR phone LIKE ? OR area LIKE ?)",
-                (pattern, pattern, pattern)
+                f"SELECT COUNT(*) FROM potential_customers WHERE active=1 {cat_clause} AND (name LIKE ? OR phone LIKE ? OR area LIKE ?)",
+                (*cat_params, pattern, pattern, pattern)
             ).fetchone()[0]
             rows = conn.execute(
-                f"SELECT * FROM potential_customers WHERE active=1 AND (name LIKE ? OR phone LIKE ? OR area LIKE ?) {order} LIMIT ? OFFSET ?",
-                (pattern, pattern, pattern, limit, offset)
+                f"SELECT * FROM potential_customers WHERE active=1 {cat_clause} AND (name LIKE ? OR phone LIKE ? OR area LIKE ?) {order} LIMIT ? OFFSET ?",
+                (*cat_params, pattern, pattern, pattern, limit, offset)
             ).fetchall()
         else:
-            total = conn.execute("SELECT COUNT(*) FROM potential_customers WHERE active=1").fetchone()[0]
+            total = conn.execute(f"SELECT COUNT(*) FROM potential_customers WHERE active=1 {cat_clause}", cat_params).fetchone()[0]
             rows = conn.execute(
-                f"SELECT * FROM potential_customers WHERE active=1 {order} LIMIT ? OFFSET ?",
-                (limit, offset)
+                f"SELECT * FROM potential_customers WHERE active=1 {cat_clause} {order} LIMIT ? OFFSET ?",
+                (*cat_params, limit, offset)
             ).fetchall()
     return {"items": [dict(r) for r in rows], "total": total}
 
@@ -2117,10 +2119,11 @@ async def add_potential_customer(request: Request):
     body = await request.json()
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO potential_customers (name, phone, area, site_address, contact_name, contact_phone, email) VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO potential_customers (name, phone, area, site_address, contact_name, contact_phone, email, category) VALUES (?,?,?,?,?,?,?,?)",
             (body["name"], body.get("phone",""), body.get("area",""),
              body.get("site_address",""), body.get("contact_name",""),
-             body.get("contact_phone",""), body.get("email","")),
+             body.get("contact_phone",""), body.get("email",""),
+             body.get("category","building")),
         )
     return {"ok": True}
 
@@ -2141,7 +2144,7 @@ def delete_potential_customer(cid: int):
 
 
 @app.post("/api/potential-customers/import-excel")
-async def import_potential_excel(request: Request):
+async def import_potential_excel(request: Request, category: str = Query(default="building")):
     import openpyxl, io
     body = await request.body()
     try:
@@ -2187,8 +2190,8 @@ async def import_potential_excel(request: Request):
                 skipped += 1
                 continue
             conn.execute(
-                "INSERT INTO potential_customers (name, phone, area, email, site_address, contact_name, contact_phone) VALUES (?,?,?,?,?,?,?)",
-                (name, g("phone"), g("area"), g("email"), g("site_address"), g("contact_name"), g("contact_phone"))
+                "INSERT INTO potential_customers (name, phone, area, email, site_address, contact_name, contact_phone, category) VALUES (?,?,?,?,?,?,?,?)",
+                (name, g("phone"), g("area"), g("email"), g("site_address"), g("contact_name"), g("contact_phone"), category)
             )
             imported += 1
 

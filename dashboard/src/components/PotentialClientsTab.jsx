@@ -185,6 +185,9 @@ export default function PotentialClientsTab() {
   const [editingId,     setEditingId]     = useState(null);
   const [noteDraft,     setNoteDraft]     = useState('');
   const [saving,        setSaving]        = useState(false);
+  const [importing,     setImporting]     = useState(false);
+  const [importResult,  setImportResult]  = useState(null);
+  const importRef = useRef(null);
 
   const fetchClients = useCallback(async (q, p, cat) => {
     setLoading(true);
@@ -239,6 +242,25 @@ export default function PotentialClientsTab() {
     await fetchClients(search, 0, category);
   };
 
+  const handleExcelImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await fetch(`${API}/api/potential-customers/import-excel?category=${category}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: file,
+      });
+      const data = await res.json();
+      if (!res.ok) { setImportResult({ error: data.detail || 'שגיאה' }); }
+      else { setImportResult(data); fetchClients(search, 0, category); setPage(0); }
+    } catch (err) { setImportResult({ error: String(err) }); }
+    setImporting(false);
+    e.target.value = '';
+  };
+
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
@@ -283,6 +305,20 @@ export default function PotentialClientsTab() {
           ✉️ שלח קמפיין אימייל
         </button>
 
+        {/* Excel import — shown for heating tab */}
+        {category === 'heating' && (
+          <>
+            <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleExcelImport} />
+            <button onClick={() => importRef.current?.click()} disabled={importing}
+              style={{
+                padding: '10px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: importing ? 'default' : 'pointer', border: 'none',
+                background: importing ? '#9ca3af' : 'linear-gradient(135deg, #059669, #047857)', color: '#fff', whiteSpace: 'nowrap',
+              }}>
+              {importing ? '⏳ מייבא...' : '📥 ייבוא מ-Excel'}
+            </button>
+          </>
+        )}
+
         {/* Search */}
         <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
           <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#9ca3af' }}>🔍</span>
@@ -298,6 +334,25 @@ export default function PotentialClientsTab() {
           {total.toLocaleString()} לקוחות פוטנציאלים
         </span>
       </div>
+
+      {/* Import result banner */}
+      {importResult && (
+        <div style={{
+          padding: '12px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+          background: importResult.error ? '#fff5f5' : '#f0fdf4',
+          border: `1px solid ${importResult.error ? '#fecaca' : '#bbf7d0'}`,
+          color: importResult.error ? '#dc2626' : '#166534',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span>
+            {importResult.error
+              ? `❌ שגיאה בייבוא: ${importResult.error}`
+              : `✅ יובאו ${importResult.imported} לקוחות${importResult.skipped ? ` (דולגו ${importResult.skipped} שורות ריקות)` : ''}. עמודות זוהו: ${(importResult.mapped_columns || []).join(', ')}`
+            }
+          </span>
+          <button onClick={() => setImportResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'inherit', opacity: 0.6, padding: '0 4px' }}>✕</button>
+        </div>
+      )}
 
       {/* Add form */}
       {showForm && (
