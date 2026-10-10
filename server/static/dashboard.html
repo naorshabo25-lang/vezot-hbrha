@@ -3549,10 +3549,14 @@ async function loadCustomerDropdown() {
   winterCustomers.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; walkinSel.appendChild(o); });
   const newOpt = document.createElement('option'); newOpt.value = 'new'; newOpt.textContent = '✏️ לקוח מזדמן חדש...'; walkinSel.appendChild(newOpt);
 
-  const areas = [...new Set(_drivers.map(d => d.area).filter(Boolean))];
   const areaSel = document.getElementById('o-area');
-  areaSel.innerHTML = '<option value="">-- בחר אזור לשיוך נהג --</option>';
-  areas.forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; areaSel.appendChild(o); });
+  areaSel.innerHTML = '<option value="">-- בחר נהג --</option>';
+  _drivers.filter(d => d.area).forEach(d => {
+    const o = document.createElement('option');
+    o.value = d.area;
+    o.textContent = `${d.name} | ${d.area}`;
+    areaSel.appendChild(o);
+  });
 }
 
 function fillCustomerData() {
@@ -3598,10 +3602,10 @@ function previewDriver() {
   if (!area) { preview.textContent = ''; return; }
   const driver = _drivers.find(d => d.area === area);
   if (driver) {
-    preview.innerHTML = `נהג משויך: <strong style="color:#1e293b">${driver.name}</strong> <span style="color:#94a3b8">(${driver.phone})</span>`;
+    preview.innerHTML = `<span style="color:#94a3b8">${driver.phone}</span>`;
     preview.style.color = '#15803d';
   } else {
-    preview.innerHTML = `אין נהג רשום לאזור "${area}"`;
+    preview.innerHTML = `אין נהג לאזור "${area}"`;
     preview.style.color = '#b71c1c';
   }
 }
