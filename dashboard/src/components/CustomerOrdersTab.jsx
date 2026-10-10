@@ -670,10 +670,6 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
             style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10 }}>
             {showWinterForm ? '✕ ביטול' : '❄️ לקוח מזדמן חדש'}
           </Btn>
-          <Btn onClick={() => { setShowQuickOrder(v => !v); setShowForm(false); setShowWinterForm(false); setQuickOrderError(''); setQuickOrderSuccess(''); }}
-            style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10, background: showQuickOrder ? '#f3f4f6' : 'linear-gradient(135deg,#0f766e,#0d9488)', color: showQuickOrder ? '#374151' : '#fff', border: 'none', boxShadow: showQuickOrder ? 'none' : '0 2px 8px rgba(13,148,136,0.3)' }}>
-            {showQuickOrder ? '✕ ביטול' : '🚛 הזמנה ❄️ מזדמן'}
-          </Btn>
         </div>
       </div>
 
