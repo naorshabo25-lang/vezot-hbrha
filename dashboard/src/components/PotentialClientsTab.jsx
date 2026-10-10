@@ -173,6 +173,7 @@ export default function PotentialClientsTab() {
   const [loading,       setLoading]       = useState(true);
   const [showCampaign,  setShowCampaign]  = useState(false);
   const [bizInfoUrl,    setBizInfoUrl]    = useState('');
+  const [category,      setCategory]      = useState('building');
 
   const [showForm,      setShowForm]      = useState(false);
   const [newName,       setNewName]       = useState('');
@@ -185,10 +186,10 @@ export default function PotentialClientsTab() {
   const [noteDraft,     setNoteDraft]     = useState('');
   const [saving,        setSaving]        = useState(false);
 
-  const fetchClients = useCallback(async (q, p) => {
+  const fetchClients = useCallback(async (q, p, cat) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/potential-customers?q=${encodeURIComponent(q)}&limit=${PAGE_SIZE}&offset=${p * PAGE_SIZE}`);
+      const res = await fetch(`${API}/api/potential-customers?q=${encodeURIComponent(q)}&limit=${PAGE_SIZE}&offset=${p * PAGE_SIZE}&category=${cat}`);
       const data = await res.json();
       setClients(data.items || []);
       setTotal(data.total || 0);
@@ -196,7 +197,7 @@ export default function PotentialClientsTab() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchClients(search, page); }, [search, page, fetchClients]);
+  useEffect(() => { fetchClients(search, page, category); }, [search, page, category, fetchClients]);
 
   useEffect(() => {
     fetch(`${API}/api/settings`)
@@ -213,17 +214,17 @@ export default function PotentialClientsTab() {
       await fetch(`${API}/api/potential-customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName.trim(), phone: newPhone.trim(), area: newArea.trim(), notes: newNotes.trim() }),
+        body: JSON.stringify({ name: newName.trim(), phone: newPhone.trim(), area: newArea.trim(), notes: newNotes.trim(), category }),
       });
       setNewName(''); setNewPhone(''); setNewArea(''); setNewNotes(''); setFormError(''); setShowForm(false);
-      fetchClients(search, page);
+      fetchClients(search, page, category);
     } catch { setFormError('שגיאה בשמירה'); }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('למחוק לקוח זה?')) return;
     await fetch(`${API}/api/potential-customers/${id}`, { method: 'DELETE' });
-    fetchClients(search, page);
+    fetchClients(search, page, category);
   };
 
   const saveNote = async (id) => {
@@ -235,7 +236,7 @@ export default function PotentialClientsTab() {
     });
     setEditingId(null); setNoteDraft(''); setSaving(false);
     setPage(0);
-    await fetchClients(search, 0);
+    await fetchClients(search, 0, category);
   };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -245,6 +246,25 @@ export default function PotentialClientsTab() {
 
       {showCampaign && <CampaignModal onClose={() => setShowCampaign(false)} />}
 
+      {/* Category sub-tabs */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e5e7eb', marginBottom: 4 }}>
+        {[
+          { key: 'building', label: '🏗️ חברות בנייה ותשתיות' },
+          { key: 'heating',  label: '🔥 לקוחות חימום-חורף'  },
+        ].map(t => (
+          <button key={t.key} onClick={() => { setCategory(t.key); setPage(0); }}
+            style={{
+              padding: '9px 20px', border: 'none', background: 'none', cursor: 'pointer',
+              fontWeight: 700, fontSize: 13, fontFamily: 'inherit',
+              color: category === t.key ? '#7c3aed' : '#6b7280',
+              borderBottom: category === t.key ? '2px solid #7c3aed' : '2px solid transparent',
+              marginBottom: -2,
+            }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {/* Header bar */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <button onClick={() => { setShowForm(v => !v); setFormError(''); }}
@@ -252,7 +272,7 @@ export default function PotentialClientsTab() {
             padding: '10px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: 'none',
             background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: '#fff', whiteSpace: 'nowrap',
           }}>
-          {showForm ? '✕ ביטול' : '+ הוספת לקוח פוטנציאלי'}
+          {showForm ? '✕ ביטול' : category === 'heating' ? '+ הוספת לקוח חורף' : '+ הוספת חברת בנייה'}
         </button>
 
         <button onClick={() => setShowCampaign(true)}
@@ -282,7 +302,7 @@ export default function PotentialClientsTab() {
       {/* Add form */}
       {showForm && (
         <Card>
-          <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1e2d3d', marginBottom: 16 }}>לקוח פוטנציאלי חדש</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1e2d3d', marginBottom: 16 }}>{category === 'heating' ? '🔥 לקוח חימום-חורף חדש' : '🏗️ חברת בנייה חדשה'}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 14 }}>
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 6 }}>שם / חברה *</label>
@@ -318,7 +338,7 @@ export default function PotentialClientsTab() {
       ) : clients.length === 0 ? (
         <Card style={{ textAlign: 'center', padding: 48 }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
-          <p style={{ color: '#9ca3af', fontSize: 14 }}>{search ? 'לא נמצאו תוצאות לחיפוש' : 'אין עדיין לקוחות פוטנציאלים'}</p>
+          <p style={{ color: '#9ca3af', fontSize: 14 }}>{search ? 'לא נמצאו תוצאות לחיפוש' : category === 'heating' ? 'אין עדיין לקוחות חימום-חורף' : 'אין עדיין חברות בנייה'}</p>
         </Card>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
