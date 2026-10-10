@@ -3001,6 +3001,7 @@ async function loadTasks() {
 
   // נהגים עם הזמנות פתוחות למחר, או נסיעת מסוף למחר
   const drivers = allDrivers.filter(d =>
+    (d.orders_by_date[today] || []).some(o => o.status !== 'הושלם' && o.status !== 'בוטל') ||
     (d.orders_by_date[tomorrow] || []).some(o => o.status !== 'הושלם') ||
     (tripsByDriver[d.id] && tripsByDriver[d.id].length > 0)
   );
@@ -3066,6 +3067,28 @@ async function loadTasks() {
   }
 
   container.innerHTML = drivers.map(d => {
+    // Today's pending orders (not done, not cancelled)
+    const todayOrds = (d.orders_by_date[today] || []).filter(o =>
+      o.status !== 'הושלם' && o.status !== 'בוטל'
+    );
+    const todayRowsHtml = todayOrds.map((o, idx) => `
+      <div class="task-row" data-order-id="${o.id}" style="border-right:3px solid #f59e0b">
+        <div class="drag-handle" style="opacity:0.3">⠿</div>
+        <div class="task-num" style="background:#fef3c7;color:#92400e">${idx + 1}</div>
+        <div class="task-info">
+          <strong>${o.customer_name}</strong>
+          <span>${o.site_address}</span>
+          ${o.contact_name ? `<span> · ${o.contact_name}${o.contact_phone ? ' · ' + o.contact_phone : ''}</span>` : ''}
+        </div>
+        <div class="task-qty">
+          ${o.quantity} ל'
+          ${o.actual_quantity ? `<span style="color:#16a34a;font-size:0.82em;font-weight:800;display:block;background:#f0fdf4;border-radius:4px;padding:1px 4px;margin-top:2px">✓ ${o.actual_quantity} ל'</span>` : ''}
+        </div>
+        <select class="status-pill s-${o.status}" onchange="updateTaskStatus(${o.id}, this.value, this)">
+          ${STATUS_OPTIONS.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>`).join('');
+
     const tomorrowOrds = d.orders_by_date[tomorrow] || [];
     // dedup by id AND by customer+site to guard against all types of duplicates
     const seenIds = new Set();
@@ -3204,8 +3227,16 @@ async function loadTasks() {
             </button>` : ''}
           </div>
         </div>
+        ${todayOrds.length ? `
+        <div class="task-day-header" style="background:#fffbeb;color:#92400e;border-right:3px solid #f59e0b">
+          ⏰ היום — ${todayOrds.length} הזמנות פתוחות
+        </div>
+        <div class="task-rows-container" data-date-key="${today}" data-driver-name="${d.name}">${todayRowsHtml}</div>
+        ` : ''}
+        ${orders.length || !todayOrds.length ? `
         <div class="task-day-header">${label}${orders.length ? ` — ${orders.length} הזמנות` : ''}</div>
         <div class="task-rows-container" data-date-key="${tomorrow}" data-driver-name="${d.name}">${rowsHtml}</div>
+        ` : ''}
       </div>`;
   }).join('');
 }
