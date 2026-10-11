@@ -2199,6 +2199,17 @@ async def import_potential_excel(request: Request, category: str = Query(default
             "mapped_columns": list(col_idx.keys())}
 
 
+@app.post("/api/trigger-admin-schedule")
+def trigger_admin_schedule():
+    """שליחת סידור ידנית למנהל — במקום אוטומטי."""
+    from scheduler import send_admin_schedule
+    try:
+        send_admin_schedule()
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 _campaign_status: dict = {"running": False, "sent": 0, "failed": 0, "total": 0, "done": True, "errors": []}
 
 

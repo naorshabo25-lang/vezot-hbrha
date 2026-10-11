@@ -203,12 +203,7 @@ def start_scheduler(hour: int = 14, minute: int = 0,
         CronTrigger(hour=0, minute=10, timezone="Asia/Jerusalem"),
         id="materialize_tomorrow", replace_existing=True,
     )
-    if admin_hour is not None:
-        scheduler.add_job(
-            send_admin_schedule,
-            CronTrigger(hour=admin_hour, minute=admin_minute, timezone="Asia/Jerusalem"),
-            id="admin_schedule", replace_existing=True,
-        )
+    # סידור למנהל — ידני בלבד (כפתור בדשבורד), לא אוטומטי
     # תזכורת רק בסוף יום — רק הזמנות ללא ביצוע/ביטול
     scheduler.add_job(
         send_end_of_day,
@@ -218,10 +213,7 @@ def start_scheduler(hour: int = 14, minute: int = 0,
     scheduler.start()
     print(f"[Scheduler] הודעות ללקוחות: {hour:02d}:{minute:02d}")
     print(f"[Scheduler] יצירת הזמנות קבועות: 00:10")
-    if admin_hour is not None:
-        print(f"[Scheduler] *** סידור למנהל רשום לשעה: {admin_hour:02d}:{admin_minute:02d} ***")
-    else:
-        print("[Scheduler] *** סידור למנהל: לא הוגדר (admin_schedule_hour חסר/ריק) ***")
+    print("[Scheduler] *** סידור למנהל: ידני בלבד (כפתור בדשבורד) ***")
     print(f"[Scheduler] סגירת יום (ביצוע לא מדווח): {end_of_day_hour:02d}:{end_of_day_minute:02d}")
 
 
