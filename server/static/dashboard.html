@@ -779,9 +779,12 @@
           <span id="tasks-last-refresh" style="font-size:0.78em;color:#94a3b8"></span>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button id="btn-send-admin-schedule" class="btn" style="background:#7c3aed;color:#fff;font-size:0.9em;padding:8px 18px;border:none"
+            onclick="sendAdminSchedule(this)">📋 שלח סידור לבדיקה</button>
           <button class="btn btn-primary" style="background:#15803d;font-size:0.9em;padding:8px 18px"
             onclick="openScheduleConfirm(this)">💬 שלח סידור לנהגים</button>
         </div>
+        <div id="admin-schedule-msg" style="display:none;margin-top:8px;padding:8px 14px;border-radius:8px;font-size:0.88em;font-weight:600"></div>
       </div>
       <div id="tasks-drivers-result" style="display:none;margin-bottom:12px;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0"></div>
       <div id="tasks-container"></div>
@@ -4112,6 +4115,32 @@ async function deleteFleetRecord(rid, truckId) {
   if (!confirm('למחוק רשומה זו?')) return;
   await fetch(`/api/fleet/records/${rid}`, { method: 'DELETE' });
   loadFleetRecords(truckId);
+}
+
+async function sendAdminSchedule(btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳ שולח...';
+  const msgEl = document.getElementById('admin-schedule-msg');
+  msgEl.style.display = 'none';
+  try {
+    const res = await fetch('/api/trigger-admin-schedule', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      msgEl.textContent = '✅ הסידור נשלח אליך בוואצאפ';
+      msgEl.style.cssText = 'display:block;margin-top:8px;padding:8px 14px;border-radius:8px;font-size:0.88em;font-weight:600;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0';
+    } else {
+      msgEl.textContent = '❌ שגיאה: ' + (data.error || 'לא ידוע');
+      msgEl.style.cssText = 'display:block;margin-top:8px;padding:8px 14px;border-radius:8px;font-size:0.88em;font-weight:600;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca';
+    }
+    setTimeout(() => { msgEl.style.display = 'none'; }, 6000);
+  } catch(e) {
+    msgEl.textContent = '❌ שגיאת רשת';
+    msgEl.style.cssText = 'display:block;margin-top:8px;padding:8px 14px;border-radius:8px;font-size:0.88em;font-weight:600;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca';
+    setTimeout(() => { msgEl.style.display = 'none'; }, 6000);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📋 שלח סידור לבדיקה';
+  }
 }
 
 </script>

@@ -140,8 +140,6 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [quickOrderForm,      setQuickOrderForm]      = useState({ site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: todayISO(), area: '', product: 'סולר תחבורה', delivery_time: '' });
   const [quickOrderError,     setQuickOrderError]     = useState('');
   const [quickOrderSuccess,   setQuickOrderSuccess]   = useState('');
-  const [sendingSchedule,     setSendingSchedule]     = useState(false);
-  const [scheduleMsg,         setScheduleMsg]         = useState(null); // {ok, text}
 
   const safeJson = r => r.ok ? r.json() : [];
   const load = () =>
@@ -672,32 +670,6 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* כפתור שליחת סידור ידני למנהל */}
-          <button
-            disabled={sendingSchedule}
-            onClick={async () => {
-              setSendingSchedule(true);
-              setScheduleMsg(null);
-              try {
-                const res = await fetch(`${API}/api/trigger-admin-schedule`, { method: 'POST' });
-                const data = await res.json();
-                setScheduleMsg({ ok: data.ok, text: data.ok ? '✅ הסידור נשלח אליך בוואצאפ' : `❌ שגיאה: ${data.error}` });
-              } catch (e) {
-                setScheduleMsg({ ok: false, text: `❌ שגיאת תקשורת` });
-              }
-              setSendingSchedule(false);
-              setTimeout(() => setScheduleMsg(null), 6000);
-            }}
-            style={{
-              padding: '9px 18px', fontSize: 13, borderRadius: 10, fontWeight: 700, cursor: sendingSchedule ? 'default' : 'pointer',
-              border: 'none', fontFamily: 'inherit',
-              background: sendingSchedule ? '#9ca3af' : 'linear-gradient(135deg,#7c3aed,#6d28d9)',
-              color: '#fff', boxShadow: sendingSchedule ? 'none' : '0 2px 8px rgba(124,58,237,0.3)',
-              whiteSpace: 'nowrap',
-            }}>
-            {sendingSchedule ? '⏳ שולח...' : '📋 שלח סידור לבדיקה'}
-          </button>
-
           <Btn variant="primary" onClick={() => { setShowForm(v => !v); setShowWinterForm(false); setShowQuickOrder(false); setError(''); }}
             style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10 }}>
             {showForm ? '✕ ביטול' : '+ לקוח קבוע חדש'}
@@ -708,18 +680,6 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
           </Btn>
         </div>
       </div>
-
-      {/* הודעת תוצאה שליחת סידור */}
-      {scheduleMsg && (
-        <div style={{
-          padding: '11px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-          background: scheduleMsg.ok ? '#f0fdf4' : '#fff5f5',
-          border: `1px solid ${scheduleMsg.ok ? '#bbf7d0' : '#fecaca'}`,
-          color: scheduleMsg.ok ? '#166534' : '#dc2626',
-        }}>
-          {scheduleMsg.text}
-        </div>
-      )}
 
       {/* ─── טופס הזמנה מהירה ללקוח מזדמן ─── */}
       {showQuickOrder && (
