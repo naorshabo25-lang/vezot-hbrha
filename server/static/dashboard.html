@@ -1478,6 +1478,7 @@ function orderRowHtml(o, showStatus = true, isPast = false) {
         ${o.actual_quantity ? `<div style="font-size:0.85em;font-weight:800;color:#16a34a;margin-top:2px;background:#f0fdf4;padding:1px 6px;border-radius:4px;display:inline-block">✓ ${o.actual_quantity} ל' בפועל</div>` : ''}
         ${o.cancel_reason   ? `<div style="font-size:0.78em;color:#be123c;margin-top:2px" title="סיבת ביטול">❌ ${o.cancel_reason}</div>` : ''}
       </td>
+      <td style="padding:6px 8px;font-size:0.82em;font-weight:600;color:#0f766e;white-space:nowrap">${o.product || 'סולר תחבורה'}</td>
       <td style="padding:6px 8px">${o.driver_name ? `<span class="tag" style="font-size:0.88em">${o.driver_name}</span>` : '<span style="color:#cbd5e1">—</span>'}</td>
       <td style="padding:6px 8px">${showStatus ? `<select class="status-select" style="font-size:0.82em;padding:3px 6px" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="badge badge-${o.status}">${o.status}</span>`}</td>
       <td style="padding:6px 8px;color:#64748b;font-size:0.9em;white-space:nowrap">${o.delivery_time || '<span style="color:#cbd5e1">—</span>'}</td>
@@ -1545,6 +1546,7 @@ function renderActiveOrders() {
     <th style="padding:5px 8px">כתובת</th><th style="padding:5px 8px">איש קשר</th>
     <th style="padding:5px 8px">טלפון</th>
     <th style="padding:5px 8px">כמות / בפועל ✓</th>
+    <th style="padding:5px 8px">מוצר</th>
     <th style="padding:5px 8px">נהג</th><th style="padding:5px 8px">סטטוס</th>
     <th style="padding:5px 8px">שעת אספקה</th><th style="padding:5px 8px">נכנסה</th><th style="padding:5px 8px">פעולות</th>
   </tr></thead>`;
@@ -1783,6 +1785,7 @@ function renderOrdersByDriver() {
             ${o.actual_quantity ? `<div style="font-size:0.82em;color:#16a34a;font-weight:700">✓ ${o.actual_quantity} ל'</div>` : ''}
             ${o.cancel_reason   ? `<div style="font-size:0.78em;color:#be123c">❌ ${o.cancel_reason}</div>` : ''}
           </td>
+          <td style="padding:5px 8px;font-size:0.82em;font-weight:600;color:#0f766e;white-space:nowrap">${o.product||'סולר תחבורה'}</td>
           <td style="padding:5px 8px"><select class="status-select" style="font-size:0.82em" onchange="updateStatus(${o.id}, this.value)">${STATUS_OPTIONS.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></td>
           <td style="padding:5px 8px;color:#64748b;font-size:0.85em">${o.delivery_time||'—'}</td>
           <td style="padding:4px 6px">
@@ -1814,7 +1817,7 @@ function renderOrdersByDriver() {
               <thead><tr style="font-size:0.8em">
                 <th style="padding:4px 8px">#</th><th style="padding:4px 8px">לקוח</th>
                 <th style="padding:4px 8px">כתובת</th><th style="padding:4px 8px">כמות</th>
-                <th style="padding:4px 8px">סטטוס</th><th style="padding:4px 8px">שעת אספקה</th><th style="padding:4px 8px"></th>
+                <th style="padding:4px 8px">מוצר</th><th style="padding:4px 8px">סטטוס</th><th style="padding:4px 8px">שעת אספקה</th><th style="padding:4px 8px"></th>
               </tr></thead>
               <tbody>${rows}</tbody>
             </table>
