@@ -1082,6 +1082,23 @@
         <select id="em-driver" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937"><option value="">-- ללא נהג --</option></select>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">מוצר</label>
+        <select id="em-product" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937">
+          <option value="סולר תחבורה">⛽ סולר תחבורה</option>
+          <option value="נפט נוזל">🛢️ נפט נוזל</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:0.82em;font-weight:600;color:#6b7280">שעת אספקה</label>
+        <select id="em-delivery-time" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937">
+          <option value="">-- לא מוגדר --</option>
+          <option value="7:00-9:00">7:00-9:00</option>
+          <option value="9:00-11:00">9:00-11:00</option>
+          <option value="11:00-13:00">11:00-13:00</option>
+          <option value="13:00-15:00">13:00-15:00</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
         <label style="font-size:0.82em;font-weight:600;color:#6b7280">מוצר נוסף</label>
         <select id="em-extras" style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fafafa;color:#1f2937" onchange="toggleUreaInput('em-urea-qty',this.value)">
           <option value="">-- ללא --</option>
@@ -1903,6 +1920,8 @@ function openEditOrder(order) {
     document.getElementById('em-urea-qty').value = '';
     document.getElementById('em-urea-qty').style.display = 'none';
   }
+  document.getElementById('em-product').value       = order.product || 'סולר תחבורה';
+  document.getElementById('em-delivery-time').value = order.delivery_time || '';
   // populate driver select
   const driverSel = document.getElementById('em-driver');
   driverSel.innerHTML = '<option value="">-- ללא נהג --</option>' +
@@ -1929,6 +1948,8 @@ function saveEditOrder() {
       const qty = document.getElementById('em-urea-qty').value;
       return sel === 'אוריאה' && qty ? `אוריאה: ${qty} י"ח` : sel;
     })(),
+    product:       document.getElementById('em-product').value || 'סולר תחבורה',
+    delivery_time: document.getElementById('em-delivery-time').value || '',
   };
   if (!body.customer_name || !body.site_address) return alert('יש למלא שם לקוח וכתובת');
   fetch('/api/orders/' + _editOrderId, {

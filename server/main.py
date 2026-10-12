@@ -1434,12 +1434,15 @@ async def update_order(order_id: int, request: Request):
         conn.execute(
             """UPDATE orders SET
                customer_name = ?, site_address = ?, contact_name = ?, contact_phone = ?,
-               quantity = ?, order_date = ?, driver_id = ?, extras = ?
+               quantity = ?, order_date = ?, driver_id = ?, extras = ?,
+               product = ?, delivery_time = ?
                WHERE id = ?""",
             (body.get("customer_name"), body.get("site_address"),
              body.get("contact_name", ""), body.get("contact_phone", ""),
              body.get("quantity"), body.get("order_date"),
-             driver_id, body.get("extras", ""), order_id),
+             driver_id, body.get("extras", ""),
+             body.get("product", "סולר תחבורה"), body.get("delivery_time", ""),
+             order_id),
         )
     return {"ok": True}
 
