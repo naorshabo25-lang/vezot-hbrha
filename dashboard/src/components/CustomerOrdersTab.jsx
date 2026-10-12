@@ -75,7 +75,7 @@ const EMPTY_ORDER = {
 };
 
 const DELIVERY_TIMES = ['7:00-9:00', '9:00-11:00', '11:00-13:00', '13:00-15:00'];
-const PRODUCTS = ['סולר תחבורה', 'נפט נוזל'];
+const PRODUCTS = ['סולר תחבורה', 'נפט', 'נוזל גנרטורים וחימום'];
 
 const EMPTY_RECURRING = { days_of_week: [0, 1, 2, 3, 4], start_date: '', end_date: '' };
 
