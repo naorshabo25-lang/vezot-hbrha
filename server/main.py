@@ -1250,6 +1250,8 @@ async def add_order_manual(request: Request):
         from datetime import date as dt
         order_date = body.get("order_date") or dt.today().isoformat()
         extras = body.get("extras", "")
+        product = body.get("product", "סולר תחבורה") or "סולר תחבורה"
+        delivery_time = body.get("delivery_time", "") or ""
         max_sort = conn.execute(
             "SELECT COALESCE(MAX(sort_order), -1) FROM orders WHERE driver_id IS ? AND order_date = ?",
             (driver_id, order_date)
@@ -1257,10 +1259,10 @@ async def add_order_manual(request: Request):
         new_sort = max_sort + 1
         conn.execute(
             """INSERT INTO orders
-               (customer_id, customer_name, site_address, contact_name, contact_phone, quantity, driver_id, order_date, extras, sort_order)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (customer_id, customer_name, site_address, contact_name, contact_phone, quantity, driver_id, order_date, extras, sort_order, product, delivery_time)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (customer_id, body["customer_name"], body["site_address"],
-             body["contact_name"], body["contact_phone"], body["quantity"], driver_id, order_date, extras, new_sort),
+             body["contact_name"], body["contact_phone"], body["quantity"], driver_id, order_date, extras, new_sort, product, delivery_time),
         )
     _notify_admin_new_order({
         "customer_name": body["customer_name"], "site_address": body["site_address"],

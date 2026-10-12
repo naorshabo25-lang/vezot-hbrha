@@ -192,6 +192,10 @@ def init_db():
         except Exception:
             pass
         try:
+            conn.execute("ALTER TABLE orders ADD COLUMN product TEXT DEFAULT 'סולר תחבורה'")
+        except Exception:
+            pass
+        try:
             conn.execute("ALTER TABLE drivers ADD COLUMN is_terminal_driver INTEGER DEFAULT 0")
         except Exception:
             pass

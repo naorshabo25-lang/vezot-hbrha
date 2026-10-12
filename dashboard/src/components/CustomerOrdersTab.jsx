@@ -71,7 +71,11 @@ const EMPTY_WINTER = {
 
 const EMPTY_ORDER = {
   site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: '', area: '',
+  product: 'סולר תחבורה', delivery_time: '',
 };
+
+const DELIVERY_TIMES = ['7:00-9:00', '9:00-11:00', '11:00-13:00', '13:00-15:00'];
+const PRODUCTS = ['סולר תחבורה', 'נפט נוזל'];
 
 const EMPTY_RECURRING = { days_of_week: [0, 1, 2, 3, 4], start_date: '', end_date: '' };
 
@@ -133,7 +137,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [paymentForm,      setPaymentForm]      = useState({});
   const [showQuickOrder,      setShowQuickOrder]      = useState(false);
   const [quickOrderCustId,    setQuickOrderCustId]    = useState('');
-  const [quickOrderForm,      setQuickOrderForm]      = useState({ site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: todayISO(), area: '' });
+  const [quickOrderForm,      setQuickOrderForm]      = useState({ site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: todayISO(), area: '', product: 'סולר תחבורה', delivery_time: '' });
   const [quickOrderError,     setQuickOrderError]     = useState('');
   const [quickOrderSuccess,   setQuickOrderSuccess]   = useState('');
   const [sendingSchedule,     setSendingSchedule]     = useState(false);
@@ -499,12 +503,14 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
           quantity:      quickOrderForm.quantity,
           order_date:    quickOrderForm.order_date || todayISO(),
           area:          quickOrderForm.area || cust.area || '',
+          product:       quickOrderForm.product || 'סולר תחבורה',
+          delivery_time: quickOrderForm.delivery_time || '',
         }),
       });
       if (!res.ok) throw new Error();
       await load();
       setQuickOrderSuccess(`✓ הזמנה נוצרה ללקוח ${cust.name}`);
-      setQuickOrderForm({ site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: todayISO(), area: '' });
+      setQuickOrderForm({ site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: todayISO(), area: '', product: 'סולר תחבורה', delivery_time: '' });
       setQuickOrderCustId('');
       setTimeout(() => { setQuickOrderSuccess(''); setShowQuickOrder(false); }, 3000);
     } catch { setQuickOrderError('שגיאה ביצירת ההזמנה'); }
@@ -527,6 +533,8 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
           quantity: orderForm.quantity,
           order_date: orderForm.order_date || todayISO(),
           area: orderForm.area,
+          product: orderForm.product || 'סולר תחבורה',
+          delivery_time: orderForm.delivery_time || '',
         }),
       });
       if (!res.ok) throw new Error();
@@ -776,6 +784,21 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                 onChange={e => setQuickOrderForm(f => ({ ...f, area: e.target.value }))}>
                 <option value="">-- בחר אזור --</option>
                 {driverAreas.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>מוצר</label>
+              <select style={{ ...inputStyle, background: '#fff' }} value={quickOrderForm.product}
+                onChange={e => setQuickOrderForm(f => ({ ...f, product: e.target.value }))}>
+                {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>שעת אספקה</label>
+              <select style={{ ...inputStyle, background: '#fff' }} value={quickOrderForm.delivery_time}
+                onChange={e => setQuickOrderForm(f => ({ ...f, delivery_time: e.target.value }))}>
+                <option value="">-- לא מוגדר --</option>
+                {DELIVERY_TIMES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
           </div>
@@ -1431,6 +1454,21 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                           {orderAreaOptions.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
                       </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>מוצר</label>
+                        <select style={{ ...inputStyle, background: '#fff' }} value={orderForm.product}
+                          onChange={e => setOrderForm(f => ({ ...f, product: e.target.value }))}>
+                          {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>שעת אספקה</label>
+                        <select style={{ ...inputStyle, background: '#fff' }} value={orderForm.delivery_time}
+                          onChange={e => setOrderForm(f => ({ ...f, delivery_time: e.target.value }))}>
+                          <option value="">-- לא מוגדר --</option>
+                          {DELIVERY_TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
                     </div>
 
                     {orderForm.area && (
@@ -1463,7 +1501,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #e9ecef' }}>
-                        {['#', 'תאריך', 'כתובת', 'איש קשר', 'כמות', 'שעת אספקה', 'נהג', 'סטטוס', 'פעולות'].map(h => (
+                        {['#', 'תאריך', 'כתובת', 'איש קשר', 'כמות', 'מוצר', 'שעת אספקה', 'נהג', 'סטטוס', 'פעולות'].map(h => (
                           <th key={h} style={{ padding: '10px 14px', textAlign: 'right', color: '#6b7280', fontWeight: 700, fontSize: 11, letterSpacing: 0.5 }}>{h}</th>
                         ))}
                       </tr>
@@ -1501,6 +1539,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                                 </div>
                               )}
                             </td>
+                            <td style={{ padding: '10px 14px', color: '#374151', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600 }}>{o.product || 'סולר תחבורה'}</td>
                             <td style={{ padding: '10px 14px', color: '#6b7280', whiteSpace: 'nowrap' }}>{o.delivery_time || '—'}</td>
                             <td style={{ padding: '10px 14px', color: '#374151' }}>{o.driver_name || '—'}</td>
                             <td style={{ padding: '10px 14px' }}>
