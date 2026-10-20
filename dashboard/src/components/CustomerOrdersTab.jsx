@@ -76,6 +76,7 @@ const EMPTY_ORDER = {
 
 const DELIVERY_TIMES = ['7:00-9:00', '9:00-11:00', '11:00-13:00', '13:00-15:00'];
 const PRODUCTS = ['סולר תחבורה', 'נפט', 'נוזל גנרטורים וחימום'];
+const QTY_RANGES = ['100-200', '200-400', '400-600', '800-1000', '1500-2000', '2000-9900'];
 
 const EMPTY_RECURRING = { days_of_week: [0, 1, 2, 3, 4], start_date: '', end_date: '' };
 
@@ -140,6 +141,8 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [quickOrderForm,      setQuickOrderForm]      = useState({ site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: todayISO(), area: '', product: 'סולר תחבורה', delivery_time: '' });
   const [quickOrderError,     setQuickOrderError]     = useState('');
   const [quickOrderSuccess,   setQuickOrderSuccess]   = useState('');
+  const [quickQtyCustom,      setQuickQtyCustom]      = useState(false);
+  const [orderQtyCustom,      setOrderQtyCustom]      = useState(false);
 
   const safeJson = r => r.ok ? r.json() : [];
   const load = () =>
@@ -485,7 +488,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
 
   const handleQuickAddOrder = async () => {
     if (!quickOrderCustId) return setQuickOrderError('נא לבחור לקוח');
-    if (!quickOrderForm.quantity || +quickOrderForm.quantity <= 0) return setQuickOrderError('נא להזין כמות תקינה');
+    if (!quickOrderForm.quantity) return setQuickOrderError('נא לבחור כמות');
     const cust = customers.find(c => c.id === +quickOrderCustId);
     if (!cust) return setQuickOrderError('לקוח לא נמצא');
     try {
@@ -730,8 +733,20 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
             </div>
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>כמות (ליטרים) *</label>
-              <input type="number" min="1" style={inputStyle} value={quickOrderForm.quantity} placeholder="0"
-                onChange={e => setQuickOrderForm(f => ({ ...f, quantity: e.target.value }))} />
+              <select style={{ ...inputStyle, background: '#fff' }}
+                value={quickQtyCustom ? 'custom' : (quickOrderForm.quantity || '')}
+                onChange={e => {
+                  if (e.target.value === 'custom') { setQuickQtyCustom(true); setQuickOrderForm(f => ({ ...f, quantity: '' })); }
+                  else { setQuickQtyCustom(false); setQuickOrderForm(f => ({ ...f, quantity: e.target.value })); }
+                }}>
+                <option value="">-- בחר טווח --</option>
+                {QTY_RANGES.map(r => <option key={r} value={r}>{r} ל'</option>)}
+                <option value="custom">הזן ידנית ✏️</option>
+              </select>
+              {quickQtyCustom && (
+                <input type="number" min="1" style={{ ...inputStyle, marginTop: 6 }} value={quickOrderForm.quantity} placeholder="כמות מדויקת"
+                  onChange={e => setQuickOrderForm(f => ({ ...f, quantity: e.target.value }))} />
+              )}
             </div>
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>תאריך</label>
@@ -1398,8 +1413,20 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                       </div>
                       <div>
                         <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>כמות (ליטר) *</label>
-                        <input type="number" min="1" style={inputStyle} value={orderForm.quantity} placeholder="0"
-                          onChange={e => setOrderForm(f => ({ ...f, quantity: e.target.value }))} />
+                        <select style={{ ...inputStyle, background: '#fff' }}
+                          value={orderQtyCustom ? 'custom' : (orderForm.quantity || '')}
+                          onChange={e => {
+                            if (e.target.value === 'custom') { setOrderQtyCustom(true); setOrderForm(f => ({ ...f, quantity: '' })); }
+                            else { setOrderQtyCustom(false); setOrderForm(f => ({ ...f, quantity: e.target.value })); }
+                          }}>
+                          <option value="">-- בחר טווח --</option>
+                          {QTY_RANGES.map(r => <option key={r} value={r}>{r} ל'</option>)}
+                          <option value="custom">הזן ידנית ✏️</option>
+                        </select>
+                        {orderQtyCustom && (
+                          <input type="number" min="1" style={{ ...inputStyle, marginTop: 6 }} value={orderForm.quantity} placeholder="כמות מדויקת"
+                            onChange={e => setOrderForm(f => ({ ...f, quantity: e.target.value }))} />
+                        )}
                       </div>
                       <div>
                         <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>תאריך הזמנה</label>
