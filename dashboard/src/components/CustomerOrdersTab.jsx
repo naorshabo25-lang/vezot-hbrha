@@ -143,11 +143,6 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [quickOrderSuccess,   setQuickOrderSuccess]   = useState('');
   const [quickQtyCustom,      setQuickQtyCustom]      = useState(false);
   const [orderQtyCustom,      setOrderQtyCustom]      = useState(false);
-  const [showBroadcast,       setShowBroadcast]       = useState(false);
-  const [broadcastTemplate,   setBroadcastTemplate]   = useState('היי {name} ערב טוב מה שלומך?, זהו הבוט החדש של וזאת הברכה דלקים. האם תרצה הזמנת תדלוק למחר?');
-  const [broadcastSelected,   setBroadcastSelected]   = useState(new Set());
-  const [broadcasting,        setBroadcasting]        = useState(false);
-  const [broadcastResult,     setBroadcastResult]     = useState(null);
 
   const safeJson = r => r.ok ? r.json() : [];
   const load = () =>
@@ -686,86 +681,8 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
             style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10 }}>
             {showWinterForm ? '✕ ביטול' : '❄️ לקוח מזדמן חדש'}
           </Btn>
-          <button onClick={() => { setShowBroadcast(v => !v); setBroadcastResult(null); setBroadcastSelected(new Set()); }}
-            style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10, fontWeight: 700, cursor: 'pointer', border: 'none', fontFamily: 'inherit', background: showBroadcast ? '#374151' : 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff', whiteSpace: 'nowrap' }}>
-            {showBroadcast ? '✕ ביטול' : '📢 שלח תפוצה'}
-          </button>
         </div>
       </div>
-
-      {/* ─── פאנל תפוצה ─── */}
-      {showBroadcast && (() => {
-        const allActive = customers.filter(c => c.active !== 0);
-        const allSelected = allActive.length > 0 && broadcastSelected.size === allActive.length;
-        const toggleAll = () => setBroadcastSelected(allSelected ? new Set() : new Set(allActive.map(c => c.id)));
-        const toggleOne = id => setBroadcastSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
-        const handleSend = async () => {
-          if (!broadcastTemplate.trim()) return;
-          if (broadcastSelected.size === 0) return;
-          setBroadcasting(true); setBroadcastResult(null);
-          try {
-            const res = await fetch(`${API}/api/broadcast`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ template: broadcastTemplate, customer_ids: [...broadcastSelected] }),
-            });
-            const data = await res.json();
-            setBroadcastResult(data);
-          } catch { setBroadcastResult({ ok: false, error: 'שגיאת תקשורת' }); }
-          setBroadcasting(false);
-        };
-        return (
-          <div style={{ background: '#fff', borderRadius: 14, padding: 22, border: '2px solid #fde68a', boxShadow: '0 2px 12px rgba(245,158,11,0.1)', marginBottom: 4 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 800, color: '#92400e', margin: '0 0 16px' }}>📢 שליחת הודעת תפוצה ללקוחות</h3>
-
-            {/* תבנית הודעה */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>תוכן ההודעה ({'{name}'} יוחלף בשם הלקוח)</label>
-              <textarea rows={3} style={{ width: '100%', padding: '10px 13px', borderRadius: 9, border: '1.5px solid #fcd34d', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', background: '#fffbeb', color: '#1e2d3d', outline: 'none', boxSizing: 'border-box' }}
-                value={broadcastTemplate} onChange={e => setBroadcastTemplate(e.target.value)} />
-              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
-                תצוגה מקדימה: {broadcastTemplate.replace('{name}', 'שם הלקוח')}
-              </div>
-            </div>
-
-            {/* בחירת לקוחות */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-                  בחר הכל ({allActive.length} לקוחות פעילים)
-                </label>
-                <span style={{ fontSize: 12, color: '#6b7280' }}>נבחרו: {broadcastSelected.size}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6, maxHeight: 220, overflowY: 'auto', padding: '10px 12px', background: '#fafafa', borderRadius: 9, border: '1px solid #f3f4f6' }}>
-                {allActive.map(c => (
-                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, cursor: 'pointer', padding: '4px 6px', borderRadius: 6, background: broadcastSelected.has(c.id) ? '#fef3c7' : 'transparent' }}>
-                    <input type="checkbox" checked={broadcastSelected.has(c.id)} onChange={() => toggleOne(c.id)} />
-                    <span style={{ fontWeight: broadcastSelected.has(c.id) ? 700 : 400 }}>{c.name}</span>
-                    {!c.phone && <span style={{ fontSize: 10, color: '#ef4444' }}>ללא טלפון</span>}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* תוצאה */}
-            {broadcastResult && (
-              <div style={{ marginBottom: 14, padding: '10px 16px', borderRadius: 9, fontSize: 13, fontWeight: 700,
-                background: broadcastResult.ok ? '#f0fdf4' : '#fef2f2',
-                border: `1px solid ${broadcastResult.ok ? '#bbf7d0' : '#fecaca'}`,
-                color: broadcastResult.ok ? '#166534' : '#dc2626' }}>
-                {broadcastResult.ok
-                  ? `✅ נשלח בהצלחה ל-${broadcastResult.sent} לקוחות${broadcastResult.failed > 0 ? ` (${broadcastResult.failed} נכשלו)` : ''}`
-                  : `❌ שגיאה: ${broadcastResult.error}`}
-              </div>
-            )}
-
-            <button onClick={handleSend} disabled={broadcasting || broadcastSelected.size === 0}
-              style={{ padding: '10px 28px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: broadcasting || broadcastSelected.size === 0 ? 'default' : 'pointer', border: 'none', fontFamily: 'inherit', background: broadcasting || broadcastSelected.size === 0 ? '#d1d5db' : 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff' }}>
-              {broadcasting ? '⏳ שולח...' : `📤 שלח ל-${broadcastSelected.size} לקוחות`}
-            </button>
-          </div>
-        );
-      })()}
 
       {/* ─── טופס הזמנה מהירה ללקוח מזדמן ─── */}
       {showQuickOrder && (

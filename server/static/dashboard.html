@@ -788,7 +788,9 @@
           <button class="btn btn-sm" style="background:#f1f5f9;color:#374151;border:1px solid #e2e8f0" onclick="loadTasks()">↺ רענן</button>
           <span id="tasks-last-refresh" style="font-size:0.78em;color:#94a3b8"></span>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:0.9em;padding:8px 18px;border:none"
+            onclick="openBroadcastModal()">📢 שלח תפוצה</button>
           <button id="btn-send-admin-schedule" class="btn" style="background:#7c3aed;color:#fff;font-size:0.9em;padding:8px 18px;border:none"
             onclick="sendAdminSchedule(this)">📋 שלח סידור לבדיקה</button>
           <button class="btn btn-primary" style="background:#15803d;font-size:0.9em;padding:8px 18px"
@@ -1059,6 +1061,41 @@
         </div>
       </div>
     </div>
+
+<!-- ── מודל תפוצה ── -->
+<div id="broadcast-modal" onclick="if(event.target===this)closeBroadcastModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1100;align-items:flex-start;justify-content:center;backdrop-filter:blur(2px);overflow-y:auto;padding:32px 16px">
+  <div style="background:white;border-radius:18px;padding:28px;width:100%;max-width:600px;box-shadow:0 20px 60px rgba(0,0,0,0.2);position:relative">
+    <h2 style="color:#92400e;margin-bottom:4px;font-size:1.05em;border-bottom:1px solid #fde68a;padding-bottom:12px">📢 שליחת הודעת תפוצה</h2>
+
+    <!-- תבנית -->
+    <div style="margin-bottom:16px;margin-top:16px">
+      <label style="font-size:0.82em;font-weight:700;color:#6b7280;display:block;margin-bottom:6px">תוכן ההודעה — <code style="background:#fef3c7;padding:1px 5px;border-radius:4px">{name}</code> יוחלף בשם הלקוח</label>
+      <textarea id="bc-template" rows="3" style="width:100%;padding:10px 13px;border:1.5px solid #fcd34d;border-radius:8px;font-family:inherit;font-size:0.93em;background:#fffbeb;resize:vertical;outline:none;box-sizing:border-box" oninput="updateBcPreview()"></textarea>
+      <div id="bc-preview" style="margin-top:6px;font-size:0.82em;color:#6b7280;background:#f9fafb;padding:6px 10px;border-radius:6px;direction:rtl"></div>
+    </div>
+
+    <!-- בחירת לקוחות -->
+    <div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+        <label style="font-size:0.83em;font-weight:700;color:#374151;cursor:pointer;display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="bc-select-all" onchange="bcToggleAll(this.checked)" />
+          בחר הכל
+        </label>
+        <span id="bc-count" style="font-size:0.8em;color:#6b7280">0 נבחרו</span>
+        <input id="bc-search" placeholder="חיפוש לקוח..." oninput="renderBcList()" style="margin-right:auto;padding:5px 10px;border:1px solid #e5e7eb;border-radius:7px;font-size:0.83em;font-family:inherit;outline:none;width:150px" />
+      </div>
+      <div id="bc-list" style="max-height:260px;overflow-y:auto;border:1px solid #f3f4f6;border-radius:9px;padding:8px 10px;background:#fafafa;display:flex;flex-direction:column;gap:4px"></div>
+    </div>
+
+    <!-- תוצאה -->
+    <div id="bc-result" style="display:none;margin-bottom:14px;padding:10px 16px;border-radius:9px;font-size:0.88em;font-weight:700"></div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap">
+      <button type="button" class="btn" onclick="closeBroadcastModal()" style="background:#f9fafb;color:#6b7280;border:1.5px solid #e5e7eb">ביטול</button>
+      <button type="button" id="bc-send-btn" class="btn btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none" onclick="sendBroadcast()">📤 שלח</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── מודל עריכת הזמנה ── -->
 <div id="edit-order-modal" onclick="if(event.target===this)closeOrderModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
@@ -4153,6 +4190,94 @@ async function deleteFleetRecord(rid, truckId) {
   if (!confirm('למחוק רשומה זו?')) return;
   await fetch(`/api/fleet/records/${rid}`, { method: 'DELETE' });
   loadFleetRecords(truckId);
+}
+
+// ── Broadcast ──────────────────────────────────────────────────────────────
+let _bcCustomers = [];
+let _bcSelected  = new Set();
+
+async function openBroadcastModal() {
+  const res = await fetch('/api/customers');
+  _bcCustomers = (await res.json()).filter(c => c.active !== 0);
+  _bcSelected = new Set();
+  document.getElementById('bc-template').value = 'היי {name} ערב טוב מה שלומך?, זהו הבוט החדש של וזאת הברכה דלקים. האם תרצה הזמנת תדלוק למחר?';
+  document.getElementById('bc-search').value = '';
+  document.getElementById('bc-result').style.display = 'none';
+  document.getElementById('bc-select-all').checked = false;
+  updateBcPreview();
+  renderBcList();
+  document.getElementById('broadcast-modal').style.display = 'flex';
+}
+
+function closeBroadcastModal() {
+  document.getElementById('broadcast-modal').style.display = 'none';
+}
+
+function updateBcPreview() {
+  const tmpl = document.getElementById('bc-template').value;
+  document.getElementById('bc-preview').textContent = 'תצוגה מקדימה: ' + tmpl.replace('{name}', 'שם הלקוח');
+}
+
+function renderBcList() {
+  const q = (document.getElementById('bc-search').value || '').toLowerCase();
+  const filtered = _bcCustomers.filter(c => !q || c.name.toLowerCase().includes(q) || (c.phone||'').includes(q));
+  const allChecked = filtered.length > 0 && filtered.every(c => _bcSelected.has(c.id));
+  document.getElementById('bc-select-all').checked = allChecked;
+  document.getElementById('bc-list').innerHTML = filtered.map(c => `
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:7px;cursor:pointer;background:${_bcSelected.has(c.id)?'#fef3c7':'transparent'};transition:background 0.1s">
+      <input type="checkbox" ${_bcSelected.has(c.id)?'checked':''} onchange="bcToggleOne(${c.id},this.checked)" />
+      <span style="font-weight:${_bcSelected.has(c.id)?700:400};font-size:0.88em;flex:1">${c.name}</span>
+      <span style="font-size:0.78em;color:${c.phone?'#6b7280':'#ef4444'}">${c.phone||'⚠️ ללא טלפון'}</span>
+    </label>`).join('');
+  updateBcCount();
+}
+
+function bcToggleOne(id, checked) {
+  checked ? _bcSelected.add(id) : _bcSelected.delete(id);
+  renderBcList();
+}
+
+function bcToggleAll(checked) {
+  const q = (document.getElementById('bc-search').value || '').toLowerCase();
+  const filtered = _bcCustomers.filter(c => !q || c.name.toLowerCase().includes(q) || (c.phone||'').includes(q));
+  filtered.forEach(c => checked ? _bcSelected.add(c.id) : _bcSelected.delete(c.id));
+  renderBcList();
+}
+
+function updateBcCount() {
+  document.getElementById('bc-count').textContent = `${_bcSelected.size} נבחרו`;
+  document.getElementById('bc-send-btn').textContent = `📤 שלח ל-${_bcSelected.size} לקוחות`;
+  document.getElementById('bc-send-btn').disabled = _bcSelected.size === 0;
+}
+
+async function sendBroadcast() {
+  const template = document.getElementById('bc-template').value.trim();
+  if (!template) return alert('נא להזין תוכן הודעה');
+  if (_bcSelected.size === 0) return alert('נא לבחור לקוחות');
+  const btn = document.getElementById('bc-send-btn');
+  btn.disabled = true; btn.textContent = '⏳ שולח...';
+  const resEl = document.getElementById('bc-result');
+  resEl.style.display = 'none';
+  try {
+    const res = await fetch('/api/broadcast', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template, customer_ids: [..._bcSelected] })
+    });
+    const data = await res.json();
+    resEl.style.display = 'block';
+    if (data.ok) {
+      resEl.style.cssText = 'display:block;margin-bottom:14px;padding:10px 16px;border-radius:9px;font-size:0.88em;font-weight:700;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0';
+      resEl.textContent = `✅ נשלח בהצלחה ל-${data.sent} לקוחות${data.failed>0?' ('+data.failed+' נכשלו)':''}`;
+    } else {
+      resEl.style.cssText = 'display:block;margin-bottom:14px;padding:10px 16px;border-radius:9px;font-size:0.88em;font-weight:700;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca';
+      resEl.textContent = '❌ שגיאה: ' + (data.error || 'לא ידוע');
+    }
+  } catch(e) {
+    resEl.style.cssText = 'display:block;margin-bottom:14px;padding:10px 16px;border-radius:9px;font-size:0.88em;font-weight:700;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca';
+    resEl.textContent = '❌ שגיאת תקשורת';
+  } finally {
+    updateBcCount();
+  }
 }
 
 function onQtyRangeChange(selectId, inputId) {
