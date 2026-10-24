@@ -2204,6 +2204,41 @@ async def import_potential_excel(request: Request, category: str = Query(default
             "mapped_columns": list(col_idx.keys())}
 
 
+@app.post("/api/broadcast")
+async def broadcast_message(request: Request):
+    """שליחת הודעת תפוצה ללקוחות נבחרים."""
+    from whatsapp import send_whatsapp_message
+    body = await request.json()
+    template = body.get("template", "")
+    customer_ids = body.get("customer_ids", [])  # רשימה ריקה = כל הלקוחות הפעילים
+    if not template:
+        return {"ok": False, "error": "חסרה תבנית הודעה"}
+    with get_db() as conn:
+        if customer_ids:
+            placeholders = ",".join("?" * len(customer_ids))
+            customers = conn.execute(
+                f"SELECT * FROM customers WHERE id IN ({placeholders}) AND active=1",
+                customer_ids
+            ).fetchall()
+        else:
+            customers = conn.execute("SELECT * FROM customers WHERE active=1").fetchall()
+    sent, failed = 0, 0
+    for c in customers:
+        phone = (c["phone"] or "").strip().replace(" ", "").replace("-", "")
+        if not phone:
+            failed += 1
+            continue
+        if phone.startswith("0"):
+            phone = "972" + phone[1:]
+        msg = template.replace("{name}", c["name"] or "")
+        ok = send_whatsapp_message(phone, msg)
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+    return {"ok": True, "sent": sent, "failed": failed, "total": len(customers)}
+
+
 @app.post("/api/trigger-admin-schedule")
 def trigger_admin_schedule():
     """שליחת סידור ידנית למנהל — במקום אוטומטי."""
