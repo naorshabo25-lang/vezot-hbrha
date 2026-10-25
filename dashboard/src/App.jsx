@@ -284,7 +284,7 @@ export default function App() {
           gap: isOrders ? 0 : 18,
         }}>
           {tab === 'orders' && (() => {
-            const ordersUrl = `${(window.location.port === '5173' || window.location.port === '5174') ? `http://${window.location.hostname}:8000` : ''}/dashboard`;
+            const ordersUrl = `${(window.location.port === '5173' || window.location.port === '5174') ? `http://${window.location.hostname}:8000` : ''}/vezot-orders`;
             if (isMobile) return (
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',

@@ -1207,6 +1207,10 @@ NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "n
 def dashboard():
     return FileResponse("static/dashboard.html", headers=NO_CACHE)
 
+@app.get("/vezot-orders", response_class=HTMLResponse)
+def vezot_orders():
+    return FileResponse("static/dashboard.html", headers=NO_CACHE)
+
 
 @app.get("/api/orders")
 def get_orders(date: str = Query(default=None)):
