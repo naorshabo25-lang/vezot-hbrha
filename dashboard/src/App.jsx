@@ -286,33 +286,11 @@ export default function App() {
           {tab === 'orders' && (() => {
             const ordersUrl = `${(window.location.port === '5173' || window.location.port === '5174') ? `http://${window.location.hostname}:8000` : ''}/vezot-orders`;
             if (isMobile) return (
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                justifyContent: 'center', flex: 1, gap: 20, padding: 32,
-                textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 48 }}>📋</div>
-                <p style={{ fontSize: 16, color: 'var(--text-2)', lineHeight: 1.6 }}>
-                  מערכת ההזמנות מותאמת לחלון מלא.<br />לחץ כדי לפתוח אותה.
-                </p>
-                <a
-                  href={ordersUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-primary"
-                  style={{ fontSize: 16, padding: '14px 32px', textDecoration: 'none' }}
-                >
-                  פתח מערכת הזמנות ↗
-                </a>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 20, padding: 32, textAlign: 'center' }}>
+                <a href={ordersUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ fontSize: 16, padding: '14px 32px', textDecoration: 'none' }}>פתח מערכת הזמנות ↗</a>
               </div>
             );
-            return (
-              <iframe
-                src={`${ordersUrl}?v=${Date.now()}`}
-                style={{ width: '100%', height: '100vh', border: 'none', display: 'block' }}
-                title="מערכת ניהול — זאת הברכה דלקים"
-              />
-            );
+            return <iframe src={`${ordersUrl}?v=${Date.now()}`} style={{ width: '100%', height: '100vh', border: 'none', display: 'block' }} title="מערכת ניהול" />;
           })()}
           {tab === 'customers' && (
             <CustomerOrdersTab onChange={handleWorkPlanChange} workPlanData={workPlanData} />
