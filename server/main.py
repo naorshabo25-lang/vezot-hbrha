@@ -1831,12 +1831,17 @@ def delete_winter_agent(aid: int):
 def get_settings():
     with get_db() as conn:
         rows = conn.execute("SELECT key, value FROM settings").fetchall()
-    return {r["key"]: r["value"] for r in rows}
+    return {r["key"]: (SECRET_MASK if r["key"] in SECRET_SETTINGS and r["value"] else r["value"]) for r in rows}
+
+
+SECRET_SETTINGS = {"gmail_app_password", "email_password"}
+SECRET_MASK = "••••••••••••••••"
 
 
 @app.post("/api/settings")
 async def update_settings(request: Request):
     body = await request.json()
+    body = {k: v for k, v in body.items() if not (k in SECRET_SETTINGS and v == SECRET_MASK)}
     with get_db() as conn:
         for key, value in body.items():
             conn.execute(
