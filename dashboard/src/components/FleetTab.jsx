@@ -1,36 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 
 function TankerIcon({ size = 40 }) {
-  const s = size;
-  return (
-    <svg width={s} height={s * 0.6} viewBox="0 0 80 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Tank cylinder */}
-      <rect x="4" y="10" width="48" height="20" rx="10" fill="#3b82f6"/>
-      <ellipse cx="4" cy="20" rx="10" ry="10" fill="#2563eb"/>
-      <ellipse cx="52" cy="20" rx="10" ry="10" fill="#2563eb"/>
-      {/* Tank shine */}
-      <rect x="8" y="13" width="44" height="5" rx="3" fill="#93c5fd" opacity="0.5"/>
-      {/* Fuel cap on top */}
-      <rect x="24" y="5" width="8" height="5" rx="2" fill="#1d4ed8"/>
-      {/* Chassis / frame */}
-      <rect x="0" y="29" width="76" height="3" rx="1" fill="#374151"/>
-      {/* Cab */}
-      <rect x="57" y="14" width="18" height="15" rx="3" fill="#1e40af"/>
-      {/* Windshield */}
-      <rect x="58" y="11" width="14" height="7" rx="2" fill="#1e40af"/>
-      <rect x="59" y="12" width="12" height="5" rx="1.5" fill="#bfdbfe"/>
-      {/* Wheels */}
-      <circle cx="14" cy="36" r="7" fill="#1f2937"/>
-      <circle cx="14" cy="36" r="3.5" fill="#6b7280"/>
-      <circle cx="14" cy="36" r="1.5" fill="#d1d5db"/>
-      <circle cx="38" cy="36" r="7" fill="#1f2937"/>
-      <circle cx="38" cy="36" r="3.5" fill="#6b7280"/>
-      <circle cx="38" cy="36" r="1.5" fill="#d1d5db"/>
-      <circle cx="66" cy="36" r="6" fill="#1f2937"/>
-      <circle cx="66" cy="36" r="3" fill="#6b7280"/>
-      <circle cx="66" cy="36" r="1.2" fill="#d1d5db"/>
-    </svg>
-  );
+  return <span style={{ fontSize: size * 0.7, lineHeight: 1, display: 'inline-block' }}>🚚</span>;
 }
 
 const SERVER = (window.location.port === '5173' || window.location.port === '5174')
@@ -42,9 +13,13 @@ const CATS = [
   { id: 'טסט',           icon: '📋', label: 'טסט שנתי',       hasExpiry: true,  hasCost: false },
   { id: 'ביקורת_חורף',  icon: '❄️', label: 'ביקורת חורף',    hasExpiry: true,  hasCost: false },
   { id: 'רישיון_חומס',  icon: '📄', label: 'רישיון חומס',     hasExpiry: true,  hasCost: false },
-  { id: 'ביטוח',        icon: '🛡️', label: 'ביטוח',           hasExpiry: true,  hasCost: true  },
+  { id: 'ביטוח_חובה',   icon: '🛡️', label: 'ביטוח חובה',      hasExpiry: true,  hasCost: true  },
+  { id: 'ביטוח_מקיף',   icon: '🛡️', label: 'ביטוח מקיף',      hasExpiry: true,  hasCost: true  },
+  { id: 'צד_ג',         icon: '🤝', label: 'ביטוח צד ג׳',     hasExpiry: true,  hasCost: true  },
 ];
-const CAT_MAP = Object.fromEntries(CATS.map(c => [c.id, c]));
+const LEGACY_INSURANCE = { id: 'ביטוח', icon: '🛡️', label: 'ביטוח (ישן)', hasExpiry: true, hasCost: true };
+const CAT_MAP = Object.fromEntries([...CATS, LEGACY_INSURANCE].map(c => [c.id, c]));
+const MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 
 function daysLeft(dateStr) {
   if (!dateStr) return null;
@@ -178,7 +153,7 @@ function TruckModal({ truck, drivers, onClose, onSave }) {
 }
 
 // categories that can only have ONE record (no duplicate adds)
-const SINGLE_CATS = new Set(['טסט', 'ביקורת_חורף', 'רישיון_חומס', 'ביטוח']);
+const SINGLE_CATS = new Set(['טסט', 'ביקורת_חורף', 'רישיון_חומס', 'ביטוח', 'ביטוח_חובה', 'ביטוח_מקיף', 'צד_ג']);
 
 function RecordModal({ truckId, preCategory, existingRecord, onClose, onSave }) {
   const isEdit = !!existingRecord;
@@ -204,7 +179,7 @@ function RecordModal({ truckId, preCategory, existingRecord, onClose, onSave }) 
     setImagePreview(URL.createObjectURL(f));
   };
 
-  const showImageUpload = cat === 'טסט' || cat === 'ביקורת_חורף' || cat === 'רישיון_חומס' || cat === 'הוצאת_מוסך' || cat === 'ביטוח';
+  const showImageUpload = cat !== 'טיפול';
   const existingImage = existingRecord?.image_path;
 
   async function save() {
@@ -321,12 +296,13 @@ function RecordModal({ truckId, preCategory, existingRecord, onClose, onSave }) 
   );
 }
 
-function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
+function TruckCard({ truck, refreshKey, onEdit, onDelete, onAddRecord }) {
   const [records, setRecords] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => { if (expanded && !records) loadRecs(); }, [expanded]);
+  useEffect(() => { if (records) loadRecs(); }, [refreshKey]);
 
   async function loadRecs() {
     const r = await fetch(`${SERVER}/api/fleet/records/${truck.id}`);
@@ -347,6 +323,16 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
   });
 
   const expTotal = expenses.reduce((s, r) => s + (r.cost || 0), 0);
+  const tileCats = byCategory['ביטוח'] ? [...CATS, LEGACY_INSURANCE] : CATS;
+
+  const byMonth = {};
+  (records || []).forEach(r => {
+    if (!(r.cost > 0)) return;
+    const ym = (r.event_date || r.created_at || '').slice(0, 7);
+    if (!ym) return;
+    byMonth[ym] = (byMonth[ym] || 0) + r.cost;
+  });
+  const months = Object.keys(byMonth).sort().reverse();
 
   // worst status for header badge
   let worstDays = null;
@@ -413,7 +399,7 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
 
       {/* Category grid */}
       <div style={{ padding: '14px 18px 6px', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-        {CATS.map(c => {
+        {tileCats.map(c => {
           const rec = byCategory[c.id];
           const days = rec?.expiry_date ? daysLeft(rec.expiry_date) : null;
           return (
@@ -447,6 +433,23 @@ function TruckCard({ truck, onEdit, onDelete, onAddRecord }) {
           );
         })}
       </div>
+
+      {months.length > 0 && (
+        <div style={{ padding: '6px 18px 4px' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', marginBottom: 6 }}>📅 הוצאות לפי חודש</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {months.map(ym => {
+              const [y, m] = ym.split('-');
+              return (
+                <div key={ym} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '6px 12px', minWidth: 100 }}>
+                  <div style={{ fontSize: 11, color: '#1e40af', fontWeight: 600 }}>{MONTHS_HE[parseInt(m) - 1]} {y}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#1e3a8a' }}>₪{byMonth[ym].toLocaleString()}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Garage expenses */}
       <div style={{ padding: '6px 18px 14px' }}>
@@ -508,6 +511,7 @@ export default function FleetTab() {
   const [drivers, setDrivers] = useState([]);
   const [truckModal, setTruckModal] = useState(null); // null | { truck } | {}
   const [recordModal, setRecordModal] = useState(null); // null | { truckId, preCategory }
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => { load(); }, []);
 
@@ -550,6 +554,7 @@ export default function FleetTab() {
         <TruckCard
           key={t.id}
           truck={t}
+          refreshKey={refreshKey}
           onEdit={truck => setTruckModal({ truck })}
           onDelete={deleteTruck}
           onAddRecord={(truckId, preCategory) => setRecordModal({ truckId, preCategory })}
@@ -570,7 +575,7 @@ export default function FleetTab() {
           truckId={recordModal.truckId}
           preCategory={recordModal.preCategory}
           onClose={() => setRecordModal(null)}
-          onSave={() => { setRecordModal(null); load(); }}
+          onSave={() => { setRecordModal(null); setRefreshKey(k => k + 1); }}
         />
       )}
     </div>
