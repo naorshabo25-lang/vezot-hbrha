@@ -189,6 +189,20 @@ def send_end_of_day():
     print(f"[Scheduler] סגירת יום נשלחה ל-{len(by_driver)} נהגים")
 
 
+def cleanup_old_orders():
+    from datetime import date
+    today = date.today()
+    y, m = today.year, today.month - 2
+    if m < 1:
+        m += 12
+        y -= 1
+    cutoff = date(y, m, 1).isoformat()
+    with get_db() as conn:
+        deleted = conn.execute("DELETE FROM orders WHERE order_date < ?", (cutoff,)).rowcount
+        conn.execute("DELETE FROM recurring_skips WHERE order_date < ?", (cutoff,))
+    print(f"[Scheduler] ניקוי: נמחקו {deleted} הזמנות לפני {cutoff}")
+
+
 def start_scheduler(hour: int = 14, minute: int = 0,
                     admin_hour: int = None, admin_minute: int = 0,
                     end_of_day_hour: int = 15, end_of_day_minute: int = 0):
@@ -208,6 +222,11 @@ def start_scheduler(hour: int = 14, minute: int = 0,
         send_end_of_day,
         CronTrigger(hour=end_of_day_hour, minute=end_of_day_minute, timezone="Asia/Jerusalem"),
         id="end_of_day", replace_existing=True,
+    )
+    scheduler.add_job(
+        cleanup_old_orders,
+        CronTrigger(hour=1, minute=0, timezone="Asia/Jerusalem"),
+        id="cleanup_old_orders", replace_existing=True,
     )
     scheduler.start()
     print(f"[Scheduler] הודעות ללקוחות: {hour:02d}:{minute:02d}")
