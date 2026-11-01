@@ -331,4 +331,12 @@ def init_db():
                 opened_at   TEXT DEFAULT NULL,
                 FOREIGN KEY (campaign_id) REFERENCES email_campaigns(id)
             );
+
+            CREATE TABLE IF NOT EXISTS recurring_skips (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_date    TEXT NOT NULL,
+                customer_name TEXT NOT NULL,
+                site_address  TEXT NOT NULL,
+                UNIQUE(order_date, customer_name, site_address)
+            );
         """)

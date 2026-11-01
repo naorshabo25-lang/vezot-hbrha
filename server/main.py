@@ -321,6 +321,7 @@ async def receive_message(request: Request):
     # סטטוס קריאה
     try:
         for s in data["entry"][0]["changes"][0]["value"].get("statuses", []):
+            print(f"[WA-Status] {s.get('status')} | id={s.get('id')} | recipient={s.get('recipient_id')} | err={s.get('errors')}")
             if s.get("status") == "read":
                 with get_db() as conn:
                     conn.execute("UPDATE customers SET msg_read=1 WHERE last_msg_id=?", (s["id"],))
@@ -1312,6 +1313,17 @@ async def reorder_orders(request: Request):
 @app.delete("/api/orders/{order_id}")
 def delete_order(order_id: int):
     with get_db() as conn:
+        order = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+        if order:
+            is_recurring = conn.execute(
+                "SELECT 1 FROM recurring_orders WHERE active=1 AND customer_name=? AND site_address=? LIMIT 1",
+                (order["customer_name"], order["site_address"])
+            ).fetchone()
+            if is_recurring:
+                conn.execute(
+                    "INSERT OR IGNORE INTO recurring_skips (order_date, customer_name, site_address) VALUES (?,?,?)",
+                    (order["order_date"], order["customer_name"], order["site_address"])
+                )
         conn.execute("DELETE FROM orders WHERE id = ?", (order_id,))
     return {"ok": True}
 
@@ -1846,50 +1858,44 @@ async def update_settings(request: Request):
 def get_weekly_tasks():
     from datetime import date as dt, timedelta
     today = dt.today()
-    week_dates = [(today + timedelta(days=i)).isoformat() for i in range(7)]
+    yesterday = (today - timedelta(days=1)).isoformat()
+    week_end  = (today + timedelta(days=6)).isoformat()
     with get_db() as conn:
         drivers = conn.execute("SELECT * FROM drivers ORDER BY name").fetchall()
-        result = []
-        for d in drivers:
-            orders_by_date = {}
-            for date_str in week_dates:
-                rows = conn.execute("""
-                    SELECT * FROM orders WHERE driver_id = ? AND order_date = ?
-                    ORDER BY sort_order, delivery_time, created_at
-                """, (d["id"], date_str)).fetchall()
-                if rows:
-                    seen = set()
-                    unique = []
-                    for r in rows:
-                        key = (r["customer_name"], r["site_address"])
-                        if key not in seen:
-                            seen.add(key)
-                            unique.append(dict(r))
-                    orders_by_date[date_str] = unique
-            result.append({**dict(d), "orders_by_date": orders_by_date})
+        # שאילתה אחת לכל ההזמנות בטווח
+        all_orders = conn.execute("""
+            SELECT * FROM orders
+            WHERE order_date >= ? AND order_date <= ?
+            ORDER BY sort_order, delivery_time, created_at
+        """, (yesterday, week_end)).fetchall()
 
-        # הזמנות ללא נהג משויך
-        unassigned_by_date = {}
-        for date_str in week_dates:
-            rows = conn.execute("""
-                SELECT * FROM orders WHERE driver_id IS NULL AND order_date = ?
-                ORDER BY created_at
-            """, (date_str,)).fetchall()
-            if rows:
-                seen = set()
-                unique = []
-                for r in rows:
-                    key = (r["customer_name"], r["site_address"])
-                    if key not in seen:
-                        seen.add(key)
-                        unique.append(dict(r))
-                unassigned_by_date[date_str] = unique
-        if unassigned_by_date:
-            result.append({
-                "id": None, "name": "ללא נהג", "area": "", "phone": "",
-                "personal_phone": "", "truck_number": "", "tanker_volume": "",
-                "orders_by_date": unassigned_by_date,
-            })
+    # קיבוץ לפי driver_id → date → orders (עם dedup)
+    by_driver_date: dict = {}
+    unassigned_by_date: dict = {}
+    for r in all_orders:
+        row = dict(r)
+        date_str  = row["order_date"]
+        driver_id = row["driver_id"]
+        key       = (row["customer_name"], row["site_address"])
+        if driver_id is None:
+            bucket = unassigned_by_date.setdefault(date_str, {})
+        else:
+            bucket = by_driver_date.setdefault(driver_id, {}).setdefault(date_str, {})
+        if key not in bucket:
+            bucket[key] = row
+
+    result = []
+    for d in drivers:
+        date_buckets = by_driver_date.get(d["id"], {})
+        orders_by_date = {date: list(rows.values()) for date, rows in date_buckets.items()}
+        result.append({**dict(d), "orders_by_date": orders_by_date})
+
+    if unassigned_by_date:
+        result.append({
+            "id": None, "name": "ללא נהג", "area": "", "phone": "",
+            "personal_phone": "", "truck_number": "", "tanker_volume": "",
+            "orders_by_date": {d: list(rows.values()) for d, rows in unassigned_by_date.items()},
+        })
 
     return result
 
@@ -2692,6 +2698,20 @@ async def send_daily_schedule(request: Request):
 
 
 # ── Contact Suggestions ───────────────────────────────────────────────────────
+
+@app.get("/api/site-suggestions")
+def get_site_suggestions():
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT site_address, customer_name, COUNT(*) as usage_count
+            FROM orders
+            WHERE site_address IS NOT NULL AND site_address != ''
+            GROUP BY site_address, customer_name
+            ORDER BY usage_count DESC, site_address
+            LIMIT 300
+        """).fetchall()
+    return [dict(r) for r in rows]
+
 
 @app.get("/api/contact-suggestions")
 def get_contact_suggestions():

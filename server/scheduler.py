@@ -183,8 +183,7 @@ def send_end_of_day():
         for i, o in enumerate(orders, 1):
             msg += f"{i}. {o['customer_name']} — {o['site_address']}\n"
         msg += (
-            f"\n*נא לסגור את יום העבודה.*\n"
-            f"*לפני קבלת סידור למחר!!* 📋"
+            f"\n*נא לסמן ביצוע/ביטול להזמנות אלו.* 📋"
         )
         send_whatsapp_message(phone, msg)
     print(f"[Scheduler] סגירת יום נשלחה ל-{len(by_driver)} נהגים")

@@ -32,6 +32,13 @@ def materialize_recurring_orders(target_date: str) -> int:
             if exists:
                 continue
 
+            skipped = conn.execute(
+                "SELECT 1 FROM recurring_skips WHERE order_date=? AND customer_name=? AND site_address=? LIMIT 1",
+                (target_date, t["customer_name"], t["site_address"]),
+            ).fetchone()
+            if skipped:
+                continue
+
             # ירש פרטים מההזמנה האחרונה של אותו לקוח+כתובת
             prev = conn.execute(
                 """SELECT driver_id, delivery_time, extras, contact_name, contact_phone
