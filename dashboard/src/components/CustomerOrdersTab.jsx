@@ -67,7 +67,31 @@ const EMPTY_WINTER = {
   customer_type: 'חורף',
   id_number: '',
   email: '',
+  payment_method: '',
 };
+
+const PAYMENT_METHODS = ['אשראי', 'מזומן', 'העברה', "צ'ק"];
+
+function PaymentMethodPicker({ value, onChange, style }) {
+  return (
+    <div style={style}>
+      <label style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>💳 אמצעי תשלום</label>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {PAYMENT_METHODS.map(m => {
+          const active = value === m;
+          return (
+            <button key={m} type="button" onClick={() => onChange(active ? '' : m)}
+              style={{ padding: '7px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                background: active ? '#2563eb' : '#f3f4f6', color: active ? '#fff' : '#374151',
+                border: active ? '1px solid #2563eb' : '1px solid #e5e7eb' }}>
+              {m}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const EMPTY_ORDER = {
   site_address: '', contact_name: '', contact_phone: '', quantity: '', order_date: '', area: '',
@@ -324,7 +348,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
       price_per_liter:  order.price_per_liter  || '',
       price_before_vat: order.price_before_vat || '',
       payment_status:   order.payment_status   || 'לא שולם',
-      payment_method:   order.payment_method   || '',
+      payment_method:   order.payment_method   || selectedCustomer?.payment_method || '',
       payment_date:     order.payment_date     || '',
       payment_notes:    order.payment_notes    || '',
     });
@@ -856,6 +880,8 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
               </div>
             ))}
           </div>
+          <PaymentMethodPicker style={{ marginBottom: 16 }} value={winterForm.payment_method}
+            onChange={v => setWinterForm(f => ({ ...f, payment_method: v }))} />
 
           {winterError && <p style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{winterError}</p>}
           <div style={{ display: 'flex', gap: 10 }}>
@@ -1148,6 +1174,10 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                     </div>
                   ))}
                 </div>
+                {editingCustomer.customer_type === 'חורף' && (
+                  <PaymentMethodPicker style={{ marginBottom: 12 }} value={editingCustomer.payment_method || ''}
+                    onChange={v => setEditingCustomer(p => ({ ...p, payment_method: v }))} />
+                )}
 
                 {/* יתרת חוב */}
                 <div style={{ borderTop: '1px dashed #e9ecef', paddingTop: 16, marginBottom: 12 }}>
@@ -1203,6 +1233,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
                         {selectedCustomer.site_address  && <span style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>🏠 {selectedCustomer.site_address}</span>}
                         {selectedCustomer.email         && <span style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>✉️ {selectedCustomer.email}</span>}
                         {selectedCustomer.id_number     && <span style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>🪪 {selectedCustomer.id_number}</span>}
+                        {selectedCustomer.payment_method && <span style={{ fontSize: 12, color: '#1d4ed8', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>💳 {selectedCustomer.payment_method}</span>}
                         {selectedCustomer.contact_name  && <span style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>👤 {selectedCustomer.contact_name}{selectedCustomer.contact_phone ? ` · ${selectedCustomer.contact_phone}` : ''}</span>}
                         {selectedCustomer.order_contact_name && (
                           <span style={{ fontSize: 12, color: '#0891b2', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
