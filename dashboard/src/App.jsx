@@ -13,7 +13,6 @@ import SettingsTab from './components/SettingsTab';
 import FleetTab from './components/FleetTab';
 import HashavshevotTab from './components/HashavshevotTab';
 import WinterCustomersTab from './components/WinterCustomersTab';
-import LockScreen from './components/LockScreen';
 
 const MIGRATION_V = 'workPlanMigration_v4';
 if (!localStorage.getItem(MIGRATION_V)) {
@@ -64,9 +63,6 @@ const getAllMonths = (data) => {
 };
 
 export default function App() {
-  const [unlocked, setUnlocked] = useState(
-    () => sessionStorage.getItem('app_unlocked') === '1'
-  );
   const [tab, setTab] = useState('customers');
   const [financialSubTab, setFinancialSubTab] = useState('workplan');
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -255,7 +251,6 @@ export default function App() {
   const allMonths  = getAllMonths(workPlanData);
   const isOrders   = tab === 'orders';
 
-  if (!unlocked) return <LockScreen onUnlock={() => setUnlocked(true)} />;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', direction: 'rtl' }}>
