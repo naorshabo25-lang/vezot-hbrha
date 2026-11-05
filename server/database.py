@@ -233,6 +233,10 @@ def init_db():
             conn.execute("ALTER TABLE quotes ADD COLUMN company_id TEXT DEFAULT ''")
         except Exception:
             pass
+        try:
+            conn.execute("ALTER TABLE quotes ADD COLUMN service_type TEXT DEFAULT 'צובר'")
+        except Exception:
+            pass
         # סמן נהגי מסוף ידועים אוטומטית
         conn.execute("UPDATE drivers SET is_terminal_driver = 1 WHERE name LIKE '%ישראל מזרחי%' AND is_terminal_driver = 0")
 

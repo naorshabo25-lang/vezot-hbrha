@@ -177,8 +177,25 @@ def find_company_id(customer: str) -> str:
     return row["id_number"] if row else ""
 
 
-def _replace_quote_details(document, customer: str, company_id: str, payment_terms: str) -> None:
+SERVICE_TYPES = ("צובר", "שטח")
+
+
+def parse_service_type(text: str) -> str:
+    text = (text or "").strip()
+    if text in {"1", "צובר"} or "צובר" in text:
+        return "צובר"
+    if text in {"2", "שטח"} or "שטח" in text:
+        return "שטח"
+    return ""
+
+
+def _replace_quote_details(document, customer: str, company_id: str, payment_terms: str,
+                           service_type: str = "צובר") -> None:
     paragraphs = document.paragraphs
+    for paragraph in paragraphs:
+        if paragraph.text.strip().startswith("הצעת מחיר עבור"):
+            _set_paragraph_text(paragraph, f"הצעת מחיר עבור שירותי תדלוק {service_type}")
+            break
     for index, paragraph in enumerate(paragraphs):
         if paragraph.text.strip().startswith("לכבוד"):
             _set_paragraph_text(paragraph, f"לכבוד: {customer}")
@@ -282,7 +299,8 @@ def _convert_docx_to_pdf(docx_path: Path, pdf_path: Path) -> None:
         raise RuntimeError("תהליך ההמרה לא יצר קובץ PDF תקין.")
 
 
-def create_quote_pdf(customer: str, price: Decimal, payment_terms: str, company_id: str = "") -> Path:
+def create_quote_pdf(customer: str, price: Decimal, payment_terms: str, company_id: str = "",
+                     service_type: str = "צובר") -> Path:
     if not _TEMPLATE_PATH.is_file():
         raise FileNotFoundError(f"קובץ התבנית לא נמצא: {_TEMPLATE_PATH}")
     breakdown = quote_breakdown(price, payment_terms)
@@ -300,7 +318,7 @@ def create_quote_pdf(customer: str, price: Decimal, payment_terms: str, company_
     if done != set(_COMPONENT_HEADERS):
         raise ValueError("לא הצלחתי לזהות את כל רכיבי המחיר בתבנית.")
 
-    _replace_quote_details(document, customer, company_id, payment_terms)
+    _replace_quote_details(document, customer, company_id, payment_terms, service_type)
     price_row, vat_row, total_row = _find_quote_rows(table)
     _replace_numeric_cells(price_row, breakdown["price"])
     _replace_numeric_cells(vat_row, breakdown["vat"])
@@ -324,14 +342,16 @@ def create_quote_pdf(customer: str, price: Decimal, payment_terms: str, company_
 QUOTES_DIR = Path(__file__).with_name("quotes")
 
 
-def create_archived_quote(customer: str, price: Decimal, payment_terms: str, company_id: str = "") -> tuple[Path, int]:
+def create_archived_quote(customer: str, price: Decimal, payment_terms: str, company_id: str = "",
+                          service_type: str = "צובר") -> tuple[Path, int]:
     company_id = company_id.strip() or find_company_id(customer)
-    pdf_path = create_quote_pdf(customer, price, payment_terms, company_id)
+    pdf_path = create_quote_pdf(customer, price, payment_terms, company_id, service_type)
     QUOTES_DIR.mkdir(exist_ok=True)
     with get_db() as conn:
         quote_id = conn.execute(
-            "INSERT INTO quotes (customer, company_id, price, payment_terms, file_name) VALUES (?, ?, ?, ?, '')",
-            (customer, company_id, str(price), payment_terms),
+            "INSERT INTO quotes (customer, company_id, service_type, price, payment_terms, file_name) "
+            "VALUES (?, ?, ?, ?, ?, '')",
+            (customer, company_id, service_type, str(price), payment_terms),
         ).lastrowid
         file_name = f"{quote_id}.pdf"
         shutil.copyfile(pdf_path, QUOTES_DIR / file_name)
@@ -429,6 +449,7 @@ def handle_quote_message(phone: str, text: str):
         "מה המחיר לליטר לפני מע״מ, בש״ח? לדוגמה: *8.623*",
         None,
     )
+    service_question = "סוג השירות?\n1. צובר\n2. שטח"
 
     data = json.loads(state["data_json"] or "{}")
     if state["step"] == "customer":
@@ -438,13 +459,21 @@ def handle_quote_message(phone: str, text: str):
         known_id = find_company_id(message)
         if known_id:
             data["company_id"] = known_id
-            _save_quote_session(phone, "price", data)
-            return (f"מצאתי ח.פ *{known_id}* בכרטיס הלקוח.\n" + price_question[0]), None
+            _save_quote_session(phone, "service", data)
+            return f"מצאתי ח.פ *{known_id}* בכרטיס הלקוח.\n{service_question}", None
         _save_quote_session(phone, "company_id", data)
         return "מה הח.פ של הלקוח? (או *דלג*)", None
 
     if state["step"] == "company_id":
         data["company_id"] = "" if command in {"דלג", "אין", "-"} else message[:40]
+        _save_quote_session(phone, "service", data)
+        return service_question, None
+
+    if state["step"] == "service":
+        service = parse_service_type(message)
+        if not service:
+            return f"לא הבנתי. {service_question}", None
+        data["service_type"] = service
         _save_quote_session(phone, "price", data)
         return price_question
 
@@ -474,6 +503,7 @@ def handle_quote_message(phone: str, text: str):
             "נא לבדוק לפני יצירת ה-PDF:\n"
             f"לקוח: *{data['customer']}*\n"
             f"ח.פ: *{data.get('company_id') or '—'}*\n"
+            f"שירות: *תדלוק {data.get('service_type', 'צובר')}*\n"
             f"תנאי תשלום: *{message}* ({b['credit_days']} ימי אשראי)\n\n"
             f"שער בסיס: {b['base_rate']}\n"
             f"מס בלו: {b['excise']}\n"
@@ -496,6 +526,7 @@ def handle_quote_message(phone: str, text: str):
                 Decimal(data["price"]),
                 data["payment_terms"],
                 data.get("company_id", ""),
+                data.get("service_type", "צובר"),
             )
         except (FileNotFoundError, RuntimeError, ValueError) as exc:
             return f"לא הצלחתי ליצור את ההצעה: {exc}", None

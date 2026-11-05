@@ -1291,11 +1291,15 @@ async def create_quote(request: Request):
     customer = (body.get("customer") or "").strip()
     payment_terms = (body.get("payment_terms") or "").strip()
     company_id = (body.get("company_id") or "").strip()
+    service_type = body.get("service_type") or "צובר"
+    if service_type not in ("צובר", "שטח"):
+        raise HTTPException(status_code=400, detail="סוג שירות לא תקין")
     if not customer or not payment_terms:
         raise HTTPException(status_code=400, detail="חסר שם לקוח או תנאי תשלום")
     try:
         price = _read_price(str(body.get("price", "")))
-        pdf_path, qid = await run_in_threadpool(create_archived_quote, customer, Decimal(price), payment_terms, company_id)
+        pdf_path, qid = await run_in_threadpool(create_archived_quote, customer, Decimal(price),
+                                                payment_terms, company_id, service_type)
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     cleanup_quote_pdf(pdf_path)

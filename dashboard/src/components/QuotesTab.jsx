@@ -21,7 +21,7 @@ const td = { padding: '10px', fontSize: 13, color: 'var(--text-1)', borderTop: '
 
 export default function QuotesTab() {
   const [quotes, setQuotes] = useState([]);
-  const [form, setForm] = useState({ customer: '', company_id: '', price: '', payment_terms: '' });
+  const [form, setForm] = useState({ customer: '', company_id: '', service_type: 'צובר', price: '', payment_terms: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -73,7 +73,7 @@ export default function QuotesTab() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'יצירת ההצעה נכשלה');
-      setForm({ customer: '', company_id: '', price: '', payment_terms: form.payment_terms });
+      setForm({ customer: '', company_id: '', service_type: form.service_type, price: '', payment_terms: form.payment_terms });
       if (pdfWindow) pdfWindow.location.href = `${SERVER}/api/quotes/${data.id}/pdf`;
       load();
     } catch (e) {
@@ -142,6 +142,22 @@ export default function QuotesTab() {
               onChange={e => setForm(f => ({ ...f, company_id: e.target.value }))} />
           </div>
           <div>
+            <label style={lbl}>סוג שירות</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {['צובר', 'שטח'].map(s => {
+                const active = form.service_type === s;
+                return (
+                  <button key={s} type="button" onClick={() => setForm(f => ({ ...f, service_type: s }))}
+                    style={{ flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                      background: active ? '#1e2d3d' : 'var(--bg, #fafafa)', color: active ? '#fff' : 'var(--text-1, #374151)',
+                      border: active ? '1.5px solid #1e2d3d' : '1.5px solid var(--border, #e5e7eb)' }}>
+                    תדלוק {s}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
             <label style={lbl}>מחיר לליטר לפני מע״מ (₪)</label>
             <input style={inp} type="number" step="0.001" min="0" value={form.price} placeholder="8.623"
               onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
@@ -194,7 +210,9 @@ export default function QuotesTab() {
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDateTime(q.created_at)}</td>
                       <td style={{ ...td, fontWeight: 700 }}>
                         {q.customer}
-                        {q.company_id && <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-2)' }}>ח.פ {q.company_id}</div>}
+                        <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-2)' }}>
+                          תדלוק {q.service_type || 'צובר'}{q.company_id ? ` · ח.פ ${q.company_id}` : ''}
+                        </div>
                       </td>
                       <td style={td}>₪{p.toFixed(3)}</td>
                       <td style={td}>₪{(p * (1 + VAT)).toFixed(3)}</td>
