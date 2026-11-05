@@ -7,3 +7,6 @@ python-multipart
 aiofiles
 python-dotenv
 openpyxl
+python-docx
+tzdata
+pywin32; sys_platform == "win32"

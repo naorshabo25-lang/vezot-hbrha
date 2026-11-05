@@ -11,8 +11,14 @@ from database import init_db, get_db
 from whatsapp import (send_whatsapp_message, send_quantity_list, send_area_list,
                       send_time_list, send_date_list, send_site_list,
                       download_whatsapp_media, send_order_confirmation_card,
-                      send_contact_buttons, time_greeting)
+                      send_contact_buttons, time_greeting,
+                      send_whatsapp_document)
 from scheduler import start_scheduler, reschedule, reschedule_admin
+from personal_assistant import handle_personal_assistant_message
+from quote_assistant import (
+    cleanup_quote_pdf,
+    handle_quote_message,
+)
 
 AREA_DISPLAY = {
     "area_jerusalem":    "ירושלים והסביבה",
@@ -577,6 +583,34 @@ async def receive_message(request: Request):
             return JSONResponse({"status": "ok"})
     except (KeyError, IndexError):
         return JSONResponse({"status": "ok"})
+
+    if msg_type == "text":
+        quote_result = handle_quote_message(phone, text)
+        if quote_result is not None:
+            quote_reply, quote_pdf = quote_result
+            if quote_reply:
+                send_whatsapp_message(phone, quote_reply)
+            if quote_pdf:
+                try:
+                    sent = send_whatsapp_document(
+                        phone,
+                        str(quote_pdf),
+                        caption="הצעת המחיר שביקשת מצורפת. היא נשלחה אליך בלבד.",
+                    )
+                    if not sent:
+                        send_whatsapp_message(
+                            phone,
+                            "ה-PDF נוצר, אך שליחתו ב-WhatsApp נכשלה. "
+                            "בדוק את הגדרות WhatsApp ושלח *הצעת מחיר* כדי ליצור אותו מחדש.",
+                        )
+                finally:
+                    cleanup_quote_pdf(quote_pdf)
+            return JSONResponse({"status": "ok"})
+
+        assistant_reply = handle_personal_assistant_message(phone, text)
+        if assistant_reply is not None:
+            send_whatsapp_message(phone, assistant_reply)
+            return JSONResponse({"status": "ok"})
 
     # ── זהה נהג ──────────────────────────────────────────────────────────────
     phone_alt = ("0" + phone[3:]) if phone.startswith("972") else ("972" + phone[1:])

@@ -56,6 +56,27 @@ def init_db():
                 value TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS personal_tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                description TEXT NOT NULL,
+                completed INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now', 'localtime')),
+                completed_at TEXT DEFAULT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS personal_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now', 'localtime'))
+            );
+
+            CREATE TABLE IF NOT EXISTS personal_quote_sessions (
+                phone TEXT PRIMARY KEY,
+                step TEXT NOT NULL,
+                data_json TEXT NOT NULL,
+                updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+            );
+
             INSERT OR IGNORE INTO settings (key, value) VALUES ('daily_hour', '14');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('daily_minute', '0');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('message_template',

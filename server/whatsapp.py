@@ -33,6 +33,13 @@ def _post(to_phone: str, payload: dict) -> bool:
         if not resp.ok:
             print(f"[WhatsApp] שגיאה {resp.status_code}: {resp.text}")
             return False
+        try:
+            data = resp.json()
+            msg_ids = [m.get("id") for m in data.get("messages", [])]
+            errors  = data.get("errors", [])
+            print(f"[WhatsApp] נשלח ל-{to_phone} | message_ids={msg_ids} | errors={errors}")
+        except Exception:
+            pass
         return True
     except Exception as e:
         print(f"[WhatsApp] שגיאה בשליחה ל-{to_phone}: {e}")
@@ -47,6 +54,54 @@ def send_whatsapp_message(to_phone: str, text: str) -> bool:
         "type": "text",
         "text": {"body": text},
     })
+
+
+def send_whatsapp_document(to_phone: str, file_path: str, caption: str = "") -> bool:
+    to_phone = to_phone.replace("whatsapp:", "")
+    access_token = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+    phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+    if not access_token or not phone_number_id:
+        print("[WhatsApp] חסר WHATSAPP_ACCESS_TOKEN או WHATSAPP_PHONE_NUMBER_ID ב-.env")
+        return False
+
+    api_root = f"https://graph.facebook.com/v25.0/{phone_number_id}"
+    try:
+        with open(file_path, "rb") as document_file:
+            upload = requests.post(
+                f"{api_root}/media",
+                headers={"Authorization": f"Bearer {access_token}"},
+                data={"messaging_product": "whatsapp", "type": "application/pdf"},
+                files={
+                    "file": (
+                        os.path.basename(file_path),
+                        document_file,
+                        "application/pdf",
+                    )
+                },
+                timeout=30,
+            )
+        if not upload.ok:
+            print(f"[WhatsApp] העלאת PDF נכשלה {upload.status_code}: {upload.text}")
+            return False
+        media_id = upload.json().get("id")
+        if not media_id:
+            print("[WhatsApp] העלאת PDF הצליחה ללא מזהה מדיה בתשובה")
+            return False
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to_phone,
+            "type": "document",
+            "document": {
+                "id": media_id,
+                "filename": os.path.basename(file_path),
+            },
+        }
+        if caption:
+            payload["document"]["caption"] = caption
+        return _post(to_phone, payload)
+    except (OSError, requests.RequestException, ValueError) as exc:
+        print(f"[WhatsApp] שליחת PDF נכשלה ל-{to_phone}: {exc}")
+        return False
 
 
 def send_quantity_list(to_phone: str) -> bool:
