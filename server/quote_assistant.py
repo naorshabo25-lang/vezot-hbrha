@@ -86,58 +86,104 @@ def _find_quote_rows(table):
     return price_row, vat_row, total_row
 
 
-def _quote_table_fields(document):
-    if not document.tables:
-        raise ValueError("לא מצאתי טבלת מחירון בתבנית.")
-    table = document.tables[0]
-    if len(table.rows) < 2:
-        raise ValueError("טבלת המחירון בתבנית אינה מלאה.")
-    headers = [cell.text.strip() for cell in table.rows[0].cells]
-    try:
-        margin_index = next(i for i, header in enumerate(headers) if header == "מרווח")
-    except StopIteration as exc:
-        raise ValueError("לא מצאתי את שדה המרווח בטבלת המחירון.") from exc
-    price_row, vat_row, total_row = _find_quote_rows(table)
-    base_components = Decimal("0")
-    seen_components = set()
-    try:
-        for index, header in enumerate(headers):
-            if header in {"תשתית", "הפצה", "אשראי", "מס בלו", "שער בסיס"}:
-                if header not in seen_components:
-                    base_components += _read_cell_decimal(table.rows[1].cells[index])
-                    seen_components.add(header)
-    except IndexError as exc:
-        raise ValueError("טבלת המחירון אינה כוללת את כל הרכיבים הנדרשים.") from exc
-    expected_components = {"תשתית", "הפצה", "אשראי", "מס בלו", "שער בסיס"}
-    if seen_components != expected_components:
-        raise ValueError("לא הצלחתי לזהות את כל רכיבי המחיר בתבנית.")
-    return table, margin_index, price_row, vat_row, total_row, base_components
+DISTRIBUTION = Decimal("0.350")
+INFRASTRUCTURE = Decimal("0.050")
+CREDIT_PER_30_DAYS = Decimal("0.150")
+RATE_KEYS = {"base_rate": "quote_base_rate", "excise": "quote_excise"}
+_COMPONENT_HEADERS = {
+    "שער בסיס": ("base_rate", "{:.5f}"),
+    "מס בלו": ("excise", "{:.5f}"),
+    "אשראי": ("credit", "{:.3f}"),
+    "הפצה": ("distribution", "{:.3f}"),
+    "תשתית": ("infrastructure", "{:.3f}"),
+    "מרווח": ("margin", "{:.3f}"),
+}
 
 
-def _margin_for_price(price: Decimal) -> Decimal:
-    if not _TEMPLATE_PATH.is_file():
-        raise FileNotFoundError(f"קובץ התבנית לא נמצא: {_TEMPLATE_PATH}")
+def _template_default_rates() -> dict:
     document = Document(str(_TEMPLATE_PATH))
-    fields = _quote_table_fields(document)
-    new_margin = price - fields[5]
-    if new_margin < 0:
+    table = document.tables[0]
+    headers = [cell.text.strip() for cell in table.rows[0].cells]
+    return {
+        key: _read_cell_decimal(table.rows[1].cells[headers.index(name)])
+        for name, key in (("שער בסיס", "base_rate"), ("מס בלו", "excise"))
+    }
+
+
+def get_rates() -> dict:
+    with get_db() as conn:
+        stored = {r["key"]: r["value"] for r in conn.execute(
+            "SELECT key, value FROM settings WHERE key IN (?, ?)", tuple(RATE_KEYS.values())
+        ).fetchall()}
+    rates = {}
+    defaults = None
+    for key, setting in RATE_KEYS.items():
+        try:
+            rates[key] = Decimal(stored[setting])
+        except (KeyError, InvalidOperation):
+            defaults = defaults or _template_default_rates()
+            rates[key] = defaults[key]
+    return rates
+
+
+def set_rate(key: str, value: str) -> Decimal:
+    try:
+        rate = Decimal(str(value).replace(",", "").strip())
+    except InvalidOperation as exc:
+        raise ValueError("שלח מספר, למשל 3.29242") from exc
+    if not rate.is_finite() or rate <= 0 or rate > 100:
+        raise ValueError("הערך צריך להיות מספר חיובי וסביר בש״ח לליטר.")
+    with get_db() as conn:
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (RATE_KEYS[key], str(rate)))
+    return rate
+
+
+def credit_days(payment_terms: str) -> int:
+    match = re.search(r"\+\s*(\d+)", payment_terms or "")
+    return int(match.group(1)) if match else 0
+
+
+def quote_breakdown(price: Decimal, payment_terms: str) -> dict:
+    rates = get_rates()
+    days = credit_days(payment_terms)
+    credit = (CREDIT_PER_30_DAYS * days / 30).quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+    fixed = rates["base_rate"] + rates["excise"] + DISTRIBUTION + INFRASTRUCTURE + credit
+    margin = (price - fixed).quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+    if margin < 0:
         raise ValueError(
-            "המחיר נמוך מסכום רכיבי הבסיס בתבנית, גם כשהמרווח הוא אפס. "
-            "שלח מחיר גבוה יותר או עדכן את רכיבי הבסיס בתבנית."
+            f"המחיר נמוך מסכום הרכיבים ({fixed:.3f} ₪ לליטר), ולכן המרווח יוצא שלילי. "
+            "שלח מחיר גבוה יותר."
         )
-    return new_margin.quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+    vat = (price * _VAT_RATE).quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+    return {
+        **rates,
+        "credit": credit,
+        "credit_days": days,
+        "distribution": DISTRIBUTION,
+        "infrastructure": INFRASTRUCTURE,
+        "margin": margin,
+        "price": price,
+        "vat": vat,
+        "total": price + vat,
+    }
 
 
-def _replace_quote_details(document, customer: str, payment_terms: str) -> None:
+def find_company_id(customer: str) -> str:
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id_number FROM customers WHERE TRIM(name)=? AND COALESCE(id_number,'')<>'' LIMIT 1",
+            (customer.strip(),),
+        ).fetchone()
+    return row["id_number"] if row else ""
+
+
+def _replace_quote_details(document, customer: str, company_id: str, payment_terms: str) -> None:
     paragraphs = document.paragraphs
     for index, paragraph in enumerate(paragraphs):
-        if paragraph.text.strip() == "לכבוד:":
-            for following in paragraphs[index + 1:]:
-                if following.text.strip():
-                    _set_paragraph_text(following, customer)
-                    break
-            else:
-                _set_paragraph_text(paragraph, f"לכבוד: {customer}")
+        if paragraph.text.strip().startswith("לכבוד"):
+            _set_paragraph_text(paragraph, f"לכבוד: {customer}")
+            if index + 1 < len(paragraphs):
+                _set_paragraph_text(paragraphs[index + 1], f"ח.פ: {company_id}" if company_id else "")
             break
     else:
         raise ValueError("לא מצאתי בתבנית את שדה שם הלקוח.")
@@ -236,35 +282,29 @@ def _convert_docx_to_pdf(docx_path: Path, pdf_path: Path) -> None:
         raise RuntimeError("תהליך ההמרה לא יצר קובץ PDF תקין.")
 
 
-def create_quote_pdf(customer: str, price: Decimal, payment_terms: str) -> Path:
+def create_quote_pdf(customer: str, price: Decimal, payment_terms: str, company_id: str = "") -> Path:
     if not _TEMPLATE_PATH.is_file():
         raise FileNotFoundError(f"קובץ התבנית לא נמצא: {_TEMPLATE_PATH}")
+    breakdown = quote_breakdown(price, payment_terms)
     document = Document(str(_TEMPLATE_PATH))
-    (
-        table,
-        margin_index,
-        price_row,
-        vat_row,
-        total_row,
-        base_components,
-    ) = _quote_table_fields(document)
-    margin = (price - base_components).quantize(
-        _MONEY_QUANTUM, rounding=ROUND_HALF_UP
-    )
-    if margin < 0:
-        raise ValueError(
-            "המחיר נמוך מסכום רכיבי הבסיס בתבנית, גם כשהמרווח הוא אפס. "
-            "שלח מחיר גבוה יותר או עדכן את רכיבי הבסיס בתבנית."
-        )
+    if not document.tables:
+        raise ValueError("לא מצאתי טבלת מחירון בתבנית.")
+    table = document.tables[0]
+    headers = [cell.text.strip() for cell in table.rows[0].cells]
+    done = set()
+    for index, header in enumerate(headers):
+        if header in _COMPONENT_HEADERS and header not in done:
+            key, fmt = _COMPONENT_HEADERS[header]
+            _set_cell_text(table.rows[1].cells[index], fmt.format(breakdown[key]))
+            done.add(header)
+    if done != set(_COMPONENT_HEADERS):
+        raise ValueError("לא הצלחתי לזהות את כל רכיבי המחיר בתבנית.")
 
-    _replace_quote_details(document, customer, payment_terms)
-    _set_cell_text(table.rows[1].cells[margin_index], f"{margin:.3f}")
-
-    vat = (price * _VAT_RATE).quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
-    total = price + vat
-    _replace_numeric_cells(price_row, price)
-    _replace_numeric_cells(vat_row, vat)
-    _replace_numeric_cells(total_row, total)
+    _replace_quote_details(document, customer, company_id, payment_terms)
+    price_row, vat_row, total_row = _find_quote_rows(table)
+    _replace_numeric_cells(price_row, breakdown["price"])
+    _replace_numeric_cells(vat_row, breakdown["vat"])
+    _replace_numeric_cells(total_row, breakdown["total"])
 
     output_dir = Path(tempfile.mkdtemp(prefix="quote-"))
     docx_path = output_dir / "quote.docx"
@@ -284,22 +324,19 @@ def create_quote_pdf(customer: str, price: Decimal, payment_terms: str) -> Path:
 QUOTES_DIR = Path(__file__).with_name("quotes")
 
 
-def create_archived_quote(customer: str, price: Decimal, payment_terms: str) -> tuple[Path, int]:
-    pdf_path = create_quote_pdf(customer, price, payment_terms)
-    return pdf_path, _archive_quote(pdf_path, customer, price, payment_terms)
-
-
-def _archive_quote(pdf_path: Path, customer: str, price: Decimal, payment_terms: str) -> int:
+def create_archived_quote(customer: str, price: Decimal, payment_terms: str, company_id: str = "") -> tuple[Path, int]:
+    company_id = company_id.strip() or find_company_id(customer)
+    pdf_path = create_quote_pdf(customer, price, payment_terms, company_id)
     QUOTES_DIR.mkdir(exist_ok=True)
     with get_db() as conn:
         quote_id = conn.execute(
-            "INSERT INTO quotes (customer, price, payment_terms, file_name) VALUES (?, ?, ?, '')",
-            (customer, str(price), payment_terms),
+            "INSERT INTO quotes (customer, company_id, price, payment_terms, file_name) VALUES (?, ?, ?, ?, '')",
+            (customer, company_id, str(price), payment_terms),
         ).lastrowid
         file_name = f"{quote_id}.pdf"
         shutil.copyfile(pdf_path, QUOTES_DIR / file_name)
         conn.execute("UPDATE quotes SET file_name=? WHERE id=?", (file_name, quote_id))
-    return quote_id
+    return pdf_path, quote_id
 
 
 def cleanup_quote_pdf(pdf_path: Path) -> None:
@@ -349,6 +386,28 @@ def handle_quote_message(phone: str, text: str):
     start_commands = {"הצעת מחיר", "הצעה חדשה", "צור הצעה", "הפק הצעה"}
     state = _get_quote_session(phone)
 
+    rate_match = re.fullmatch(r"(שער בסיס|בסיס|מס בלו|בלו)\s*[:=\-]?\s*([\d.,]+)", message)
+    if rate_match and not state:
+        key = "base_rate" if "בסיס" in rate_match.group(1) else "excise"
+        try:
+            value = set_rate(key, rate_match.group(2))
+        except ValueError as exc:
+            return str(exc), None
+        label = "שער בסיס" if key == "base_rate" else "מס בלו"
+        return f"✅ {label} עודכן ל-*{value}*. ישמש בכל ההצעות מעכשיו.", None
+
+    if command in {"רכיבי מחיר", "מחירון הצעות", "שער בסיס", "מס בלו"} and not state:
+        rates = get_rates()
+        return (
+            "רכיבי המחיר הנוכחיים להצעות:\n"
+            f"שער בסיס: *{rates['base_rate']}*\n"
+            f"מס בלו: *{rates['excise']}*\n"
+            f"הפצה: *{DISTRIBUTION}* · תשתית: *{INFRASTRUCTURE}*\n"
+            f"אשראי: *{CREDIT_PER_30_DAYS}* לכל 30 יום\n\n"
+            "לעדכון שלח למשל: *שער בסיס 3.29242* או *מס בלו 3.50333*",
+            None,
+        )
+
     if command in start_commands:
         if not _TEMPLATE_PATH.is_file():
             return (
@@ -366,50 +425,65 @@ def handle_quote_message(phone: str, text: str):
         _delete_quote_session(phone)
         return "ביטלתי את הכנת הצעת המחיר.", None
 
+    price_question = (
+        "מה המחיר לליטר לפני מע״מ, בש״ח? לדוגמה: *8.623*",
+        None,
+    )
+
     data = json.loads(state["data_json"] or "{}")
     if state["step"] == "customer":
         if len(message) > 160:
             return "שם הלקוח ארוך מדי. שלח שם קצר יותר או כתוב *ביטול*.", None
         data["customer"] = message
+        known_id = find_company_id(message)
+        if known_id:
+            data["company_id"] = known_id
+            _save_quote_session(phone, "price", data)
+            return (f"מצאתי ח.פ *{known_id}* בכרטיס הלקוח.\n" + price_question[0]), None
+        _save_quote_session(phone, "company_id", data)
+        return "מה הח.פ של הלקוח? (או *דלג*)", None
+
+    if state["step"] == "company_id":
+        data["company_id"] = "" if command in {"דלג", "אין", "-"} else message[:40]
         _save_quote_session(phone, "price", data)
-        return (
-            "מה המחיר הכולל לרכיבי ההצעה לפני מע״מ, בש״ח לליטר? "
-            "לדוגמה: *8.623*",
-            None,
-        )
+        return price_question
 
     if state["step"] == "price":
         try:
             price = _read_price(message)
-            margin = _margin_for_price(price)
         except ValueError as exc:
             return f"{exc}\nשלח מחיר אחר או כתוב *ביטול*.", None
-        except FileNotFoundError:
-            _delete_quote_session(phone)
-            return "קובץ תבנית הצעת המחיר לא נמצא בשרת.", None
         data["price"] = str(price)
-        data["margin"] = str(margin)
         _save_quote_session(phone, "payment", data)
-        return "מה תנאי התשלום שיופיעו בהצעה? למשל: *שוטף + 30 בהעברה*.", None
+        return "מה תנאי התשלום? למשל: *שוטף+30* (האשראי מחושב לפי המספר שאחרי ה-+).", None
 
     if state["step"] == "payment":
         if len(message) > 160:
             return "תנאי התשלום ארוכים מדי. שלח ניסוח קצר יותר או כתוב *ביטול*.", None
+        try:
+            b = quote_breakdown(Decimal(data["price"]), message)
+        except ValueError as exc:
+            _save_quote_session(phone, "price", data)
+            return f"{exc}\nשלח מחיר אחר או כתוב *ביטול*.", None
+        except FileNotFoundError:
+            _delete_quote_session(phone)
+            return "קובץ תבנית הצעת המחיר לא נמצא בשרת.", None
         data["payment_terms"] = message
         _save_quote_session(phone, "confirm", data)
-        price = Decimal(data["price"])
-        vat = (price * _VAT_RATE).quantize(
-            _MONEY_QUANTUM, rounding=ROUND_HALF_UP
-        )
         return (
             "נא לבדוק לפני יצירת ה-PDF:\n"
             f"לקוח: *{data['customer']}*\n"
-            f"מחיר לליטר לפני מע״מ: *{_format_money(price)}*\n"
-            f"מע״מ 18%: *{_format_money(vat)}*\n"
-            f"סה״כ לליטר: *{_format_money(price + vat)}*\n"
-            f"מרווח מעודכן: *{_format_money(Decimal(data['margin']))}*\n"
-            f"תנאי תשלום: *{data['payment_terms']}*\n\n"
-            "שלח *אשר הצעה* כדי ליצור ולשלוח את ה-PDF אליך בלבד, או *ביטול*.",
+            f"ח.פ: *{data.get('company_id') or '—'}*\n"
+            f"תנאי תשלום: *{message}* ({b['credit_days']} ימי אשראי)\n\n"
+            f"שער בסיס: {b['base_rate']}\n"
+            f"מס בלו: {b['excise']}\n"
+            f"הפצה: {b['distribution']} · תשתית: {b['infrastructure']}\n"
+            f"אשראי: {b['credit']}\n"
+            f"מרווח: *{b['margin']}*\n\n"
+            f"מחיר לליטר לפני מע״מ: *{_format_money(b['price'])}*\n"
+            f"מע״מ 18%: *{_format_money(b['vat'])}*\n"
+            f"סה״כ לליטר: *{_format_money(b['total'])}*\n\n"
+            "שלח *אשר הצעה* כדי ליצור ולשלוח את ה-PDF, או *ביטול*.",
             None,
         )
 
@@ -421,6 +495,7 @@ def handle_quote_message(phone: str, text: str):
                 data["customer"],
                 Decimal(data["price"]),
                 data["payment_terms"],
+                data.get("company_id", ""),
             )
         except (FileNotFoundError, RuntimeError, ValueError) as exc:
             return f"לא הצלחתי ליצור את ההצעה: {exc}", None

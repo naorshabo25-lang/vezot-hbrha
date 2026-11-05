@@ -1252,6 +1252,36 @@ def list_quotes():
     return [dict(r) for r in rows]
 
 
+@app.get("/api/quotes/rates")
+def get_quote_rates():
+    import quote_assistant as qa
+    rates = qa.get_rates()
+    return {
+        "base_rate": str(rates["base_rate"]), "excise": str(rates["excise"]),
+        "distribution": str(qa.DISTRIBUTION), "infrastructure": str(qa.INFRASTRUCTURE),
+        "credit_per_30_days": str(qa.CREDIT_PER_30_DAYS),
+    }
+
+
+@app.post("/api/quotes/rates")
+async def update_quote_rates(request: Request):
+    from quote_assistant import set_rate
+    body = await request.json()
+    try:
+        for key in ("base_rate", "excise"):
+            if str(body.get(key, "")).strip():
+                set_rate(key, str(body[key]))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return get_quote_rates()
+
+
+@app.get("/api/quotes/company-id")
+def lookup_company_id(customer: str = Query("")):
+    from quote_assistant import find_company_id
+    return {"company_id": find_company_id(customer) if customer.strip() else ""}
+
+
 @app.post("/api/quotes")
 async def create_quote(request: Request):
     from decimal import Decimal
@@ -1260,11 +1290,12 @@ async def create_quote(request: Request):
     body = await request.json()
     customer = (body.get("customer") or "").strip()
     payment_terms = (body.get("payment_terms") or "").strip()
+    company_id = (body.get("company_id") or "").strip()
     if not customer or not payment_terms:
         raise HTTPException(status_code=400, detail="חסר שם לקוח או תנאי תשלום")
     try:
         price = _read_price(str(body.get("price", "")))
-        pdf_path, qid = await run_in_threadpool(create_archived_quote, customer, Decimal(price), payment_terms)
+        pdf_path, qid = await run_in_threadpool(create_archived_quote, customer, Decimal(price), payment_terms, company_id)
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     cleanup_quote_pdf(pdf_path)

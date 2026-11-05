@@ -203,6 +203,16 @@ def cleanup_old_orders():
     print(f"[Scheduler] ניקוי: נמחקו {deleted} הזמנות לפני {cutoff}")
 
 
+def add_monthly_rates_task():
+    text = "לעדכן שער בסיס ומס בלו להצעות מחיר"
+    with get_db() as conn:
+        exists = conn.execute(
+            "SELECT 1 FROM personal_tasks WHERE description=? AND completed=0", (text,)
+        ).fetchone()
+        if not exists:
+            conn.execute("INSERT INTO personal_tasks (description) VALUES (?)", (text,))
+
+
 def start_scheduler(hour: int = 14, minute: int = 0,
                     admin_hour: int = None, admin_minute: int = 0,
                     end_of_day_hour: int = 15, end_of_day_minute: int = 0):
@@ -227,6 +237,11 @@ def start_scheduler(hour: int = 14, minute: int = 0,
         cleanup_old_orders,
         CronTrigger(hour=1, minute=0, timezone="Asia/Jerusalem"),
         id="cleanup_old_orders", replace_existing=True,
+    )
+    scheduler.add_job(
+        add_monthly_rates_task,
+        CronTrigger(day=1, hour=7, minute=0, timezone="Asia/Jerusalem"),
+        id="monthly_rates_task", replace_existing=True,
     )
     scheduler.start()
     print(f"[Scheduler] הודעות ללקוחות: {hour:02d}:{minute:02d}")

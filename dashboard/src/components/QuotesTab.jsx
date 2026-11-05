@@ -21,16 +21,42 @@ const td = { padding: '10px', fontSize: 13, color: 'var(--text-1)', borderTop: '
 
 export default function QuotesTab() {
   const [quotes, setQuotes] = useState([]);
-  const [form, setForm] = useState({ customer: '', price: '', payment_terms: '' });
+  const [form, setForm] = useState({ customer: '', company_id: '', price: '', payment_terms: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [rates, setRates] = useState(null);
+  const [rateForm, setRateForm] = useState({ base_rate: '', excise: '' });
+  const [rateMsg, setRateMsg] = useState('');
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadRates(); }, []);
 
   async function load() {
     const q = await fetch(`${SERVER}/api/quotes`).then(r => r.json());
     setQuotes(Array.isArray(q) ? q : []);
+  }
+
+  async function loadRates() {
+    const r = await fetch(`${SERVER}/api/quotes/rates`).then(r => r.json());
+    setRates(r);
+    setRateForm({ base_rate: r.base_rate, excise: r.excise });
+  }
+
+  async function saveRates() {
+    setRateMsg('');
+    const res = await fetch(`${SERVER}/api/quotes/rates`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rateForm),
+    });
+    const data = await res.json();
+    if (!res.ok) { setRateMsg(data.detail || 'השמירה נכשלה'); return; }
+    setRates(data);
+    setRateMsg('✓ נשמר');
+  }
+
+  async function lookupCompanyId() {
+    if (!form.customer.trim() || form.company_id) return;
+    const r = await fetch(`${SERVER}/api/quotes/company-id?customer=${encodeURIComponent(form.customer.trim())}`).then(r => r.json());
+    if (r.company_id) setForm(f => (f.company_id ? f : { ...f, company_id: r.company_id }));
   }
 
   async function create() {
@@ -47,7 +73,7 @@ export default function QuotesTab() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'יצירת ההצעה נכשלה');
-      setForm({ customer: '', price: '', payment_terms: form.payment_terms });
+      setForm({ customer: '', company_id: '', price: '', payment_terms: form.payment_terms });
       if (pdfWindow) pdfWindow.location.href = `${SERVER}/api/quotes/${data.id}/pdf`;
       load();
     } catch (e) {
@@ -67,17 +93,53 @@ export default function QuotesTab() {
   const price = parseFloat(form.price);
   const shown = quotes.filter(q => !search || q.customer.includes(search));
 
+  let breakdown = null;
+  if (rates && price > 0) {
+    const days = parseInt((form.payment_terms.match(/\+\s*(\d+)/) || [])[1] || '0', 10);
+    const credit = Math.round(parseFloat(rates.credit_per_30_days) * days / 30 * 1000) / 1000;
+    const fixed = parseFloat(rates.base_rate) + parseFloat(rates.excise) + parseFloat(rates.distribution) + parseFloat(rates.infrastructure) + credit;
+    breakdown = { days, credit, margin: price - fixed };
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 980, width: '100%', margin: '0 auto' }}>
       <h2 style={{ margin: 0, fontSize: 20, color: 'var(--text-1)' }}>📄 הצעות מחיר</h2>
+
+      {rates && (
+        <div style={{ ...card, background: '#f8fafc' }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-1)', marginBottom: 4 }}>רכיבי מחיר חודשיים</div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
+            מעדכנים בתחילת כל חודש. קבועים: הפצה {rates.distribution} · תשתית {rates.infrastructure} · אשראי {rates.credit_per_30_days} לכל 30 יום
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ width: 180 }}>
+              <label style={lbl}>שער בסיס</label>
+              <input style={inp} type="number" step="0.00001" value={rateForm.base_rate}
+                onChange={e => { setRateMsg(''); setRateForm(f => ({ ...f, base_rate: e.target.value })); }} />
+            </div>
+            <div style={{ width: 180 }}>
+              <label style={lbl}>מס בלו</label>
+              <input style={inp} type="number" step="0.00001" value={rateForm.excise}
+                onChange={e => { setRateMsg(''); setRateForm(f => ({ ...f, excise: e.target.value })); }} />
+            </div>
+            <button onClick={saveRates} className="btn btn-soft">שמור</button>
+            {rateMsg && <span style={{ fontSize: 13, fontWeight: 700, color: rateMsg.startsWith('✓') ? '#16a34a' : '#dc2626' }}>{rateMsg}</span>}
+          </div>
+        </div>
+      )}
 
       <div style={card}>
         <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-1)', marginBottom: 12 }}>הצעה חדשה</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           <div>
             <label style={lbl}>שם לקוח</label>
-            <input style={inp} value={form.customer} placeholder="כפי שיופיע בהצעה"
+            <input style={inp} value={form.customer} placeholder="כפי שיופיע בהצעה" onBlur={lookupCompanyId}
               onChange={e => setForm(f => ({ ...f, customer: e.target.value }))} />
+          </div>
+          <div>
+            <label style={lbl}>ח.פ</label>
+            <input style={inp} value={form.company_id} placeholder="נשלף מכרטיס הלקוח אם קיים"
+              onChange={e => setForm(f => ({ ...f, company_id: e.target.value }))} />
           </div>
           <div>
             <label style={lbl}>מחיר לליטר לפני מע״מ (₪)</label>
@@ -91,7 +153,14 @@ export default function QuotesTab() {
           </div>
         </div>
         {price > 0 && (
-          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 10 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 10, lineHeight: 1.8 }}>
+            {breakdown && (
+              <div>
+                אשראי: {breakdown.credit.toFixed(3)} ({breakdown.days} ימים) · מרווח:{' '}
+                <b style={{ color: breakdown.margin < 0 ? '#dc2626' : '#16a34a' }}>{breakdown.margin.toFixed(3)}</b>
+                {breakdown.margin < 0 && <span style={{ color: '#dc2626' }}> — המחיר נמוך מסכום הרכיבים</span>}
+              </div>
+            )}
             מע״מ 18%: ₪{(price * VAT).toFixed(3)} · סה״כ לליטר: <b style={{ color: 'var(--text-1)' }}>₪{(price * (1 + VAT)).toFixed(3)}</b>
           </div>
         )}
@@ -123,7 +192,10 @@ export default function QuotesTab() {
                     <tr key={q.id}>
                       <td style={td}>{q.id}</td>
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDateTime(q.created_at)}</td>
-                      <td style={{ ...td, fontWeight: 700 }}>{q.customer}</td>
+                      <td style={{ ...td, fontWeight: 700 }}>
+                        {q.customer}
+                        {q.company_id && <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-2)' }}>ח.פ {q.company_id}</div>}
+                      </td>
                       <td style={td}>₪{p.toFixed(3)}</td>
                       <td style={td}>₪{(p * (1 + VAT)).toFixed(3)}</td>
                       <td style={td}>{q.payment_terms}</td>
