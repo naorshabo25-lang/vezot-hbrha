@@ -21,7 +21,7 @@ const td = { padding: '10px', fontSize: 13, color: 'var(--text-1)', borderTop: '
 
 export default function QuotesTab() {
   const [quotes, setQuotes] = useState([]);
-  const [form, setForm] = useState({ customer: '', company_id: '', service_type: 'צובר', price: '', payment_terms: '' });
+  const [form, setForm] = useState({ customer: '', company_id: '', service_type: 'צובר', margin: '', payment_terms: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -61,8 +61,8 @@ export default function QuotesTab() {
 
   async function create() {
     setError('');
-    if (!form.customer.trim() || !form.price || !form.payment_terms.trim()) {
-      setError('נא למלא שם לקוח, מחיר ותנאי תשלום');
+    if (!form.customer.trim() || form.margin === '' || !form.payment_terms.trim()) {
+      setError('נא למלא שם לקוח, מרווח שיווק ותנאי תשלום');
       return;
     }
     setBusy(true);
@@ -73,7 +73,7 @@ export default function QuotesTab() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'יצירת ההצעה נכשלה');
-      setForm({ customer: '', company_id: '', service_type: form.service_type, price: '', payment_terms: form.payment_terms });
+      setForm({ customer: '', company_id: '', service_type: form.service_type, margin: '', payment_terms: form.payment_terms });
       if (pdfWindow) pdfWindow.location.href = `${SERVER}/api/quotes/${data.id}/pdf`;
       load();
     } catch (e) {
@@ -90,15 +90,15 @@ export default function QuotesTab() {
     load();
   }
 
-  const price = parseFloat(form.price);
+  const margin = parseFloat(form.margin);
   const shown = quotes.filter(q => !search || q.customer.includes(search));
 
   let breakdown = null;
-  if (rates && price > 0) {
+  if (rates && margin >= 0) {
     const days = parseInt((form.payment_terms.match(/\+\s*(\d+)/) || [])[1] || '0', 10);
     const credit = Math.round(parseFloat(rates.credit_per_30_days) * days / 30 * 1000) / 1000;
     const fixed = parseFloat(rates.base_rate) + parseFloat(rates.excise) + parseFloat(rates.distribution) + parseFloat(rates.infrastructure) + credit;
-    breakdown = { days, credit, margin: price - fixed };
+    breakdown = { days, credit, price: Math.round((fixed + margin) * 1000) / 1000 };
   }
 
   return (
@@ -163,9 +163,9 @@ export default function QuotesTab() {
             </div>
           </div>
           <div>
-            <label style={lbl}>מחיר לליטר לפני מע״מ (₪)</label>
-            <input style={inp} type="number" step="0.001" min="0" value={form.price} placeholder="8.623"
-              onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
+            <label style={lbl}>מרווח שיווק (₪ לליטר)</label>
+            <input style={inp} type="number" step="0.001" min="0" value={form.margin} placeholder="1.20"
+              onChange={e => setForm(f => ({ ...f, margin: e.target.value }))} />
           </div>
           <div>
             <label style={lbl}>תנאי תשלום</label>
@@ -173,15 +173,13 @@ export default function QuotesTab() {
               onChange={e => setForm(f => ({ ...f, payment_terms: e.target.value }))} />
           </div>
         </div>
-        {price > 0 && (
+        {breakdown && form.margin !== '' && (
           <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 10, lineHeight: 1.8 }}>
-            {breakdown && (
-              <div>
-                אשראי: {breakdown.credit.toFixed(3)} ({breakdown.days} ימים) · מרווח:{' '}
-                <b style={{ color: breakdown.margin < 0 ? '#dc2626' : '#16a34a' }}>{breakdown.margin.toFixed(3)}</b>
-                {breakdown.margin < 0 && <span style={{ color: '#dc2626' }}> — המחיר נמוך מסכום הרכיבים</span>}              </div>
-            )}
-            מע״מ 18%: ₪{(price * VAT).toFixed(3)} · סה״כ לליטר: <b style={{ color: 'var(--text-1)' }}>₪{(price * (1 + VAT)).toFixed(3)}</b>
+            <div>
+              אשראי: {breakdown.credit.toFixed(3)} ({breakdown.days} ימים) · מחיר לליטר לפני מע״מ:{' '}
+              <b style={{ color: 'var(--text-1)' }}>₪{breakdown.price.toFixed(3)}</b>
+            </div>
+            מע״מ 18%: ₪{(breakdown.price * VAT).toFixed(3)} · סה״כ לליטר: <b style={{ color: 'var(--text-1)' }}>₪{(breakdown.price * (1 + VAT)).toFixed(3)}</b>
           </div>
         )}
         {error && <div style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginTop: 10 }}>{error}</div>}

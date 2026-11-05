@@ -1285,8 +1285,7 @@ def lookup_company_id(customer: str = Query("")):
 
 @app.post("/api/quotes")
 async def create_quote(request: Request):
-    from decimal import Decimal
-    from quote_assistant import _read_price, create_archived_quote
+    from quote_assistant import read_margin, price_from_margin, create_archived_quote
     from fastapi.concurrency import run_in_threadpool
     body = await request.json()
     customer = (body.get("customer") or "").strip()
@@ -1298,8 +1297,8 @@ async def create_quote(request: Request):
     if not customer or not payment_terms:
         raise HTTPException(status_code=400, detail="חסר שם לקוח או תנאי תשלום")
     try:
-        price = _read_price(str(body.get("price", "")))
-        pdf_path, qid = await run_in_threadpool(create_archived_quote, customer, Decimal(price),
+        price = price_from_margin(read_margin(str(body.get("margin", ""))), payment_terms)
+        pdf_path, qid = await run_in_threadpool(create_archived_quote, customer, price,
                                                 payment_terms, company_id, service_type)
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))

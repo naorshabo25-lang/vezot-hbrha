@@ -36,17 +36,6 @@ def _get_admin_phone() -> str:
     return _normalize_phone(row["value"]) if row else ""
 
 
-def _read_price(value: str) -> Decimal:
-    cleaned = value.replace("₪", "").replace(",", "").strip()
-    try:
-        price = Decimal(cleaned)
-    except InvalidOperation as exc:
-        raise ValueError("שלח מחיר מספרי בש״ח לליטר, למשל 8.623.") from exc
-    if not price.is_finite() or price <= 0 or price > Decimal("100000"):
-        raise ValueError("המחיר צריך להיות מספר חיובי וסביר בש״ח לליטר.")
-    return price.quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
-
-
 def _read_cell_decimal(cell) -> Decimal:
     value = cell.text.replace("₪", "").replace(",", "").strip()
     try:
@@ -142,6 +131,23 @@ def set_rate(key: str, value: str) -> Decimal:
     with get_db() as conn:
         conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (RATE_KEYS[key], str(rate)))
     return rate
+
+
+def read_margin(value: str) -> Decimal:
+    try:
+        margin = Decimal(str(value).replace("₪", "").replace(",", "").strip())
+    except InvalidOperation as exc:
+        raise ValueError("שלח מרווח מספרי בש״ח לליטר, למשל 1.20") from exc
+    if not margin.is_finite() or margin < 0 or margin > 20:
+        raise ValueError("המרווח צריך להיות מספר חיובי וסביר בש״ח לליטר, למשל 1.20")
+    return margin.quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+
+
+def price_from_margin(margin: Decimal, payment_terms: str) -> Decimal:
+    rates = get_rates()
+    credit = (CREDIT_PER_30_DAYS * credit_days(payment_terms) / 30).quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+    fixed = rates["base_rate"] + rates["excise"] + DISTRIBUTION + INFRASTRUCTURE + credit
+    return (fixed + margin).quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
 
 
 def credit_days(payment_terms: str) -> int:
@@ -456,7 +462,8 @@ def handle_quote_message(phone: str, text: str):
         return "ביטלתי את הכנת הצעת המחיר.", None
 
     price_question = (
-        "מה המחיר לליטר לפני מע״מ, בש״ח? לדוגמה: *8.623*",
+        "מה מרווח השיווק בש״ח לליטר? לדוגמה: *1.20*\n"
+        "(המחיר לליטר יחושב: שער בסיס + מס בלו + הפצה + תשתית + אשראי + המרווח)",
         None,
     )
     service_question = "סוג השירות?\n1. צובר\n2. שטח"
@@ -489,10 +496,10 @@ def handle_quote_message(phone: str, text: str):
 
     if state["step"] == "price":
         try:
-            price = _read_price(message)
+            margin = read_margin(message)
         except ValueError as exc:
-            return f"{exc}\nשלח מחיר אחר או כתוב *ביטול*.", None
-        data["price"] = str(price)
+            return f"{exc}\nשלח מרווח אחר או כתוב *ביטול*.", None
+        data["margin"] = str(margin)
         _save_quote_session(phone, "payment", data)
         return "מה תנאי התשלום? למשל: *שוטף+30* (האשראי מחושב לפי המספר שאחרי ה-+).", None
 
@@ -500,13 +507,15 @@ def handle_quote_message(phone: str, text: str):
         if len(message) > 160:
             return "תנאי התשלום ארוכים מדי. שלח ניסוח קצר יותר או כתוב *ביטול*.", None
         try:
-            b = quote_breakdown(Decimal(data["price"]), message)
+            price = price_from_margin(Decimal(data["margin"]), message)
+            b = quote_breakdown(price, message)
         except ValueError as exc:
             _save_quote_session(phone, "price", data)
-            return f"{exc}\nשלח מחיר אחר או כתוב *ביטול*.", None
+            return f"{exc}\nשלח מרווח אחר או כתוב *ביטול*.", None
         except FileNotFoundError:
             _delete_quote_session(phone)
             return "קובץ תבנית הצעת המחיר לא נמצא בשרת.", None
+        data["price"] = str(price)
         data["payment_terms"] = message
         _save_quote_session(phone, "confirm", data)
         return (
