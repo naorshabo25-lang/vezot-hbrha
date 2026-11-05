@@ -194,7 +194,13 @@ def _convert_docx_to_pdf(docx_path: Path, pdf_path: Path) -> None:
                 word.Quit()
             pythoncom.CoUninitialize()
     else:
-        converter = shutil.which("libreoffice") or shutil.which("soffice")
+        converter = shutil.which("libreoffice") or shutil.which("soffice") or next(
+            (p for p in ("/usr/bin/soffice", "/usr/bin/libreoffice",
+                         "/usr/lib/libreoffice/program/soffice", "/snap/bin/libreoffice",
+                         "/opt/libreoffice/program/soffice")
+             if os.path.isfile(p)),
+            None,
+        )
         if not converter:
             raise RuntimeError(
                 "לא מצאתי LibreOffice להמרת Word ל-PDF. "
