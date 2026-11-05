@@ -26,7 +26,7 @@ export default function QuotesTab() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [rates, setRates] = useState(null);
-  const [rateForm, setRateForm] = useState({ base_rate: '', excise: '' });
+  const [rateForm, setRateForm] = useState({ base_rate: '', excise: '', supplier_credit: '' });
   const [rateMsg, setRateMsg] = useState('');
 
   useEffect(() => { load(); loadRates(); }, []);
@@ -39,7 +39,7 @@ export default function QuotesTab() {
   async function loadRates() {
     const r = await fetch(`${SERVER}/api/quotes/rates`).then(r => r.json());
     setRates(r);
-    setRateForm({ base_rate: r.base_rate, excise: r.excise });
+    setRateForm({ base_rate: r.base_rate, excise: r.excise, supplier_credit: r.supplier_credit });
   }
 
   async function saveRates() {
@@ -98,7 +98,8 @@ export default function QuotesTab() {
     const days = parseInt((form.payment_terms.match(/\+\s*(\d+)/) || [])[1] || '0', 10);
     const credit = Math.round(parseFloat(rates.credit_per_30_days) * days / 30 * 1000) / 1000;
     const fixed = parseFloat(rates.base_rate) + parseFloat(rates.excise) + parseFloat(rates.distribution) + parseFloat(rates.infrastructure) + credit;
-    breakdown = { days, credit, margin: price - fixed };
+    const margin = price - fixed;
+    breakdown = { days, credit, margin, net: margin - (parseFloat(rates.supplier_credit) || 0) };
   }
 
   return (
@@ -121,6 +122,11 @@ export default function QuotesTab() {
               <label style={lbl}>מס בלו</label>
               <input style={inp} type="number" step="0.00001" value={rateForm.excise}
                 onChange={e => { setRateMsg(''); setRateForm(f => ({ ...f, excise: e.target.value })); }} />
+            </div>
+            <div style={{ width: 200 }}>
+              <label style={lbl}>🔒 מרווח אשראי בז״ן (פנימי)</label>
+              <input style={inp} type="number" step="0.01" min="0" value={rateForm.supplier_credit} placeholder="0.12"
+                onChange={e => { setRateMsg(''); setRateForm(f => ({ ...f, supplier_credit: e.target.value })); }} />
             </div>
             <button onClick={saveRates} className="btn btn-soft">שמור</button>
             {rateMsg && <span style={{ fontSize: 13, fontWeight: 700, color: rateMsg.startsWith('✓') ? '#16a34a' : '#dc2626' }}>{rateMsg}</span>}
@@ -175,6 +181,9 @@ export default function QuotesTab() {
                 אשראי: {breakdown.credit.toFixed(3)} ({breakdown.days} ימים) · מרווח:{' '}
                 <b style={{ color: breakdown.margin < 0 ? '#dc2626' : '#16a34a' }}>{breakdown.margin.toFixed(3)}</b>
                 {breakdown.margin < 0 && <span style={{ color: '#dc2626' }}> — המחיר נמוך מסכום הרכיבים</span>}
+                {breakdown.margin >= 0 && (
+                  <> · 🔒 רווח נטו: <b style={{ color: breakdown.net < 0 ? '#dc2626' : '#16a34a' }}>{breakdown.net.toFixed(3)}</b></>
+                )}
               </div>
             )}
             מע״מ 18%: ₪{(price * VAT).toFixed(3)} · סה״כ לליטר: <b style={{ color: 'var(--text-1)' }}>₪{(price * (1 + VAT)).toFixed(3)}</b>

@@ -89,7 +89,8 @@ def _find_quote_rows(table):
 DISTRIBUTION = Decimal("0.350")
 INFRASTRUCTURE = Decimal("0.050")
 CREDIT_PER_30_DAYS = Decimal("0.150")
-RATE_KEYS = {"base_rate": "quote_base_rate", "excise": "quote_excise"}
+RATE_KEYS = {"base_rate": "quote_base_rate", "excise": "quote_excise", "supplier_credit": "quote_supplier_credit"}
+RATE_LABELS = {"base_rate": "שער בסיס", "excise": "מס בלו", "supplier_credit": "מרווח אשראי בז״ן"}
 _COMPONENT_HEADERS = {
     "שער בסיס": ("base_rate", "{:.5f}"),
     "מס בלו": ("excise", "{:.5f}"),
@@ -113,7 +114,7 @@ def _template_default_rates() -> dict:
 def get_rates() -> dict:
     with get_db() as conn:
         stored = {r["key"]: r["value"] for r in conn.execute(
-            "SELECT key, value FROM settings WHERE key IN (?, ?)", tuple(RATE_KEYS.values())
+            "SELECT key, value FROM settings WHERE key IN (?, ?, ?)", tuple(RATE_KEYS.values())
         ).fetchall()}
     rates = {}
     defaults = None
@@ -121,6 +122,9 @@ def get_rates() -> dict:
         try:
             rates[key] = Decimal(stored[setting])
         except (KeyError, InvalidOperation):
+            if key == "supplier_credit":
+                rates[key] = Decimal("0")
+                continue
             defaults = defaults or _template_default_rates()
             rates[key] = defaults[key]
     return rates
@@ -131,8 +135,10 @@ def set_rate(key: str, value: str) -> Decimal:
         rate = Decimal(str(value).replace(",", "").strip())
     except InvalidOperation as exc:
         raise ValueError("שלח מספר, למשל 3.29242") from exc
-    if not rate.is_finite() or rate <= 0 or rate > 100:
+    if not rate.is_finite() or rate < 0 or (rate == 0 and key != "supplier_credit") or rate > 100:
         raise ValueError("הערך צריך להיות מספר חיובי וסביר בש״ח לליטר.")
+    if key == "supplier_credit" and rate > 1:
+        raise ValueError("מרווח האשראי הוא בש״ח לליטר, למשל 0.12 עבור 12 אגורות.")
     with get_db() as conn:
         conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (RATE_KEYS[key], str(rate)))
     return rate
@@ -162,6 +168,7 @@ def quote_breakdown(price: Decimal, payment_terms: str) -> dict:
         "distribution": DISTRIBUTION,
         "infrastructure": INFRASTRUCTURE,
         "margin": margin,
+        "net_profit": margin - rates["supplier_credit"],
         "price": price,
         "vat": vat,
         "total": price + vat,
@@ -406,15 +413,18 @@ def handle_quote_message(phone: str, text: str):
     start_commands = {"הצעת מחיר", "הצעה חדשה", "צור הצעה", "הפק הצעה"}
     state = _get_quote_session(phone)
 
-    rate_match = re.fullmatch(r"(שער בסיס|בסיס|מס בלו|בלו)\s*[:=\-]?\s*([\d.,]+)", message)
+    rate_match = re.fullmatch(
+        r"(שער בסיס|בסיס|מס בלו|בלו|מרווח אשראי|אשראי בז[\"״']?ן)\s*[:=\-]?\s*([\d.,]+)", message
+    )
     if rate_match and not state:
-        key = "base_rate" if "בסיס" in rate_match.group(1) else "excise"
+        name = rate_match.group(1)
+        key = "base_rate" if "בסיס" in name else "excise" if "בלו" in name else "supplier_credit"
         try:
             value = set_rate(key, rate_match.group(2))
         except ValueError as exc:
             return str(exc), None
-        label = "שער בסיס" if key == "base_rate" else "מס בלו"
-        return f"✅ {label} עודכן ל-*{value}*. ישמש בכל ההצעות מעכשיו.", None
+        suffix = " (פנימי, לא מופיע בהצעה)" if key == "supplier_credit" else ". ישמש בכל ההצעות מעכשיו"
+        return f"✅ {RATE_LABELS[key]} עודכן ל-*{value}*{suffix}.", None
 
     if command in {"רכיבי מחיר", "מחירון הצעות", "שער בסיס", "מס בלו"} and not state:
         rates = get_rates()
@@ -423,8 +433,9 @@ def handle_quote_message(phone: str, text: str):
             f"שער בסיס: *{rates['base_rate']}*\n"
             f"מס בלו: *{rates['excise']}*\n"
             f"הפצה: *{DISTRIBUTION}* · תשתית: *{INFRASTRUCTURE}*\n"
-            f"אשראי: *{CREDIT_PER_30_DAYS}* לכל 30 יום\n\n"
-            "לעדכון שלח למשל: *שער בסיס 3.29242* או *מס בלו 3.50333*",
+            f"אשראי: *{CREDIT_PER_30_DAYS}* לכל 30 יום\n"
+            f"מרווח אשראי בז״ן (פנימי): *{rates['supplier_credit']}*\n\n"
+            "לעדכון שלח למשל: *שער בסיס 3.29242*, *מס בלו 3.50333* או *מרווח אשראי 0.12*",
             None,
         )
 
@@ -509,7 +520,8 @@ def handle_quote_message(phone: str, text: str):
             f"מס בלו: {b['excise']}\n"
             f"הפצה: {b['distribution']} · תשתית: {b['infrastructure']}\n"
             f"אשראי: {b['credit']}\n"
-            f"מרווח: *{b['margin']}*\n\n"
+            f"מרווח: *{b['margin']}*\n"
+            f"🔒 רווח נטו (אחרי מרווח אשראי בז״ן {b['supplier_credit']}): *{b['net_profit']}*\n\n"
             f"מחיר לליטר לפני מע״מ: *{_format_money(b['price'])}*\n"
             f"מע״מ 18%: *{_format_money(b['vat'])}*\n"
             f"סה״כ לליטר: *{_format_money(b['total'])}*\n\n"

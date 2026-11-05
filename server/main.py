@@ -1258,6 +1258,7 @@ def get_quote_rates():
     rates = qa.get_rates()
     return {
         "base_rate": str(rates["base_rate"]), "excise": str(rates["excise"]),
+        "supplier_credit": str(rates["supplier_credit"]),
         "distribution": str(qa.DISTRIBUTION), "infrastructure": str(qa.INFRASTRUCTURE),
         "credit_per_30_days": str(qa.CREDIT_PER_30_DAYS),
     }
@@ -1268,7 +1269,7 @@ async def update_quote_rates(request: Request):
     from quote_assistant import set_rate
     body = await request.json()
     try:
-        for key in ("base_rate", "excise"):
+        for key in ("base_rate", "excise", "supplier_credit"):
             if str(body.get(key, "")).strip():
                 set_rate(key, str(body[key]))
     except ValueError as exc:

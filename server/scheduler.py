@@ -204,7 +204,7 @@ def cleanup_old_orders():
 
 
 def add_monthly_rates_task():
-    text = "לעדכן שער בסיס ומס בלו להצעות מחיר"
+    text = "לעדכן שער בסיס, מס בלו ומרווח אשראי בז״ן להצעות מחיר"
     with get_db() as conn:
         exists = conn.execute(
             "SELECT 1 FROM personal_tasks WHERE description=? AND completed=0", (text,)
