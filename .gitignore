@@ -9,3 +9,4 @@ firecrawl-mcp-server/
 playwright-mcp/
 .claude/
 .mcp.json
+server/quotes/

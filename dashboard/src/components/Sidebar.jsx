@@ -1,7 +1,9 @@
 import LiveClock from './LiveClock';
 
 const NAV = [
+  { id: 'tasks',      label: 'משימות',             icon: '✅' },
   { id: 'customers',  label: 'לקוחות והזמנות',     icon: '👥' },
+  { id: 'quotes',     label: 'הצעות מחיר',         icon: '📄' },
   { id: 'potential',  label: 'לקוחות פוטנציאלים',  icon: '🎯' },
   { id: 'obligo',     label: 'אובליגו',            icon: '💳' },
   { id: 'financial',  label: 'דוחות פיננסים',      icon: '📊' },

@@ -275,6 +275,27 @@ def create_quote_pdf(customer: str, price: Decimal, payment_terms: str) -> Path:
     return pdf_path
 
 
+QUOTES_DIR = Path(__file__).with_name("quotes")
+
+
+def create_archived_quote(customer: str, price: Decimal, payment_terms: str) -> tuple[Path, int]:
+    pdf_path = create_quote_pdf(customer, price, payment_terms)
+    return pdf_path, _archive_quote(pdf_path, customer, price, payment_terms)
+
+
+def _archive_quote(pdf_path: Path, customer: str, price: Decimal, payment_terms: str) -> int:
+    QUOTES_DIR.mkdir(exist_ok=True)
+    with get_db() as conn:
+        quote_id = conn.execute(
+            "INSERT INTO quotes (customer, price, payment_terms, file_name) VALUES (?, ?, ?, '')",
+            (customer, str(price), payment_terms),
+        ).lastrowid
+        file_name = f"{quote_id}.pdf"
+        shutil.copyfile(pdf_path, QUOTES_DIR / file_name)
+        conn.execute("UPDATE quotes SET file_name=? WHERE id=?", (file_name, quote_id))
+    return quote_id
+
+
 def cleanup_quote_pdf(pdf_path: Path) -> None:
     output_dir = pdf_path.parent
     if output_dir.name.startswith("quote-"):
@@ -390,7 +411,7 @@ def handle_quote_message(phone: str, text: str):
         if command not in {"אשר הצעה", "מאשר הצעה", "אישור הצעה"}:
             return "שלח *אשר הצעה* ליצירת ההצעה או *ביטול* לעצירת התהליך.", None
         try:
-            pdf_path = create_quote_pdf(
+            pdf_path, _ = create_archived_quote(
                 data["customer"],
                 Decimal(data["price"]),
                 data["payment_terms"],

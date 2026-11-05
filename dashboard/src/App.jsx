@@ -13,6 +13,8 @@ import SettingsTab from './components/SettingsTab';
 import FleetTab from './components/FleetTab';
 import HashavshevotTab from './components/HashavshevotTab';
 import WinterCustomersTab from './components/WinterCustomersTab';
+import TasksTab from './components/TasksTab';
+import QuotesTab from './components/QuotesTab';
 
 const MIGRATION_V = 'workPlanMigration_v4';
 if (!localStorage.getItem(MIGRATION_V)) {
@@ -30,6 +32,8 @@ if (!localStorage.getItem(MIGRATION_V)) {
 }
 
 const PAGE_TITLES = {
+  tasks:     'משימות',
+  quotes:    'הצעות מחיר',
   workplan:  'תמונת מצב',
   expenses:  'הוצאות',
   revenue:   'הכנסות',
@@ -63,7 +67,7 @@ const getAllMonths = (data) => {
 };
 
 export default function App() {
-  const [tab, setTab] = useState('customers');
+  const [tab, setTab] = useState('tasks');
   const [financialSubTab, setFinancialSubTab] = useState('workplan');
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
@@ -287,6 +291,8 @@ export default function App() {
             );
             return <iframe src={`${ordersUrl}?v=${Date.now()}`} style={{ width: '100%', height: '100vh', border: 'none', display: 'block' }} title="מערכת ניהול" />;
           })()}
+          {tab === 'tasks' && <TasksTab />}
+          {tab === 'quotes' && <QuotesTab />}
           {tab === 'customers' && (
             <CustomerOrdersTab onChange={handleWorkPlanChange} workPlanData={workPlanData} />
           )}

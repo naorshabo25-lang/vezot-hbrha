@@ -1184,6 +1184,115 @@ async def receive_message(request: Request):
     return JSONResponse({"status": "ok"})
 
 
+# ── Personal tasks / notes ───────────────────────────────────────────────────
+
+@app.get("/api/personal-tasks")
+def list_personal_tasks():
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM personal_tasks ORDER BY completed, "
+            "CASE WHEN completed=0 THEN id END DESC, completed_at DESC LIMIT 300"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/personal-tasks")
+async def add_personal_task(request: Request):
+    description = ((await request.json()).get("description") or "").strip()
+    if not description:
+        raise HTTPException(status_code=400, detail="חסר תיאור משימה")
+    with get_db() as conn:
+        tid = conn.execute("INSERT INTO personal_tasks (description) VALUES (?)", (description,)).lastrowid
+    return {"id": tid}
+
+
+@app.patch("/api/personal-tasks/{tid}")
+async def update_personal_task(tid: int, request: Request):
+    body = await request.json()
+    with get_db() as conn:
+        if "completed" in body:
+            done = 1 if body["completed"] else 0
+            conn.execute(
+                "UPDATE personal_tasks SET completed=?, "
+                "completed_at=CASE WHEN ?=1 THEN datetime('now','localtime') END WHERE id=?",
+                (done, done, tid),
+            )
+        if (body.get("description") or "").strip():
+            conn.execute("UPDATE personal_tasks SET description=? WHERE id=?", (body["description"].strip(), tid))
+    return {"ok": True}
+
+
+@app.delete("/api/personal-tasks/{tid}")
+def delete_personal_task(tid: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM personal_tasks WHERE id=?", (tid,))
+    return {"ok": True}
+
+
+@app.get("/api/personal-notes")
+def list_personal_notes():
+    with get_db() as conn:
+        rows = conn.execute("SELECT * FROM personal_notes ORDER BY id DESC LIMIT 100").fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.delete("/api/personal-notes/{nid}")
+def delete_personal_note(nid: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM personal_notes WHERE id=?", (nid,))
+    return {"ok": True}
+
+
+# ── Quotes ───────────────────────────────────────────────────────────────────
+
+@app.get("/api/quotes")
+def list_quotes():
+    with get_db() as conn:
+        rows = conn.execute("SELECT * FROM quotes ORDER BY id DESC").fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/quotes")
+async def create_quote(request: Request):
+    from decimal import Decimal
+    from quote_assistant import _read_price, create_archived_quote
+    from fastapi.concurrency import run_in_threadpool
+    body = await request.json()
+    customer = (body.get("customer") or "").strip()
+    payment_terms = (body.get("payment_terms") or "").strip()
+    if not customer or not payment_terms:
+        raise HTTPException(status_code=400, detail="חסר שם לקוח או תנאי תשלום")
+    try:
+        price = _read_price(str(body.get("price", "")))
+        pdf_path, qid = await run_in_threadpool(create_archived_quote, customer, Decimal(price), payment_terms)
+    except (ValueError, FileNotFoundError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    cleanup_quote_pdf(pdf_path)
+    return {"id": qid}
+
+
+@app.get("/api/quotes/{qid}/pdf")
+def get_quote_pdf(qid: int):
+    from quote_assistant import QUOTES_DIR
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM quotes WHERE id=?", (qid,)).fetchone()
+    if not row or not (QUOTES_DIR / row["file_name"]).is_file():
+        raise HTTPException(status_code=404, detail="ההצעה לא נמצאה")
+    return FileResponse(QUOTES_DIR / row["file_name"], media_type="application/pdf",
+                        filename=f"הצעת מחיר - {row['customer']}.pdf", content_disposition_type="inline")
+
+
+@app.delete("/api/quotes/{qid}")
+def delete_quote(qid: int):
+    from quote_assistant import QUOTES_DIR
+    with get_db() as conn:
+        row = conn.execute("SELECT file_name FROM quotes WHERE id=?", (qid,)).fetchone()
+        conn.execute("DELETE FROM quotes WHERE id=?", (qid,))
+    if row and row["file_name"]:
+        (QUOTES_DIR / row["file_name"]).unlink(missing_ok=True)
+    return {"ok": True}
+
+
 # ── Order Form ────────────────────────────────────────────────────────────────
 
 @app.get("/order-form/{customer_id}", response_class=HTMLResponse)

@@ -70,6 +70,15 @@ def init_db():
                 created_at TEXT DEFAULT (datetime('now', 'localtime'))
             );
 
+            CREATE TABLE IF NOT EXISTS quotes (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer      TEXT NOT NULL,
+                price         TEXT NOT NULL,
+                payment_terms TEXT DEFAULT '',
+                file_name     TEXT NOT NULL,
+                created_at    TEXT DEFAULT (datetime('now', 'localtime'))
+            );
+
             CREATE TABLE IF NOT EXISTS personal_quote_sessions (
                 phone TEXT PRIMARY KEY,
                 step TEXT NOT NULL,
