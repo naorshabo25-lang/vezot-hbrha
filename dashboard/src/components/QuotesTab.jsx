@@ -98,8 +98,7 @@ export default function QuotesTab() {
     const days = parseInt((form.payment_terms.match(/\+\s*(\d+)/) || [])[1] || '0', 10);
     const credit = Math.round(parseFloat(rates.credit_per_30_days) * days / 30 * 1000) / 1000;
     const fixed = parseFloat(rates.base_rate) + parseFloat(rates.excise) + parseFloat(rates.distribution) + parseFloat(rates.infrastructure) + credit;
-    const margin = price - fixed;
-    breakdown = { days, credit, margin, net: margin - (parseFloat(rates.supplier_credit) || 0) };
+    breakdown = { days, credit, margin: price - fixed };
   }
 
   return (
@@ -124,7 +123,7 @@ export default function QuotesTab() {
                 onChange={e => { setRateMsg(''); setRateForm(f => ({ ...f, excise: e.target.value })); }} />
             </div>
             <div style={{ width: 200 }}>
-              <label style={lbl}>🔒 מרווח אשראי בז״ן (פנימי)</label>
+              <label style={lbl}>מרווח אשראי בז״ן</label>
               <input style={inp} type="number" step="0.01" min="0" value={rateForm.supplier_credit} placeholder="0.12"
                 onChange={e => { setRateMsg(''); setRateForm(f => ({ ...f, supplier_credit: e.target.value })); }} />
             </div>
@@ -180,11 +179,7 @@ export default function QuotesTab() {
               <div>
                 אשראי: {breakdown.credit.toFixed(3)} ({breakdown.days} ימים) · מרווח:{' '}
                 <b style={{ color: breakdown.margin < 0 ? '#dc2626' : '#16a34a' }}>{breakdown.margin.toFixed(3)}</b>
-                {breakdown.margin < 0 && <span style={{ color: '#dc2626' }}> — המחיר נמוך מסכום הרכיבים</span>}
-                {breakdown.margin >= 0 && (
-                  <> · 🔒 רווח נטו: <b style={{ color: breakdown.net < 0 ? '#dc2626' : '#16a34a' }}>{breakdown.net.toFixed(3)}</b></>
-                )}
-              </div>
+                {breakdown.margin < 0 && <span style={{ color: '#dc2626' }}> — המחיר נמוך מסכום הרכיבים</span>}              </div>
             )}
             מע״מ 18%: ₪{(price * VAT).toFixed(3)} · סה״כ לליטר: <b style={{ color: 'var(--text-1)' }}>₪{(price * (1 + VAT)).toFixed(3)}</b>
           </div>

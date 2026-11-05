@@ -168,7 +168,6 @@ def quote_breakdown(price: Decimal, payment_terms: str) -> dict:
         "distribution": DISTRIBUTION,
         "infrastructure": INFRASTRUCTURE,
         "margin": margin,
-        "net_profit": margin - rates["supplier_credit"],
         "price": price,
         "vat": vat,
         "total": price + vat,
@@ -423,7 +422,7 @@ def handle_quote_message(phone: str, text: str):
             value = set_rate(key, rate_match.group(2))
         except ValueError as exc:
             return str(exc), None
-        suffix = " (פנימי, לא מופיע בהצעה)" if key == "supplier_credit" else ". ישמש בכל ההצעות מעכשיו"
+        suffix = "" if key == "supplier_credit" else ". ישמש בכל ההצעות מעכשיו"
         return f"✅ {RATE_LABELS[key]} עודכן ל-*{value}*{suffix}.", None
 
     if command in {"רכיבי מחיר", "מחירון הצעות", "שער בסיס", "מס בלו"} and not state:
@@ -434,7 +433,7 @@ def handle_quote_message(phone: str, text: str):
             f"מס בלו: *{rates['excise']}*\n"
             f"הפצה: *{DISTRIBUTION}* · תשתית: *{INFRASTRUCTURE}*\n"
             f"אשראי: *{CREDIT_PER_30_DAYS}* לכל 30 יום\n"
-            f"מרווח אשראי בז״ן (פנימי): *{rates['supplier_credit']}*\n\n"
+            f"מרווח אשראי בז״ן: *{rates['supplier_credit']}*\n\n"
             "לעדכון שלח למשל: *שער בסיס 3.29242*, *מס בלו 3.50333* או *מרווח אשראי 0.12*",
             None,
         )
@@ -520,8 +519,7 @@ def handle_quote_message(phone: str, text: str):
             f"מס בלו: {b['excise']}\n"
             f"הפצה: {b['distribution']} · תשתית: {b['infrastructure']}\n"
             f"אשראי: {b['credit']}\n"
-            f"מרווח: *{b['margin']}*\n"
-            f"🔒 רווח נטו (אחרי מרווח אשראי בז״ן {b['supplier_credit']}): *{b['net_profit']}*\n\n"
+            f"מרווח: *{b['margin']}*\n\n"
             f"מחיר לליטר לפני מע״מ: *{_format_money(b['price'])}*\n"
             f"מע״מ 18%: *{_format_money(b['vat'])}*\n"
             f"סה״כ לליטר: *{_format_money(b['total'])}*\n\n"
