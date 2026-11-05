@@ -349,6 +349,11 @@ async def receive_message(request: Request):
             if len(_processed_msg_ids) > 500:
                 _processed_msg_ids.clear()
 
+        from personal_assistant import _get_admin_phone, _normalize_phone
+        if _normalize_phone(phone) == _get_admin_phone():
+            from reminders import note_admin_message
+            note_admin_message()
+
         # ── פקודות מנהל ──────────────────────────────────────────────────────
         if msg_type == "text":
             _raw_text = message["text"]["body"].strip()
@@ -1191,19 +1196,41 @@ def list_personal_tasks():
     with get_db() as conn:
         rows = conn.execute(
             "SELECT * FROM personal_tasks ORDER BY completed, "
+            "CASE WHEN completed=0 AND COALESCE(remind_at,'')<>'' THEN 0 ELSE 1 END, "
+            "CASE WHEN completed=0 THEN remind_at END, "
             "CASE WHEN completed=0 THEN id END DESC, completed_at DESC LIMIT 300"
         ).fetchall()
     return [dict(r) for r in rows]
 
 
+def _normalize_remind_at(value):
+    from datetime import datetime as _dt
+    value = (value or "").strip().replace("T", " ")[:16]
+    if not value:
+        return None
+    try:
+        return _dt.strptime(value, "%Y-%m-%d %H:%M").strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="זמן תזכורת לא תקין")
+
+
 @app.post("/api/personal-tasks")
 async def add_personal_task(request: Request):
-    description = ((await request.json()).get("description") or "").strip()
+    from reminders import parse_reminder
+    body = await request.json()
+    description = (body.get("description") or "").strip()
     if not description:
         raise HTTPException(status_code=400, detail="חסר תיאור משימה")
+    remind_at = _normalize_remind_at(body.get("remind_at"))
+    if not remind_at:
+        parsed_text, when = parse_reminder(description)
+        if when:
+            description, remind_at = parsed_text or description, when.strftime("%Y-%m-%d %H:%M")
     with get_db() as conn:
-        tid = conn.execute("INSERT INTO personal_tasks (description) VALUES (?)", (description,)).lastrowid
-    return {"id": tid}
+        tid = conn.execute(
+            "INSERT INTO personal_tasks (description, remind_at) VALUES (?, ?)", (description, remind_at)
+        ).lastrowid
+    return {"id": tid, "description": description, "remind_at": remind_at}
 
 
 @app.patch("/api/personal-tasks/{tid}")
@@ -1219,6 +1246,9 @@ async def update_personal_task(tid: int, request: Request):
             )
         if (body.get("description") or "").strip():
             conn.execute("UPDATE personal_tasks SET description=? WHERE id=?", (body["description"].strip(), tid))
+        if "remind_at" in body:
+            conn.execute("UPDATE personal_tasks SET remind_at=?, reminded=0 WHERE id=?",
+                         (_normalize_remind_at(body["remind_at"]), tid))
     return {"ok": True}
 
 

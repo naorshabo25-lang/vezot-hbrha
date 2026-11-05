@@ -1,6 +1,8 @@
 import re
+from datetime import datetime
 
 from database import get_db
+from reminders import format_when, now_il, parse_reminder
 
 
 def _normalize_phone(phone: str) -> str:
@@ -21,13 +23,19 @@ def _get_admin_phone() -> str:
 def _format_tasks() -> str:
     with get_db() as conn:
         tasks = conn.execute(
-            "SELECT id, description FROM personal_tasks "
-            "WHERE completed=0 ORDER BY id"
+            "SELECT id, description, remind_at, reminded FROM personal_tasks "
+            "WHERE completed=0 ORDER BY CASE WHEN remind_at IS NULL OR remind_at='' THEN 1 ELSE 0 END, remind_at, id"
         ).fetchall()
     if not tasks:
         return "🎉 אין לך כרגע משימות פתוחות."
     lines = ["📋 *המשימות הפתוחות שלך:*"]
-    lines.extend(f"{task['id']}. {task['description']}" for task in tasks)
+    for task in tasks:
+        when = ""
+        if task["remind_at"]:
+            when = f" ⏰ {format_when(datetime.strptime(task['remind_at'], '%Y-%m-%d %H:%M'))}"
+            if task["reminded"]:
+                when += " (נשלחה)"
+        lines.append(f"{task['id']}. {task['description']}{when}")
     lines.append("\nלסיום משימה: *בוצע <מספר>*")
     return "\n".join(lines)
 
@@ -49,13 +57,22 @@ def _format_notes() -> str:
 
 
 def _save_task(description: str) -> str:
+    text, when = parse_reminder(description)
+    text = text or description
+    if when and when <= now_il():
+        return f"⚠️ הזמן שציינת ({when:%d/%m %H:%M}) כבר עבר. שלח שוב עם זמן עתידי."
     with get_db() as conn:
         cursor = conn.execute(
-            "INSERT INTO personal_tasks (description) VALUES (?)",
-            (description,),
+            "INSERT INTO personal_tasks (description, remind_at) VALUES (?, ?)",
+            (text, when.strftime("%Y-%m-%d %H:%M") if when else None),
         )
         task_id = cursor.lastrowid
-    return f"✅ המשימה נשמרה (מספר {task_id}): {description}"
+    if when:
+        return f"⏰ אזכיר לך {format_when(when)} (מספר {task_id}): {text}"
+    return (
+        f"✅ המשימה נשמרה (מספר {task_id}): {text}\n"
+        "לתזכורת בשעה מסוימת כתוב למשל: *תזכיר לי מחר ב-9 ...*"
+    )
 
 
 def _save_note(content: str) -> str:
@@ -96,7 +113,8 @@ def handle_personal_assistant_message(phone: str, text: str) -> str | None:
         return (
             "שלום! אני העוזר האישי שלך 👋\n\n"
             "• משימה: להתקשר לספק\n"
-            "• לרשום תזכורת להתקשר לספק\n"
+            "• תזכיר לי מחר ב-9 פגישה עם כהן — תזכורת בשעה\n"
+            "• תזכיר לי בעוד שעה להתקשר לספק\n"
             "• הערה: לדבר עם יוסי על ההצעה\n"
             "• משימות — הצגת משימות פתוחות\n"
             "• תזכורות — הצגת משימות פתוחות\n"

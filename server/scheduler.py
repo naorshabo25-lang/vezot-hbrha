@@ -238,6 +238,12 @@ def start_scheduler(hour: int = 14, minute: int = 0,
         CronTrigger(hour=1, minute=0, timezone="Asia/Jerusalem"),
         id="cleanup_old_orders", replace_existing=True,
     )
+    from reminders import send_due_reminders
+    scheduler.add_job(
+        send_due_reminders,
+        CronTrigger(minute="*", timezone="Asia/Jerusalem"),
+        id="due_reminders", replace_existing=True, max_instances=1, coalesce=True,
+    )
     scheduler.add_job(
         add_monthly_rates_task,
         CronTrigger(day=1, hour=7, minute=0, timezone="Asia/Jerusalem"),

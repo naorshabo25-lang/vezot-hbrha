@@ -233,6 +233,11 @@ def init_db():
             conn.execute("ALTER TABLE quotes ADD COLUMN company_id TEXT DEFAULT ''")
         except Exception:
             pass
+        for col in ["remind_at TEXT DEFAULT NULL", "reminded INTEGER NOT NULL DEFAULT 0"]:
+            try:
+                conn.execute(f"ALTER TABLE personal_tasks ADD COLUMN {col}")
+            except Exception:
+                pass
         try:
             conn.execute("ALTER TABLE quotes ADD COLUMN service_type TEXT DEFAULT 'צובר'")
         except Exception:

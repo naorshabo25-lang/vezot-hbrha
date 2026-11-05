@@ -56,6 +56,23 @@ def send_whatsapp_message(to_phone: str, text: str) -> bool:
     })
 
 
+def send_template_message(to_phone: str, template_name: str, params: list, language: str = "he") -> bool:
+    to_phone = to_phone.replace("whatsapp:", "")
+    return _post(to_phone, {
+        "messaging_product": "whatsapp",
+        "to": to_phone,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": language},
+            "components": [{
+                "type": "body",
+                "parameters": [{"type": "text", "text": str(p)[:1000]} for p in params],
+            }],
+        },
+    })
+
+
 def send_whatsapp_document(to_phone: str, file_path: str, caption: str = "") -> bool:
     to_phone = to_phone.replace("whatsapp:", "")
     access_token = os.getenv("WHATSAPP_ACCESS_TOKEN", "")

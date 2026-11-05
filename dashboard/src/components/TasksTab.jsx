@@ -12,14 +12,19 @@ function fmtDateTime(s) {
 }
 
 const card = { background: 'var(--card-bg, #fff)', border: '1.5px solid var(--border, #e5e7eb)', borderRadius: 14, padding: 18 };
+const reminderChip = { border: 'none', borderRadius: 12, padding: '2px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: '#eff6ff', color: '#1d4ed8', fontFamily: 'inherit' };
+const chipSent = { background: '#f0fdf4', color: '#16a34a' };
+const chipFailed = { background: '#fef2f2', color: '#dc2626' };
 const inp = { padding: '10px 14px', border: '1.5px solid var(--border, #e5e7eb)', borderRadius: 10, fontFamily: 'inherit', fontSize: 14, background: 'var(--bg, #fafafa)', color: 'var(--text-1, #1f2937)', flex: 1, minWidth: 0 };
 
 export default function TasksTab() {
   const [tasks, setTasks] = useState([]);
   const [notes, setNotes] = useState([]);
   const [text, setText] = useState('');
+  const [remindAt, setRemindAt] = useState('');
   const [showDone, setShowDone] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [editingTime, setEditingTime] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -36,8 +41,9 @@ export default function TasksTab() {
     const description = text.trim();
     if (!description) return;
     setText('');
+    setRemindAt('');
     await fetch(`${SERVER}/api/personal-tasks`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description, remind_at: remindAt }),
     });
     load();
   }
@@ -83,8 +89,23 @@ export default function TasksTab() {
             {t.description}
           </div>
         )}
-        <div style={{ fontSize: 11, color: 'var(--text-2, #9ca3af)', marginTop: 2 }}>
-          #{t.id} · נוצר {fmtDateTime(t.created_at)}{t.completed_at ? ` · בוצע ${fmtDateTime(t.completed_at)}` : ''}
+        <div style={{ fontSize: 11, color: 'var(--text-2, #9ca3af)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span>#{t.id} · נוצר {fmtDateTime(t.created_at)}{t.completed_at ? ` · בוצע ${fmtDateTime(t.completed_at)}` : ''}</span>
+          {!t.completed && (editingTime === t.id ? (
+            <input type="datetime-local" autoFocus defaultValue={(t.remind_at || '').replace(' ', 'T')}
+              style={{ ...inp, flex: 'none', padding: '3px 8px', fontSize: 12 }}
+              onKeyDown={e => e.key === 'Escape' && setEditingTime(null)}
+              onBlur={e => { setEditingTime(null); patch(t.id, { remind_at: e.target.value }); }} />
+          ) : t.remind_at ? (
+            <button onClick={() => setEditingTime(t.id)} title="שנה זמן תזכורת"
+              style={{ ...reminderChip, ...(t.reminded === 1 ? chipSent : t.reminded === 2 ? chipFailed : {}) }}>
+              ⏰ {fmtDateTime(t.remind_at)}{t.reminded === 1 ? ' · נשלחה' : t.reminded === 2 ? ' · השליחה נכשלה' : ''}
+            </button>
+          ) : (
+            <button onClick={() => setEditingTime(t.id)} style={{ ...reminderChip, background: 'transparent', color: 'var(--text-2, #9ca3af)' }}>
+              + תזכורת
+            </button>
+          ))}
         </div>
       </div>
       <button onClick={() => del(t.id)} title="מחק"
@@ -96,12 +117,14 @@ export default function TasksTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 820, width: '100%', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <h2 style={{ margin: 0, fontSize: 20, color: 'var(--text-1)' }}>✅ המשימות שלי</h2>
-        <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{open.length} פתוחות · אפשר להוסיף גם בוואטסאפ: <b>תזכיר לי ...</b></span>
+        <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{open.length} פתוחות · בוואטסאפ: <b>תזכיר לי מחר ב-9 ...</b></span>
       </div>
 
       <div style={{ ...card, display: 'flex', gap: 10 }}>
         <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()}
-          placeholder="משימה חדשה... (Enter להוספה)" style={inp} />
+          placeholder="משימה חדשה... אפשר גם: מחר ב-9 פגישה עם כהן" style={inp} />
+        <input type="datetime-local" value={remindAt} onChange={e => setRemindAt(e.target.value)} title="זמן תזכורת (לא חובה)"
+          style={{ ...inp, flex: 'none', width: 'auto' }} />
         <button onClick={add} className="btn btn-primary">+ הוסף</button>
       </div>
 
