@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<style>
+  ${font_faces}
+  @page { size: A4; margin: 0; }
+  :root {
+    --red: #d32f2f;
+    --red-dark: #a91f24;
+    --red-soft: #fdecec;
+    --ink: #14171c;
+    --muted: #6b7280;
+    --line: #e6e8ec;
+    --surface: #f6f7f9;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Heebo', 'Segoe UI', Arial, sans-serif;
+    color: var(--ink);
+    font-size: 10.5pt;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    height: 297mm;
+    padding: 0 14mm 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .accent { height: 5mm; background: var(--red); margin: 0 -14mm; }
+  .num { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7mm 0 5mm; border-bottom: 1px solid var(--line);
+  }
+  .company .name { font-size: 15pt; font-weight: 800; color: var(--red); letter-spacing: -0.2px; }
+  .company .details { color: var(--muted); font-size: 9pt; margin-top: 1.5mm; line-height: 1.6; }
+  .company .details b { color: var(--ink); font-weight: 500; }
+  .logo { height: 24mm; clip-path: inset(4% 0 6% 0); }
+
+  .title-row {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-top: 7mm;
+  }
+  .doc-type { font-size: 25pt; font-weight: 800; line-height: 1.05; letter-spacing: -0.5px; }
+  .service { font-size: 12.5pt; font-weight: 500; color: var(--red); margin-top: 1.5mm; }
+  .meta { display: flex; gap: 2.5mm; }
+  .meta .cell {
+    background: var(--surface); border-radius: 2.5mm; padding: 2mm 4mm; min-width: 26mm; text-align: center;
+  }
+  .meta .label { font-size: 7.5pt; color: var(--muted); }
+  .meta .value { font-size: 10.5pt; font-weight: 700; }
+
+  .customer {
+    margin-top: 6mm; border: 1px solid var(--line); border-radius: 3mm;
+    display: flex; justify-content: space-between; align-items: stretch; overflow: hidden;
+  }
+  .customer .who { padding: 4mm 5mm; border-right: 1.6mm solid var(--red); }
+  .customer .to { font-size: 8.5pt; color: var(--muted); }
+  .customer .cname { font-size: 15pt; font-weight: 800; margin-top: 0.5mm; }
+  .customer .cid { font-size: 9.5pt; color: var(--muted); margin-top: 0.5mm; }
+  .customer .terms { background: var(--surface); padding: 4mm 6mm; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+  .customer .terms .label { font-size: 8pt; color: var(--muted); }
+  .customer .terms .value { font-size: 12pt; font-weight: 700; }
+
+  h2 { font-size: 11pt; font-weight: 800; margin: 6mm 0 2.5mm; display: flex; align-items: center; gap: 2mm; }
+  h2::before { content: ''; width: 1.2mm; height: 4.2mm; background: var(--red); border-radius: 1mm; display: inline-block; }
+
+  table.components { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: 3mm; overflow: hidden; }
+  .components th {
+    background: var(--ink); color: #fff; font-weight: 500; font-size: 8.5pt;
+    padding: 2.4mm 2mm; text-align: center; white-space: nowrap;
+  }
+  .components td { padding: 3mm 2mm; text-align: center; font-size: 10.5pt; border-top: 1px solid var(--line); }
+  .components td.product { text-align: right; font-weight: 700; }
+  .components td.product small { display: block; font-weight: 400; color: var(--muted); font-size: 8pt; }
+  .components td.margin-cell { background: var(--red-soft); font-weight: 700; color: var(--red-dark); }
+
+  .totals { display: flex; gap: 3mm; margin-top: 4mm; }
+  .totals .card { flex: 1; border: 1px solid var(--line); border-radius: 3mm; padding: 3mm 5mm; }
+  .totals .card .label { font-size: 8.5pt; color: var(--muted); }
+  .totals .card .value { font-size: 14pt; font-weight: 700; margin-top: 0.5mm; }
+  .totals .card.grand { flex: 1.35; background: var(--red); border-color: var(--red); color: #fff; }
+  .totals .card.grand .label { color: #ffe3e3; }
+  .totals .card.grand .value { font-size: 20pt; font-weight: 800; }
+
+  .terms-cols { column-count: 2; column-gap: 8mm; column-rule: 1px solid var(--line); }
+  ol, ul { margin: 0 0 3mm; padding-right: 4.5mm; font-size: 8.2pt; line-height: 1.5; color: #30353d; }
+  li { margin-bottom: 0.7mm; break-inside: avoid; }
+  ul li::marker { color: var(--red); }
+  ol li::marker { color: var(--red); font-weight: 700; }
+  .sub { font-size: 8.8pt; font-weight: 700; margin-bottom: 1.2mm; break-after: avoid; }
+
+  .signatures { position: absolute; bottom: 19mm; left: 14mm; right: 14mm; display: flex; gap: 14mm; }
+  .signatures > div { flex: 1; }
+  .signatures .sigline { border-bottom: 1px solid #9aa0a8; height: 9mm; }
+  .signatures .label { font-size: 8.5pt; color: var(--muted); margin-top: 1.5mm; }
+  .signatures .label b { color: var(--ink); font-weight: 700; }
+
+  footer {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 12mm;
+    background: var(--ink); color: #c9ccd2; font-size: 8pt;
+    display: flex; justify-content: center; align-items: center; gap: 5mm;
+  }
+  footer .dot { width: 1mm; height: 1mm; border-radius: 50%; background: var(--red); display: inline-block; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="accent"></div>
+
+  <header>
+    <div class="company">
+      <div class="name">וזאת הברכה דלקים ושמנים בע״מ</div>
+      <div class="details">
+        ח.פ <b class="num">515887164</b> · האייל 22, ירושלים<br>
+        טלפון <b class="num">02-5094000</b> · office.hbrha18@gmail.com · www.vezot-habracha.com
+      </div>
+    </div>
+    <img class="logo" src="${logo}" alt="">
+  </header>
+
+  <div class="title-row">
+    <div>
+      <div class="doc-type">${doc_type}</div>
+      <div class="service">שירותי תדלוק ${service_type}</div>
+    </div>
+    <div class="meta">
+      <div class="cell"><div class="label">מספר הצעה</div><div class="value num">${quote_number}</div></div>
+      <div class="cell"><div class="label">תאריך</div><div class="value num">${date}</div></div>
+      <div class="cell"><div class="label">בתוקף עד</div><div class="value num">${valid_until}</div></div>
+    </div>
+  </div>
+
+  <div class="customer">
+    <div class="who">
+      <div class="to">לכבוד</div>
+      <div class="cname">${customer}</div>
+      ${company_id_line}
+    </div>
+    <div class="terms">
+      <div class="label">תנאי תשלום</div>
+      <div class="value">${payment_terms}</div>
+    </div>
+  </div>
+
+  <h2>מחירון לליטר</h2>
+  <table class="components">
+    <thead>
+      <tr>
+        <th>מוצר</th><th>שער בסיס</th><th>מס בלו</th><th>אשראי</th><th>הפצה</th><th>תשתית</th><th>מרווח</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="product">${product}<small>מק״ט <span class="num">${sku}</span></small></td>
+        <td class="num">${base_rate}</td>
+        <td class="num">${excise}</td>
+        <td class="num">${credit}</td>
+        <td class="num">${distribution}</td>
+        <td class="num">${infrastructure}</td>
+        <td class="num margin-cell">${margin}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="card"><div class="label">מחיר לליטר לפני מע״מ</div><div class="value"><span class="num">${price}</span> ₪</div></div>
+    <div class="card"><div class="label">מע״מ 18%</div><div class="value"><span class="num">${vat}</span> ₪</div></div>
+    <div class="card grand"><div class="label">סה״כ לליטר כולל מע״מ</div><div class="value"><span class="num">${total}</span> ₪</div></div>
+  </div>
+
+  <h2>תנאים</h2>
+  <div class="terms-cols">
+    <div class="sub">תנאים כלליים</div>
+    <ol>${general_terms}</ol>
+    <div class="sub">המחיר הוא לפי תעודת משלוח בודדת</div>
+    <ul>${notes}</ul>
+  </div>
+
+  <div class="signatures">
+    <div>
+      <div class="sigline"></div>
+      <div class="label"><b>וזאת הברכה דלקים ושמנים בע״מ</b> · שם החותם וחתימה</div>
+    </div>
+    <div>
+      <div class="sigline"></div>
+      <div class="label"><b>אישור הלקוח</b> · שם, חתימה וחותמת</div>
+    </div>
+  </div>
+
+  <footer>
+    <span>וזאת הברכה דלקים ושמנים בע״מ</span><span class="dot"></span>
+    <span class="num">02-5094000</span><span class="dot"></span>
+    <span>www.vezot-habracha.com</span>
+  </footer>
+</div>
+</body>
+</html>

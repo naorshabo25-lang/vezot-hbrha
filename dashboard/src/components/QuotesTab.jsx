@@ -19,9 +19,30 @@ const lbl = { fontSize: 11, fontWeight: 700, color: 'var(--text-2, #9ca3af)', di
 const th = { textAlign: 'right', padding: '8px 10px', fontWeight: 700, fontSize: 12, color: 'var(--text-2)' };
 const td = { padding: '10px', fontSize: 13, color: 'var(--text-1)', borderTop: '1px solid var(--border, #f1f5f9)' };
 
+function Toggle({ options, value, onChange, prefix = '' }) {
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      {options.map(o => {
+        const active = value === o;
+        return (
+          <button key={o} type="button" onClick={() => onChange(o)}
+            style={{ flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              background: active ? '#1e2d3d' : 'var(--bg, #fafafa)', color: active ? '#fff' : 'var(--text-1, #374151)',
+              border: active ? '1.5px solid #1e2d3d' : '1.5px solid var(--border, #e5e7eb)' }}>
+            {prefix}{o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function QuotesTab() {
   const [quotes, setQuotes] = useState([]);
-  const [form, setForm] = useState({ customer: '', company_id: '', service_type: 'צובר', margin: '', payment_terms: '' });
+  const [form, setForm] = useState({ customer: '', company_id: '', doc_type: 'הצעת מחיר', service_type: 'צובר', margin: '', payment_terms: '' });
+  const [terms, setTerms] = useState(null);
+  const [showTerms, setShowTerms] = useState(false);
+  const [termsMsg, setTermsMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -29,7 +50,21 @@ export default function QuotesTab() {
   const [rateForm, setRateForm] = useState({ base_rate: '', excise: '', supplier_credit: '' });
   const [rateMsg, setRateMsg] = useState('');
 
-  useEffect(() => { load(); loadRates(); }, []);
+  useEffect(() => {
+    load();
+    loadRates();
+    fetch(`${SERVER}/api/quotes/terms`).then(r => r.json()).then(setTerms);
+  }, []);
+
+  async function saveTerms() {
+    setTermsMsg('');
+    const res = await fetch(`${SERVER}/api/quotes/terms`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(terms),
+    });
+    if (!res.ok) { setTermsMsg('השמירה נכשלה'); return; }
+    setTerms(await res.json());
+    setTermsMsg('✓ נשמר — יופיע בהצעות הבאות');
+  }
 
   async function load() {
     const q = await fetch(`${SERVER}/api/quotes`).then(r => r.json());
@@ -73,7 +108,7 @@ export default function QuotesTab() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'יצירת ההצעה נכשלה');
-      setForm({ customer: '', company_id: '', service_type: form.service_type, margin: '', payment_terms: form.payment_terms });
+      setForm({ ...form, customer: '', company_id: '', margin: '' });
       if (pdfWindow) pdfWindow.location.href = `${SERVER}/api/quotes/${data.id}/pdf`;
       load();
     } catch (e) {
@@ -147,20 +182,14 @@ export default function QuotesTab() {
               onChange={e => setForm(f => ({ ...f, company_id: e.target.value }))} />
           </div>
           <div>
+            <label style={lbl}>סוג מסמך</label>
+            <Toggle options={['הצעת מחיר', 'עדכון מחיר']} value={form.doc_type}
+              onChange={v => setForm(f => ({ ...f, doc_type: v }))} />
+          </div>
+          <div>
             <label style={lbl}>סוג שירות</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['צובר', 'שטח'].map(s => {
-                const active = form.service_type === s;
-                return (
-                  <button key={s} type="button" onClick={() => setForm(f => ({ ...f, service_type: s }))}
-                    style={{ flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                      background: active ? '#1e2d3d' : 'var(--bg, #fafafa)', color: active ? '#fff' : 'var(--text-1, #374151)',
-                      border: active ? '1.5px solid #1e2d3d' : '1.5px solid var(--border, #e5e7eb)' }}>
-                    תדלוק {s}
-                  </button>
-                );
-              })}
-            </div>
+            <Toggle options={['צובר', 'שטח']} value={form.service_type} prefix="תדלוק "
+              onChange={v => setForm(f => ({ ...f, service_type: v }))} />
           </div>
           <div>
             <label style={lbl}>מרווח שיווק (₪ לליטר)</label>
@@ -187,6 +216,36 @@ export default function QuotesTab() {
           {busy ? 'מפיק PDF...' : 'הפק הצעה'}
         </button>
       </div>
+
+      {terms && (
+        <div style={card}>
+          <button onClick={() => setShowTerms(v => !v)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 800, color: 'var(--text-1)', padding: 0, fontFamily: 'inherit' }}>
+            {showTerms ? '▾' : '◂'} תנאים שמופיעים בהצעה
+          </button>
+          {showTerms && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>כל שורה היא סעיף נפרד. השינוי חל על ההצעות הבאות.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                <div>
+                  <label style={lbl}>תנאים כלליים (ממוספרים)</label>
+                  <textarea style={{ ...inp, minHeight: 140, resize: 'vertical', lineHeight: 1.6 }} value={terms.general}
+                    onChange={e => { setTermsMsg(''); setTerms(t => ({ ...t, general: e.target.value })); }} />
+                </div>
+                <div>
+                  <label style={lbl}>המחיר הוא לפי תעודת משלוח בודדת (נקודות)</label>
+                  <textarea style={{ ...inp, minHeight: 140, resize: 'vertical', lineHeight: 1.6 }} value={terms.notes}
+                    onChange={e => { setTermsMsg(''); setTerms(t => ({ ...t, notes: e.target.value })); }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+                <button onClick={saveTerms} className="btn btn-soft">שמור תנאים</button>
+                {termsMsg && <span style={{ fontSize: 13, fontWeight: 700, color: termsMsg.startsWith('✓') ? '#16a34a' : '#dc2626' }}>{termsMsg}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>

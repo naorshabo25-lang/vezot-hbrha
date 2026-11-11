@@ -1307,6 +1307,20 @@ async def update_quote_rates(request: Request):
     return get_quote_rates()
 
 
+@app.get("/api/quotes/terms")
+def get_quote_terms():
+    from quote_assistant import get_terms
+    return get_terms()
+
+
+@app.post("/api/quotes/terms")
+async def update_quote_terms(request: Request):
+    from quote_assistant import get_terms, set_terms
+    body = await request.json()
+    set_terms(str(body.get("general", "")), str(body.get("notes", "")))
+    return get_terms()
+
+
 @app.get("/api/quotes/company-id")
 def lookup_company_id(customer: str = Query("")):
     from quote_assistant import find_company_id
@@ -1324,12 +1338,15 @@ async def create_quote(request: Request):
     service_type = body.get("service_type") or "צובר"
     if service_type not in ("צובר", "שטח"):
         raise HTTPException(status_code=400, detail="סוג שירות לא תקין")
+    doc_type = body.get("doc_type") or "הצעת מחיר"
+    if doc_type not in ("הצעת מחיר", "עדכון מחיר"):
+        raise HTTPException(status_code=400, detail="סוג מסמך לא תקין")
     if not customer or not payment_terms:
         raise HTTPException(status_code=400, detail="חסר שם לקוח או תנאי תשלום")
     try:
         price = price_from_margin(read_margin(str(body.get("margin", ""))), payment_terms)
         pdf_path, qid = await run_in_threadpool(create_archived_quote, customer, price,
-                                                payment_terms, company_id, service_type)
+                                                payment_terms, company_id, service_type, doc_type)
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     cleanup_quote_pdf(pdf_path)

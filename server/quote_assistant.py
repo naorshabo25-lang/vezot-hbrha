@@ -352,12 +352,139 @@ def create_quote_pdf(customer: str, price: Decimal, payment_terms: str, company_
 
 
 QUOTES_DIR = Path(__file__).with_name("quotes")
+_HTML_TEMPLATE = Path(__file__).with_name("quote_template.html")
+_FONTS_DIR = Path(__file__).with_name("fonts")
+_LOGO = Path(__file__).parent / "static" / "logo.jpeg"
+PRODUCT_NAME = "סולר תחבורה"
+PRODUCT_SKU = "100001"
+DOC_TYPES = ("הצעת מחיר", "עדכון מחיר")
+
+TERMS_KEYS = {"general": "quote_terms_general", "notes": "quote_terms_notes"}
+DEFAULT_TERMS = {
+    "general": "\n".join([
+        "מינימום הזמנה של 1,000 ליטרים לאתר.",
+        "הובלה לכל חלקי הארץ.",
+        "אספקה עד 4 שעות מרגע אישור הזמנה. ירושלים והסביבה עד שעתיים.",
+        "המחיר משתנה ב-1 לכל חודש בהתאם למחירי בז״ן.",
+        "תשלום בכרטיס אשראי מחויב בעמלת סליקה בסך 1%.",
+    ]),
+    "notes": "\n".join([
+        "מתייחס לתדלוקי שטח בפריסה ארצית, כולל פריסת צינור עד 35 מ׳.",
+        "״תדלוק לילה״ בהזמנה מראש כרוך בתוספת תשלום של ____ ₪ (בימים א׳-ה׳ מעבר לשעות 06:00-17:00, ובימי ו׳ מעבר לשעות 06:00-13:00).",
+        "תדלוק חירום שאינו בשעות הפעילות (שבת, חגים, הוראות פיקוד העורף וכו׳) יחויב לפי הצעת מחיר נפרדת.",
+        "תדלוקים בגובה, תת-קרקע ומיוחדים, תדלוק מעבר לפריסת צינור של 35 מ׳ או של רכבי ביצוע שונים מתומחרים בנפרד.",
+        "מחיר שאיבה בהצעת מחיר נפרדת בהתאם לליטרים הנשאבים.",
+        "זיכוי על שאיבת המוצר מתבצע לפי הכמות שנשאבה נכון לתאריך תעודת המשלוח, ולפי מחיר המוצר בלבד לאותו החודש לפי בז״ן.",
+        "בגין תדלוק של פחות מ-100 ליטר (אותו תאריך, אותו אתר, מאותה משאית מנפקת) יחול חיוב של 250 ₪ הובלה.",
+        "הגעת מיכלית לאתר הלקוח לפי הזמנה, ללא תדלוק, תחויב ב-750 ₪ בגין הגעת שווא.",
+        "המחירים אינם כוללים מע״מ. איחור בתשלום השוטף המוסכם יגרור חיוב בהצמדה וריבית פיגורים.",
+        "ללקוחות שאינם פעילים מעל 3 חודשים, המחירים במחירון זה יעברו לשיקול נוסף של מחלקת בקרת כספים.",
+    ]),
+}
+
+
+def get_terms() -> dict:
+    with get_db() as conn:
+        stored = {r["key"]: r["value"] for r in conn.execute(
+            "SELECT key, value FROM settings WHERE key IN (?, ?)", tuple(TERMS_KEYS.values())
+        ).fetchall()}
+    return {k: stored.get(setting, DEFAULT_TERMS[k]) for k, setting in TERMS_KEYS.items()}
+
+
+def set_terms(general: str, notes: str) -> None:
+    with get_db() as conn:
+        for key, value in (("general", general), ("notes", notes)):
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (TERMS_KEYS[key], value.strip()))
+
+
+def _data_uri(path: Path, mime: str) -> str:
+    import base64
+    return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode()}"
+
+
+def _font_faces() -> str:
+    return "\n".join(
+        f"@font-face {{ font-family: 'Heebo'; font-weight: {w}; "
+        f"src: url('{_data_uri(_FONTS_DIR / f'Heebo-{w}.ttf', 'font/ttf')}') format('truetype'); }}"
+        for w in (400, 500, 700, 800)
+    )
+
+
+def render_quote_html(quote_number: int, customer: str, company_id: str, price: Decimal,
+                      payment_terms: str, service_type: str, doc_type: str) -> str:
+    import calendar
+    from html import escape
+    from string import Template
+
+    b = quote_breakdown(price, payment_terms)
+    today = datetime.now(_ISRAEL_TZ).date()
+    last_day = today.replace(day=calendar.monthrange(today.year, today.month)[1])
+    terms = get_terms()
+
+    def items(text):
+        return "".join(f"<li>{escape(line.strip())}</li>" for line in text.splitlines() if line.strip())
+
+    return Template(_HTML_TEMPLATE.read_text(encoding="utf-8")).substitute(
+        font_faces=_font_faces(),
+        logo=_data_uri(_LOGO, "image/jpeg"),
+        doc_type=escape(doc_type),
+        service_type=escape(service_type),
+        quote_number=quote_number,
+        date=today.strftime("%d/%m/%Y"),
+        valid_until=last_day.strftime("%d/%m/%Y"),
+        customer=escape(customer),
+        company_id_line=f'<div class="cid">ח.פ <span class="num">{escape(company_id)}</span></div>' if company_id else "",
+        payment_terms=escape(payment_terms),
+        product=PRODUCT_NAME,
+        sku=PRODUCT_SKU,
+        base_rate=f"{b['base_rate']:.5f}",
+        excise=f"{b['excise']:.5f}",
+        credit=f"{b['credit']:.3f}",
+        distribution=f"{b['distribution']:.3f}",
+        infrastructure=f"{b['infrastructure']:.3f}",
+        margin=f"{b['margin']:.3f}",
+        price=f"{b['price']:.3f}",
+        vat=f"{b['vat']:.3f}",
+        total=f"{b['total']:.3f}",
+        general_terms=items(terms["general"]),
+        notes=items(terms["notes"]),
+    )
+
+
+def _html_to_pdf(html: str, pdf_path: Path) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    from playwright.sync_api import sync_playwright
+
+    def render():
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            try:
+                page = browser.new_page()
+                page.set_content(html, wait_until="load")
+                page.pdf(path=str(pdf_path), format="A4", print_background=True,
+                         margin={"top": "0", "bottom": "0", "left": "0", "right": "0"})
+            finally:
+                browser.close()
+
+    # Playwright's sync API refuses to run on a thread that has an asyncio loop (the webhook handler).
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(render).result(timeout=120)
+    if not pdf_path.is_file() or pdf_path.stat().st_size == 0:
+        raise RuntimeError("תהליך יצירת ה-PDF לא יצר קובץ תקין.")
+
+
+def _playwright_available() -> bool:
+    try:
+        import playwright.sync_api  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
 def create_archived_quote(customer: str, price: Decimal, payment_terms: str, company_id: str = "",
-                          service_type: str = "צובר") -> tuple[Path, int]:
+                          service_type: str = "צובר", doc_type: str = "הצעת מחיר") -> tuple[Path, int]:
     company_id = company_id.strip() or find_company_id(customer)
-    pdf_path = create_quote_pdf(customer, price, payment_terms, company_id, service_type)
+    quote_breakdown(price, payment_terms)
     QUOTES_DIR.mkdir(exist_ok=True)
     with get_db() as conn:
         quote_id = conn.execute(
@@ -365,8 +492,23 @@ def create_archived_quote(customer: str, price: Decimal, payment_terms: str, com
             "VALUES (?, ?, ?, ?, ?, '')",
             (customer, company_id, service_type, str(price), payment_terms),
         ).lastrowid
-        file_name = f"{quote_id}.pdf"
-        shutil.copyfile(pdf_path, QUOTES_DIR / file_name)
+    try:
+        if _playwright_available():
+            pdf_path = Path(tempfile.mkdtemp(prefix="quote-")) / "quote.pdf"
+            _html_to_pdf(
+                render_quote_html(quote_id, customer, company_id, price, payment_terms, service_type, doc_type),
+                pdf_path,
+            )
+        else:
+            print("[Quotes] playwright לא מותקן — משתמש בתבנית ה-Word הישנה")
+            pdf_path = create_quote_pdf(customer, price, payment_terms, company_id, service_type)
+    except Exception:
+        with get_db() as conn:
+            conn.execute("DELETE FROM quotes WHERE id=?", (quote_id,))
+        raise
+    file_name = f"{quote_id}.pdf"
+    shutil.copyfile(pdf_path, QUOTES_DIR / file_name)
+    with get_db() as conn:
         conn.execute("UPDATE quotes SET file_name=? WHERE id=?", (file_name, quote_id))
     return pdf_path, quote_id
 
