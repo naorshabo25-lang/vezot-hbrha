@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import CustomerLinkPanel from './CustomerLinkPanel';
 
 const API = (window.location.port === '5173' || window.location.port === '5174') ? `http://${window.location.hostname}:8000` : '';
 
@@ -153,6 +154,7 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
   const [deleteRecurringConfirmId, setDeleteRecurringConfirmId] = useState(null);
 
   const [showWinterForm,   setShowWinterForm]   = useState(false);
+  const [showLinkPanel,    setShowLinkPanel]    = useState(false);
   const [winterForm,       setWinterForm]       = useState(EMPTY_WINTER);
   const [winterError,      setWinterError]      = useState('');
   const [winterSuccessMsg, setWinterSuccessMsg] = useState('');
@@ -705,8 +707,14 @@ export default function CustomerOrdersTab({ onChange, workPlanData }) {
             style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10 }}>
             {showWinterForm ? '✕ ביטול' : '❄️ לקוח מזדמן חדש'}
           </Btn>
+          <Btn onClick={() => { setShowLinkPanel(v => !v); setShowForm(false); setShowWinterForm(false); setShowQuickOrder(false); }}
+            style={{ padding: '9px 18px', fontSize: 13, borderRadius: 10, background: '#d97706', color: '#fff', boxShadow: '0 2px 8px rgba(217,119,6,0.3)' }}>
+            {showLinkPanel ? '✕ סגור' : '🔗 קישור ללקוח'}
+          </Btn>
         </div>
       </div>
+
+      {showLinkPanel && <CustomerLinkPanel onCustomerAdded={load} />}
 
       {/* ─── טופס הזמנה מהירה ללקוח מזדמן ─── */}
       {showQuickOrder && (

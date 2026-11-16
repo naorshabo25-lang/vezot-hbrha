@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>פרטי הזמנה — וזאת הברכה דלקים</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --red: #c62828; --red-dark: #8e0000; --border: #e0e0e0;
+      --text-1: #1a1a2e; --text-2: #4a5568; --text-3: #9aa5b1;
+      --bg: #f5f6fa; --green: #16a34a; --r: 10px;
+    }
+    html { font-size: 15px; }
+    body {
+      font-family: 'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg); color: var(--text-1); min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: 560px; margin: 28px auto; padding: 0 16px; }
+    .brand {
+      background: var(--red); border-radius: 16px 16px 0 0; padding: 18px 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .brand img { height: 50px; max-width: 130px; object-fit: contain; border-radius: 6px; }
+    .brand h1 { color: #fff; font-size: 1.1rem; font-weight: 800; }
+    .brand p { color: rgba(255,255,255,.78); font-size: .8rem; margin-top: 3px; }
+    .card { background: #fff; border-radius: 0 0 16px 16px; padding: 26px 24px; box-shadow: 0 12px 40px rgba(0,0,0,.12); }
+    .section { font-size: .78rem; font-weight: 700; color: var(--text-3); margin: 22px 0 12px;
+               padding-right: 10px; border-right: 3px solid var(--red); }
+    .section:first-child { margin-top: 0; }
+    .row { display: grid; gap: 12px; margin-bottom: 12px; }
+    .row.two { grid-template-columns: 1fr 1fr; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: .85rem; font-weight: 600; color: var(--text-2); }
+    .req { color: var(--red); }
+    input, textarea {
+      width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--r);
+      font-size: 1rem; font-family: inherit; color: var(--text-1); background: #fafafa;
+    }
+    textarea { resize: vertical; min-height: 64px; }
+    input:focus, textarea:focus { outline: none; border-color: var(--red); background: #fff;
+                                  box-shadow: 0 0 0 3px rgba(198,40,40,.12); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      padding: 10px 16px; border-radius: 22px; border: 1.5px solid var(--border); background: #fafafa;
+      font-size: .92rem; font-weight: 700; color: var(--text-2); cursor: pointer; font-family: inherit;
+    }
+    .chip.on { background: var(--red); border-color: var(--red); color: #fff; }
+    .hint { font-size: .78rem; color: var(--text-3); }
+    .btn {
+      width: 100%; margin-top: 22px; padding: 15px; border: 0; border-radius: var(--r);
+      background: var(--red); color: #fff; font-size: 1.05rem; font-weight: 800; font-family: inherit;
+      cursor: pointer; box-shadow: 0 4px 14px rgba(198,40,40,.35);
+    }
+    .btn:disabled { opacity: .6; cursor: default; }
+    .error { display: none; margin-top: 14px; padding: 11px 14px; border-radius: var(--r);
+             background: #ffebee; color: var(--red-dark); font-size: .88rem; font-weight: 600; }
+    .msg { text-align: center; padding: 30px 10px; }
+    .msg .icon { font-size: 3rem; }
+    .msg h2 { margin-top: 10px; font-size: 1.3rem; }
+    .msg p { margin-top: 8px; color: var(--text-2); line-height: 1.6; }
+    @media (max-width: 480px) {
+      .page { margin: 0; padding: 0; }
+      .brand { border-radius: 0; }
+      .card { border-radius: 0; box-shadow: none; padding: 22px 16px; }
+      .row.two { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="brand">
+    <div>
+      <h1>פרטי לקוח והזמנה</h1>
+      <p id="sub">נא למלא את הפרטים להשלמת ההזמנה</p>
+    </div>
+    <img src="/order-form/logo.jpeg" alt="וזאת הברכה">
+  </div>
+
+  <div class="card">
+    <div id="loading" class="msg"><p>טוען…</p></div>
+
+    <form id="form" style="display:none" novalidate>
+      <p class="section">פרטי הלקוח</p>
+      <div class="row">
+        <div class="field">
+          <label for="full_name">שם מלא / שם החברה <span class="req">*</span></label>
+          <input id="full_name" autocomplete="name">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="id_number">ת.ז / ח.פ <span class="req">*</span></label>
+          <input id="id_number" inputmode="numeric" maxlength="10">
+        </div>
+      </div>
+
+      <p class="section">כתובת אספקה</p>
+      <div class="row two">
+        <div class="field">
+          <label for="city">עיר / יישוב <span class="req">*</span></label>
+          <input id="city" autocomplete="address-level2">
+        </div>
+        <div class="field">
+          <label for="street">רחוב ומספר <span class="req">*</span></label>
+          <input id="street" autocomplete="street-address">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="notes">הערות להגעה</label>
+          <textarea id="notes" placeholder="קומה, כניסה, שער, מיקום הטנק…"></textarea>
+        </div>
+      </div>
+
+      <p class="section">איש קשר באתר</p>
+      <div class="row two">
+        <div class="field">
+          <label for="contact_name">שם איש קשר <span class="req">*</span></label>
+          <input id="contact_name">
+        </div>
+        <div class="field">
+          <label for="contact_phone">טלפון <span class="req">*</span></label>
+          <input id="contact_phone" type="tel" inputmode="tel" placeholder="05X-XXXXXXX" autocomplete="tel">
+        </div>
+      </div>
+
+      <p class="section">פרטי אספקה</p>
+      <div class="row" id="qty-row" style="display:none">
+        <div class="field">
+          <label for="quantity">כמות (ליטר) <span class="req">*</span></label>
+          <input id="quantity" inputmode="numeric">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>טווח שעות להגעה <span class="req">*</span> <span class="hint" id="date-hint"></span></label>
+          <div class="chips" id="times"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>אופן תשלום <span class="req">*</span></label>
+          <div class="chips" id="payments"></div>
+        </div>
+      </div>
+
+      <button class="btn" id="submit" type="submit">שליחת הפרטים</button>
+      <div class="error" id="error"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const token = location.pathname.split('/').filter(Boolean).pop();
+  const $ = id => document.getElementById(id);
+  const picked = { delivery_time: '', payment_method: '' };
+  let needQuantity = false;
+
+  function showMessage(icon, title, text) {
+    $('form').style.display = 'none';
+    $('loading').innerHTML = '';
+    const box = $('loading');
+    box.style.display = 'block';
+    const i = document.createElement('div'); i.className = 'icon'; i.textContent = icon;
+    const h = document.createElement('h2'); h.textContent = title;
+    const p = document.createElement('p'); p.textContent = text;
+    box.append(i, h, p);
+  }
+
+  function chips(containerId, values, key) {
+    const box = $(containerId);
+    values.forEach(v => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = v;
+      if (/^\d/.test(v)) b.dir = 'ltr';
+      b.onclick = () => {
+        picked[key] = v;
+        box.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === b));
+      };
+      box.appendChild(b);
+    });
+  }
+
+  fetch(`/order-form/new/${encodeURIComponent(token)}/info`)
+    .then(r => r.json())
+    .then(info => {
+      if (info.status === 'used') return showMessage('✅', 'הפרטים כבר נשלחו', 'תודה! ההזמנה כבר נקלטה אצלנו. לשינויים ניתן להתקשר 02-5094000.');
+      if (info.status !== 'ok') return showMessage('⚠️', 'הקישור אינו תקף', 'נא לפנות אלינו בטלפון 02-5094000.');
+      needQuantity = info.need_quantity;
+      $('qty-row').style.display = needQuantity ? '' : 'none';
+      if (info.order_date) {
+        const [y, m, d] = info.order_date.split('-');
+        $('date-hint').innerHTML = `· אספקה בתאריך <bdi>${+d}/${+m}/${+y}</bdi>`;
+      }
+      chips('times', info.time_ranges, 'delivery_time');
+      chips('payments', info.payment_methods, 'payment_method');
+      $('loading').style.display = 'none';
+      $('form').style.display = '';
+    })
+    .catch(() => showMessage('⚠️', 'שגיאה בטעינה', 'נא לנסות שוב או להתקשר 02-5094000.'));
+
+  $('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const fields = ['full_name', 'id_number', 'city', 'street', 'contact_name', 'contact_phone', 'quantity', 'notes'];
+    const data = { ...picked };
+    fields.forEach(f => data[f] = $(f).value.trim());
+    const err = $('error');
+    const fail = msg => {
+      err.textContent = msg; err.style.display = 'block';
+      err.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    err.style.display = 'none';
+
+    if (!data.full_name || !data.id_number || !data.city || !data.street || !data.contact_name || !data.contact_phone)
+      return fail('נא למלא את כל שדות החובה (מסומנים ב-*)');
+    if (!/^\d{5,9}$/.test(data.id_number.replace(/-/g, ''))) return fail('מספר ת.ז / ח.פ לא תקין');
+    if (data.contact_phone.replace(/\D/g, '').length < 9) return fail('מספר טלפון לא תקין');
+    if (needQuantity && !(parseInt(data.quantity) > 0)) return fail('נא להזין כמות בליטרים');
+    if (!data.delivery_time) return fail('נא לבחור טווח שעות להגעה');
+    if (!data.payment_method) return fail('נא לבחור אופן תשלום');
+
+    $('submit').disabled = true;
+    try {
+      const r = await fetch(`/order-form/new/${encodeURIComponent(token)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+      });
+      const res = await r.json().catch(() => ({}));
+      if (!r.ok) { $('submit').disabled = false; return fail(res.detail || 'שגיאה בשליחה, נסו שוב'); }
+      showMessage('✅', 'תודה! הפרטים התקבלו', 'ההזמנה נקלטה במערכת. ניצור קשר במידת הצורך לפני ההגעה.');
+    } catch {
+      $('submit').disabled = false;
+      fail('שגיאת תקשורת, נסו שוב');
+    }
+  });
+</script>
+</body>
+</html>

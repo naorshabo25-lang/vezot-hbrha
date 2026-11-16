@@ -1377,6 +1377,11 @@ def delete_quote(qid: int):
 
 # ── Order Form ────────────────────────────────────────────────────────────────
 
+@app.get("/order-form/logo.jpeg")
+def order_form_logo():
+    return FileResponse("static/logo.jpeg", media_type="image/jpeg")
+
+
 @app.get("/order-form/{customer_id}", response_class=HTMLResponse)
 def order_form(customer_id: int):
     return FileResponse("static/order_form.html")
@@ -1423,6 +1428,130 @@ def submit_order(
     <body><h1>ההזמנה התקבלה!</h1>
     <p>תודה, ההזמנה שלך נקלטה במערכת ותטופל בהקדם.</p></body></html>
     """)
+
+
+# ── קישור ללקוח מזדמן (אחרי סגירת עסקה טלפונית) ───────────────────────────────
+
+LINK_PAYMENT_METHODS = ("אשראי", "מזומן", "העברה", "צ'ק")
+LINK_TIME_RANGES = tuple(TIME_MAP.values()) + ("15:00–17:00", "גמיש — כל שעה")
+
+
+def _link_url(token: str) -> str:
+    return f"{PROD_URL}/order-form/new/{token}"
+
+
+def _get_link(conn, token: str):
+    return conn.execute("SELECT * FROM customer_links WHERE token=?", (token,)).fetchone()
+
+
+@app.post("/api/customer-links")
+async def create_customer_link(request: Request):
+    import secrets
+    from datetime import datetime as _dtl, timedelta as _tdl
+    from zoneinfo import ZoneInfo
+    body = await request.json()
+    token = secrets.token_urlsafe(9)
+    order_date = (body.get("order_date") or "").strip()
+    if not order_date:
+        order_date = (_dtl.now(ZoneInfo("Asia/Jerusalem")) + _tdl(days=1)).strftime("%Y-%m-%d")
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO customer_links (token, label, quantity, order_date) VALUES (?,?,?,?)",
+            (token, (body.get("label") or "").strip(), str(body.get("quantity") or "").strip(), order_date),
+        )
+    return {"token": token, "url": _link_url(token)}
+
+
+@app.get("/api/customer-links")
+def list_customer_links():
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM customer_links ORDER BY created_at DESC LIMIT 30"
+        ).fetchall()
+    return [{**dict(r), "url": _link_url(r["token"])} for r in rows]
+
+
+@app.delete("/api/customer-links/{token}")
+def delete_customer_link(token: str):
+    with get_db() as conn:
+        conn.execute("DELETE FROM customer_links WHERE token=? AND used_at IS NULL", (token,))
+    return {"ok": True}
+
+
+@app.get("/order-form/new/{token}", response_class=HTMLResponse)
+def new_customer_form(token: str):
+    return FileResponse("static/new_customer_form.html", headers=NO_CACHE)
+
+
+@app.get("/order-form/new/{token}/info")
+def new_customer_form_info(token: str):
+    with get_db() as conn:
+        link = _get_link(conn, token)
+    if not link:
+        return {"status": "invalid"}
+    if link["used_at"]:
+        return {"status": "used"}
+    return {"status": "ok", "need_quantity": not link["quantity"], "order_date": link["order_date"],
+            "payment_methods": LINK_PAYMENT_METHODS, "time_ranges": LINK_TIME_RANGES}
+
+
+@app.post("/order-form/new/{token}")
+async def submit_new_customer_form(token: str, request: Request):
+    import re
+    body = await request.json()
+    f = {k: str(body.get(k) or "").strip() for k in
+         ("full_name", "id_number", "city", "street", "contact_name", "contact_phone",
+          "delivery_time", "payment_method", "quantity", "notes")}
+    missing = [k for k in ("full_name", "id_number", "city", "street", "contact_name",
+                           "contact_phone", "delivery_time", "payment_method") if not f[k]]
+    if missing:
+        raise HTTPException(status_code=400, detail="יש למלא את כל שדות החובה")
+    if not re.fullmatch(r"\d{5,9}", f["id_number"].replace("-", "")):
+        raise HTTPException(status_code=400, detail="מספר ת.ז / ח.פ לא תקין")
+    if f["payment_method"] not in LINK_PAYMENT_METHODS:
+        raise HTTPException(status_code=400, detail="אמצעי תשלום לא תקין")
+    if f["delivery_time"] not in LINK_TIME_RANGES:
+        raise HTTPException(status_code=400, detail="טווח שעות לא תקין")
+    if len(re.sub(r"\D", "", f["contact_phone"])) < 9:
+        raise HTTPException(status_code=400, detail="מספר טלפון לא תקין")
+
+    address = f"{f['street']}, {f['city']}"
+    with get_db() as conn:
+        link = _get_link(conn, token)
+        if not link:
+            raise HTTPException(status_code=404, detail="הקישור לא תקף")
+        if link["used_at"]:
+            raise HTTPException(status_code=409, detail="הטופס כבר נשלח")
+        quantity = link["quantity"] or f["quantity"]
+        if not quantity:
+            raise HTTPException(status_code=400, detail="יש להזין כמות")
+        cur = conn.execute(
+            """INSERT INTO customers
+               (name, phone, area, site_address, contact_name, contact_phone,
+                order_contact_name, order_contact_phone, customer_type, id_number, payment_method)
+               VALUES (?,?,?,?,?,?,?,?,'חורף',?,?)""",
+            (f["full_name"], f["contact_phone"], f["city"], address, f["contact_name"], f["contact_phone"],
+             f["contact_name"], f["contact_phone"], f["id_number"].replace("-", ""), f["payment_method"]),
+        )
+        customer_id = cur.lastrowid
+        driver = conn.execute("SELECT * FROM drivers WHERE area = ? LIMIT 1", (f["city"],)).fetchone()
+        extras = f"הערות לקוח: {f['notes']}" if f["notes"] else ""
+        cur = conn.execute(
+            """INSERT INTO orders
+               (customer_id, customer_name, site_address, contact_name, contact_phone, quantity,
+                driver_id, order_date, delivery_time, extras)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (customer_id, f["full_name"], address, f["contact_name"], f["contact_phone"], quantity,
+             driver["id"] if driver else None, link["order_date"], f["delivery_time"], extras),
+        )
+        conn.execute("UPDATE customer_links SET used_at=datetime('now','localtime'), customer_id=?, order_id=? "
+                     "WHERE token=?", (customer_id, cur.lastrowid, token))
+    _notify_admin_new_order({
+        "customer_name": f"{f['full_name']} (לקוח מזדמן — מילא טופס) · {f['delivery_time']} · {f['payment_method']}",
+        "site_address": address, "quantity": quantity, "order_date": link["order_date"],
+        "driver_name": driver["name"] if driver else "",
+    })
+    return {"ok": True}
 
 
 # ── Admin API ─────────────────────────────────────────────────────────────────

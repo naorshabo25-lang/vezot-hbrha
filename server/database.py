@@ -242,6 +242,19 @@ def init_db():
             conn.execute("ALTER TABLE quotes ADD COLUMN service_type TEXT DEFAULT 'צובר'")
         except Exception:
             pass
+        # קישורים חד-פעמיים ללקוחות מזדמנים (נשלחים אחרי סגירת עסקה טלפונית)
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS customer_links (
+                token       TEXT PRIMARY KEY,
+                label       TEXT DEFAULT '',
+                quantity    TEXT DEFAULT '',
+                order_date  TEXT DEFAULT '',
+                created_at  TEXT DEFAULT (datetime('now', 'localtime')),
+                used_at     TEXT DEFAULT NULL,
+                customer_id INTEGER DEFAULT NULL,
+                order_id    INTEGER DEFAULT NULL
+            );
+        """)
         # סמן נהגי מסוף ידועים אוטומטית
         conn.execute("UPDATE drivers SET is_terminal_driver = 1 WHERE name LIKE '%ישראל מזרחי%' AND is_terminal_driver = 0")
 
