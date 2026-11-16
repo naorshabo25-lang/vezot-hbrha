@@ -8,6 +8,9 @@ const input = {
 };
 const label = { fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 5 };
 
+const PRODUCTS = ['סולר תחבורה', 'נפט', 'נוזל גנרטורים וחימום'];
+const emptyForm = () => ({ label: '', quantity: '', order_date: tomorrowISO(), product: PRODUCTS[0] });
+
 function tomorrowISO() {
   const d = new Date(); d.setDate(d.getDate() + 1);
   return d.toLocaleDateString('en-CA');
@@ -21,7 +24,7 @@ function fmtDate(iso) {
 
 // יצירת קישור חד-פעמי ללקוח מזדמן — הלקוח ממלא פרטים, ונוצרים לקוח מזדמן + הזמנה
 export default function CustomerLinkPanel({ onCustomerAdded }) {
-  const [form, setForm] = useState({ label: '', quantity: '', order_date: tomorrowISO() });
+  const [form, setForm] = useState(emptyForm);
   const [created, setCreated] = useState(null);
   const [links, setLinks] = useState([]);
   const [error, setError] = useState('');
@@ -51,7 +54,7 @@ export default function CustomerLinkPanel({ onCustomerAdded }) {
       });
       if (!r.ok) throw new Error();
       setCreated(await r.json());
-      setForm({ label: '', quantity: '', order_date: tomorrowISO() });
+      setForm(emptyForm());
       loadLinks();
     } catch {
       setError('שגיאה ביצירת הקישור');
@@ -85,6 +88,13 @@ export default function CustomerLinkPanel({ onCustomerAdded }) {
           <label style={label}>תזכורת לעצמך (לא חובה)</label>
           <input style={input} placeholder="למשל: משה מבית שמש" value={form.label}
             onChange={e => setForm(f => ({ ...f, label: e.target.value }))} />
+        </div>
+        <div>
+          <label style={label}>מוצר</label>
+          <select style={input} value={form.product}
+            onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
+            {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
         </div>
         <div>
           <label style={label}>כמות שסוכמה (ליטר)</label>
@@ -132,7 +142,7 @@ export default function CustomerLinkPanel({ onCustomerAdded }) {
                 </span>
                 <span style={{ color: '#374151', fontWeight: 600 }}>{l.label || 'ללא שם'}</span>
                 <span style={{ color: '#9ca3af' }}>
-                  {l.quantity ? `${l.quantity} ל׳ · ` : ''}אספקה {fmtDate(l.order_date)}
+                  {l.product ? `${l.product} · ` : ''}{l.quantity ? `${l.quantity} ל׳ · ` : ''}אספקה {fmtDate(l.order_date)}
                 </span>
                 <span style={{ flex: 1 }} />
                 {!l.used_at && (

@@ -49,6 +49,11 @@
     }
     .chip.on { background: var(--red); border-color: var(--red); color: #fff; }
     .hint { font-size: .78rem; color: var(--text-3); }
+    .summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .summary > div { flex: 1 1 140px; background: #fff5f5; border: 1px solid #fcd4d4; border-radius: var(--r);
+                     padding: 10px 14px; }
+    .summary span { display: block; font-size: .75rem; color: var(--text-3); font-weight: 600; }
+    .summary b { font-size: 1.05rem; color: var(--red-dark); }
     .btn {
       width: 100%; margin-top: 22px; padding: 15px; border: 0; border-radius: var(--r);
       background: var(--red); color: #fff; font-size: 1.05rem; font-weight: 800; font-family: inherit;
@@ -128,6 +133,10 @@
       </div>
 
       <p class="section">פרטי אספקה</p>
+      <div class="summary">
+        <div><span>מוצר שהוזמן</span><b id="product"></b></div>
+        <div id="qty-summary" style="display:none"><span>כמות</span><b id="qty-text"></b></div>
+      </div>
       <div class="row" id="qty-row" style="display:none">
         <div class="field">
           <label for="quantity">כמות (ליטר) <span class="req">*</span></label>
@@ -191,6 +200,12 @@
       if (info.status !== 'ok') return showMessage('⚠️', 'הקישור אינו תקף', 'נא לפנות אלינו בטלפון 02-5094000.');
       needQuantity = info.need_quantity;
       $('qty-row').style.display = needQuantity ? '' : 'none';
+      $('product').textContent = info.product;
+      if (info.quantity) {
+        const n = Number(info.quantity);
+        $('qty-text').textContent = `${isNaN(n) ? info.quantity : n.toLocaleString('he-IL')} ליטר`;
+        $('qty-summary').style.display = '';
+      }
       if (info.order_date) {
         const [y, m, d] = info.order_date.split('-');
         $('date-hint').innerHTML = `· אספקה בתאריך <bdi>${+d}/${+m}/${+y}</bdi>`;

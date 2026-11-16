@@ -1434,6 +1434,7 @@ def submit_order(
 
 LINK_PAYMENT_METHODS = ("אשראי", "מזומן", "העברה", "צ'ק")
 LINK_TIME_RANGES = tuple(TIME_MAP.values()) + ("15:00–17:00", "גמיש — כל שעה")
+LINK_PRODUCTS = ("סולר תחבורה", "נפט", "נוזל גנרטורים וחימום")
 
 
 def _link_url(token: str) -> str:
@@ -1454,10 +1455,14 @@ async def create_customer_link(request: Request):
     order_date = (body.get("order_date") or "").strip()
     if not order_date:
         order_date = (_dtl.now(ZoneInfo("Asia/Jerusalem")) + _tdl(days=1)).strftime("%Y-%m-%d")
+    product = (body.get("product") or "סולר תחבורה").strip()
+    if product not in LINK_PRODUCTS:
+        raise HTTPException(status_code=400, detail="מוצר לא תקין")
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO customer_links (token, label, quantity, order_date) VALUES (?,?,?,?)",
-            (token, (body.get("label") or "").strip(), str(body.get("quantity") or "").strip(), order_date),
+            "INSERT INTO customer_links (token, label, quantity, order_date, product) VALUES (?,?,?,?,?)",
+            (token, (body.get("label") or "").strip(), str(body.get("quantity") or "").strip(), order_date,
+             product),
         )
     return {"token": token, "url": _link_url(token)}
 
@@ -1492,6 +1497,7 @@ def new_customer_form_info(token: str):
     if link["used_at"]:
         return {"status": "used"}
     return {"status": "ok", "need_quantity": not link["quantity"], "order_date": link["order_date"],
+            "product": link["product"] or "סולר תחבורה", "quantity": link["quantity"],
             "payment_methods": LINK_PAYMENT_METHODS, "time_ranges": LINK_TIME_RANGES}
 
 
@@ -1539,15 +1545,17 @@ async def submit_new_customer_form(token: str, request: Request):
         cur = conn.execute(
             """INSERT INTO orders
                (customer_id, customer_name, site_address, contact_name, contact_phone, quantity,
-                driver_id, order_date, delivery_time, extras)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                driver_id, order_date, delivery_time, extras, product)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (customer_id, f["full_name"], address, f["contact_name"], f["contact_phone"], quantity,
-             driver["id"] if driver else None, link["order_date"], f["delivery_time"], extras),
+             driver["id"] if driver else None, link["order_date"], f["delivery_time"], extras,
+             link["product"] or "סולר תחבורה"),
         )
         conn.execute("UPDATE customer_links SET used_at=datetime('now','localtime'), customer_id=?, order_id=? "
                      "WHERE token=?", (customer_id, cur.lastrowid, token))
     _notify_admin_new_order({
-        "customer_name": f"{f['full_name']} (לקוח מזדמן — מילא טופס) · {f['delivery_time']} · {f['payment_method']}",
+        "customer_name": f"{f['full_name']} (לקוח מזדמן — מילא טופס) · {link['product'] or 'סולר תחבורה'}"
+                         f" · {f['delivery_time']} · {f['payment_method']}",
         "site_address": address, "quantity": quantity, "order_date": link["order_date"],
         "driver_name": driver["name"] if driver else "",
     })

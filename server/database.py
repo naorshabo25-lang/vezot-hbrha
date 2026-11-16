@@ -255,6 +255,10 @@ def init_db():
                 order_id    INTEGER DEFAULT NULL
             );
         """)
+        try:
+            conn.execute("ALTER TABLE customer_links ADD COLUMN product TEXT DEFAULT 'סולר תחבורה'")
+        except Exception:
+            pass
         # סמן נהגי מסוף ידועים אוטומטית
         conn.execute("UPDATE drivers SET is_terminal_driver = 1 WHERE name LIKE '%ישראל מזרחי%' AND is_terminal_driver = 0")
 
