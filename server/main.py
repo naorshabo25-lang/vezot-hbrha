@@ -1382,6 +1382,61 @@ def order_form_logo():
     return FileResponse("static/logo.jpeg", media_type="image/jpeg")
 
 
+# קישור קבוע — הלקוח בוחר בעצמו מוצר, כמות ותאריך
+def _open_form_dates():
+    from datetime import datetime as _dto, timedelta as _tdo
+    from zoneinfo import ZoneInfo
+    today = _dto.now(ZoneInfo("Asia/Jerusalem")).date()
+    return today, today + _tdo(days=1), today + _tdo(days=60)
+
+
+@app.get("/order-form/open", response_class=HTMLResponse)
+def open_customer_form():
+    return FileResponse("static/new_customer_form.html", headers=NO_CACHE)
+
+
+@app.get("/order-form/open/info")
+def open_customer_form_info():
+    today, tomorrow, last = _open_form_dates()
+    return {"status": "ok", "open": True, "need_quantity": True, "products": LINK_PRODUCTS,
+            "order_date": tomorrow.isoformat(), "min_date": today.isoformat(), "max_date": last.isoformat(),
+            "payment_methods": LINK_PAYMENT_METHODS, "time_ranges": LINK_TIME_RANGES}
+
+
+@app.post("/order-form/open")
+async def submit_open_customer_form(request: Request):
+    body = await request.json()
+    if body.get("website"):  # שדה מלכודת לבוטים
+        return {"ok": True}
+    f = _validate_intake(body)
+    if f["product"] not in LINK_PRODUCTS:
+        raise HTTPException(status_code=400, detail="נא לבחור מוצר")
+    try:
+        qty = int(f["quantity"].replace(",", ""))
+        if qty <= 0:
+            raise ValueError
+    except ValueError:
+        raise HTTPException(status_code=400, detail="נא להזין כמות בליטרים")
+    from datetime import date as _date_o
+    today, _, last = _open_form_dates()
+    try:
+        chosen = _date_o.fromisoformat(f["order_date"])
+    except ValueError:
+        chosen = None
+    if not chosen or not (today <= chosen <= last):
+        raise HTTPException(status_code=400, detail="תאריך אספקה לא תקין")
+    f["order_date"] = chosen.isoformat()
+    with get_db() as conn:
+        _, _, driver = _create_intake(conn, f, f["product"], str(qty), f["order_date"])
+    _notify_intake(f, f["product"], str(qty), f["order_date"], driver)
+    return {"ok": True}
+
+
+@app.get("/api/customer-links/permanent")
+def permanent_customer_link():
+    return {"url": f"{PROD_URL}/order-form/open"}
+
+
 @app.get("/order-form/{customer_id}", response_class=HTMLResponse)
 def order_form(customer_id: int):
     return FileResponse("static/order_form.html")
@@ -1501,18 +1556,17 @@ def new_customer_form_info(token: str):
             "payment_methods": LINK_PAYMENT_METHODS, "time_ranges": LINK_TIME_RANGES}
 
 
-@app.post("/order-form/new/{token}")
-async def submit_new_customer_form(token: str, request: Request):
+def _validate_intake(body: dict) -> dict:
     import re
-    body = await request.json()
     f = {k: str(body.get(k) or "").strip() for k in
          ("full_name", "id_number", "city", "street", "contact_name", "contact_phone",
-          "delivery_time", "payment_method", "quantity", "notes")}
+          "delivery_time", "payment_method", "quantity", "notes", "product", "order_date")}
     missing = [k for k in ("full_name", "id_number", "city", "street", "contact_name",
                            "contact_phone", "delivery_time", "payment_method") if not f[k]]
     if missing:
         raise HTTPException(status_code=400, detail="יש למלא את כל שדות החובה")
-    if not re.fullmatch(r"\d{5,9}", f["id_number"].replace("-", "")):
+    f["id_number"] = f["id_number"].replace("-", "")
+    if not re.fullmatch(r"\d{5,9}", f["id_number"]):
         raise HTTPException(status_code=400, detail="מספר ת.ז / ח.פ לא תקין")
     if f["payment_method"] not in LINK_PAYMENT_METHODS:
         raise HTTPException(status_code=400, detail="אמצעי תשלום לא תקין")
@@ -1520,8 +1574,56 @@ async def submit_new_customer_form(token: str, request: Request):
         raise HTTPException(status_code=400, detail="טווח שעות לא תקין")
     if len(re.sub(r"\D", "", f["contact_phone"])) < 9:
         raise HTTPException(status_code=400, detail="מספר טלפון לא תקין")
+    return f
 
+
+def _create_intake(conn, f: dict, product: str, quantity: str, order_date: str):
+    """פותח (או מעדכן לפי ת.ז) לקוח מזדמן ויוצר הזמנה. מחזיר (customer_id, order_id, driver)."""
     address = f"{f['street']}, {f['city']}"
+    existing = conn.execute(
+        "SELECT id FROM customers WHERE id_number=? AND customer_type='חורף' AND active=1 LIMIT 1",
+        (f["id_number"],)).fetchone()
+    if existing:
+        customer_id = existing["id"]
+        conn.execute(
+            """UPDATE customers SET name=?, phone=?, area=?, site_address=?, contact_name=?, contact_phone=?,
+               order_contact_name=?, order_contact_phone=?, payment_method=? WHERE id=?""",
+            (f["full_name"], f["contact_phone"], f["city"], address, f["contact_name"], f["contact_phone"],
+             f["contact_name"], f["contact_phone"], f["payment_method"], customer_id))
+    else:
+        customer_id = conn.execute(
+            """INSERT INTO customers
+               (name, phone, area, site_address, contact_name, contact_phone,
+                order_contact_name, order_contact_phone, customer_type, id_number, payment_method)
+               VALUES (?,?,?,?,?,?,?,?,'חורף',?,?)""",
+            (f["full_name"], f["contact_phone"], f["city"], address, f["contact_name"], f["contact_phone"],
+             f["contact_name"], f["contact_phone"], f["id_number"], f["payment_method"]),
+        ).lastrowid
+    driver = conn.execute("SELECT * FROM drivers WHERE area = ? LIMIT 1", (f["city"],)).fetchone()
+    extras = f"הערות לקוח: {f['notes']}" if f["notes"] else ""
+    order_id = conn.execute(
+        """INSERT INTO orders
+           (customer_id, customer_name, site_address, contact_name, contact_phone, quantity,
+            driver_id, order_date, delivery_time, extras, product)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+        (customer_id, f["full_name"], address, f["contact_name"], f["contact_phone"], quantity,
+         driver["id"] if driver else None, order_date, f["delivery_time"], extras, product),
+    ).lastrowid
+    return customer_id, order_id, driver
+
+
+def _notify_intake(f: dict, product: str, quantity: str, order_date: str, driver):
+    _notify_admin_new_order({
+        "customer_name": f"{f['full_name']} (לקוח מזדמן — מילא טופס) · {product}"
+                         f" · {f['delivery_time']} · {f['payment_method']}",
+        "site_address": f"{f['street']}, {f['city']}", "quantity": quantity, "order_date": order_date,
+        "driver_name": driver["name"] if driver else "",
+    })
+
+
+@app.post("/order-form/new/{token}")
+async def submit_new_customer_form(token: str, request: Request):
+    f = _validate_intake(await request.json())
     with get_db() as conn:
         link = _get_link(conn, token)
         if not link:
@@ -1531,34 +1633,11 @@ async def submit_new_customer_form(token: str, request: Request):
         quantity = link["quantity"] or f["quantity"]
         if not quantity:
             raise HTTPException(status_code=400, detail="יש להזין כמות")
-        cur = conn.execute(
-            """INSERT INTO customers
-               (name, phone, area, site_address, contact_name, contact_phone,
-                order_contact_name, order_contact_phone, customer_type, id_number, payment_method)
-               VALUES (?,?,?,?,?,?,?,?,'חורף',?,?)""",
-            (f["full_name"], f["contact_phone"], f["city"], address, f["contact_name"], f["contact_phone"],
-             f["contact_name"], f["contact_phone"], f["id_number"].replace("-", ""), f["payment_method"]),
-        )
-        customer_id = cur.lastrowid
-        driver = conn.execute("SELECT * FROM drivers WHERE area = ? LIMIT 1", (f["city"],)).fetchone()
-        extras = f"הערות לקוח: {f['notes']}" if f["notes"] else ""
-        cur = conn.execute(
-            """INSERT INTO orders
-               (customer_id, customer_name, site_address, contact_name, contact_phone, quantity,
-                driver_id, order_date, delivery_time, extras, product)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-            (customer_id, f["full_name"], address, f["contact_name"], f["contact_phone"], quantity,
-             driver["id"] if driver else None, link["order_date"], f["delivery_time"], extras,
-             link["product"] or "סולר תחבורה"),
-        )
+        product = link["product"] or "סולר תחבורה"
+        customer_id, order_id, driver = _create_intake(conn, f, product, quantity, link["order_date"])
         conn.execute("UPDATE customer_links SET used_at=datetime('now','localtime'), customer_id=?, order_id=? "
-                     "WHERE token=?", (customer_id, cur.lastrowid, token))
-    _notify_admin_new_order({
-        "customer_name": f"{f['full_name']} (לקוח מזדמן — מילא טופס) · {link['product'] or 'סולר תחבורה'}"
-                         f" · {f['delivery_time']} · {f['payment_method']}",
-        "site_address": address, "quantity": quantity, "order_date": link["order_date"],
-        "driver_name": driver["name"] if driver else "",
-    })
+                     "WHERE token=?", (customer_id, order_id, token))
+    _notify_intake(f, product, quantity, link["order_date"], driver)
     return {"ok": True}
 
 

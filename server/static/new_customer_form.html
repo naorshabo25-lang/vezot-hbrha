@@ -133,7 +133,21 @@
       </div>
 
       <p class="section">פרטי אספקה</p>
-      <div class="summary">
+      <input id="website" name="website" tabindex="-1" autocomplete="off"
+             style="position:absolute;width:0;height:0;padding:0;border:0;opacity:0;pointer-events:none" aria-hidden="true">
+      <div class="row" id="product-row" style="display:none">
+        <div class="field">
+          <label>מוצר <span class="req">*</span></label>
+          <div class="chips" id="products"></div>
+        </div>
+      </div>
+      <div class="row" id="date-row" style="display:none">
+        <div class="field">
+          <label for="order_date">תאריך אספקה <span class="req">*</span></label>
+          <input id="order_date" type="date">
+        </div>
+      </div>
+      <div class="summary" id="summary">
         <div><span>מוצר שהוזמן</span><b id="product"></b></div>
         <div id="qty-summary" style="display:none"><span>כמות</span><b id="qty-text"></b></div>
       </div>
@@ -163,9 +177,11 @@
 </div>
 
 <script>
+  const isOpen = /\/order-form\/open\/?$/.test(location.pathname);
   const token = location.pathname.split('/').filter(Boolean).pop();
+  const base = isOpen ? '/order-form/open' : `/order-form/new/${encodeURIComponent(token)}`;
   const $ = id => document.getElementById(id);
-  const picked = { delivery_time: '', payment_method: '' };
+  const picked = { delivery_time: '', payment_method: '', product: '' };
   let needQuantity = false;
 
   function showMessage(icon, title, text) {
@@ -193,20 +209,28 @@
     });
   }
 
-  fetch(`/order-form/new/${encodeURIComponent(token)}/info`)
+  fetch(`${base}/info`)
     .then(r => r.json())
     .then(info => {
       if (info.status === 'used') return showMessage('✅', 'הפרטים כבר נשלחו', 'תודה! ההזמנה כבר נקלטה אצלנו. לשינויים ניתן להתקשר 02-5094000.');
       if (info.status !== 'ok') return showMessage('⚠️', 'הקישור אינו תקף', 'נא לפנות אלינו בטלפון 02-5094000.');
       needQuantity = info.need_quantity;
       $('qty-row').style.display = needQuantity ? '' : 'none';
-      $('product').textContent = info.product;
-      if (info.quantity) {
-        const n = Number(info.quantity);
-        $('qty-text').textContent = `${isNaN(n) ? info.quantity : n.toLocaleString('he-IL')} ליטר`;
-        $('qty-summary').style.display = '';
+      if (info.open) {
+        $('summary').style.display = 'none';
+        $('product-row').style.display = '';
+        $('date-row').style.display = '';
+        chips('products', info.products, 'product');
+        Object.assign($('order_date'), { value: info.order_date, min: info.min_date, max: info.max_date });
+      } else {
+        $('product').textContent = info.product;
+        if (info.quantity) {
+          const n = Number(info.quantity);
+          $('qty-text').textContent = `${isNaN(n) ? info.quantity : n.toLocaleString('he-IL')} ליטר`;
+          $('qty-summary').style.display = '';
+        }
       }
-      if (info.order_date) {
+      if (info.order_date && !info.open) {
         const [y, m, d] = info.order_date.split('-');
         $('date-hint').innerHTML = `· אספקה בתאריך <bdi>${+d}/${+m}/${+y}</bdi>`;
       }
@@ -219,7 +243,8 @@
 
   $('form').addEventListener('submit', async e => {
     e.preventDefault();
-    const fields = ['full_name', 'id_number', 'city', 'street', 'contact_name', 'contact_phone', 'quantity', 'notes'];
+    const fields = ['full_name', 'id_number', 'city', 'street', 'contact_name', 'contact_phone', 'quantity', 'notes',
+                    'order_date', 'website'];
     const data = { ...picked };
     fields.forEach(f => data[f] = $(f).value.trim());
     const err = $('error');
@@ -233,13 +258,15 @@
       return fail('נא למלא את כל שדות החובה (מסומנים ב-*)');
     if (!/^\d{5,9}$/.test(data.id_number.replace(/-/g, ''))) return fail('מספר ת.ז / ח.פ לא תקין');
     if (data.contact_phone.replace(/\D/g, '').length < 9) return fail('מספר טלפון לא תקין');
+    if (isOpen && !data.product) return fail('נא לבחור מוצר');
     if (needQuantity && !(parseInt(data.quantity) > 0)) return fail('נא להזין כמות בליטרים');
+    if (isOpen && !data.order_date) return fail('נא לבחור תאריך אספקה');
     if (!data.delivery_time) return fail('נא לבחור טווח שעות להגעה');
     if (!data.payment_method) return fail('נא לבחור אופן תשלום');
 
     $('submit').disabled = true;
     try {
-      const r = await fetch(`/order-form/new/${encodeURIComponent(token)}`, {
+      const r = await fetch(base, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
       });
       const res = await r.json().catch(() => ({}));

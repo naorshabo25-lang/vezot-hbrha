@@ -40,7 +40,11 @@ export default function CustomerLinkPanel({ onCustomerAdded }) {
         });
       }).catch(() => {});
 
+  const [permanentUrl, setPermanentUrl] = useState('');
+
   useEffect(() => {
+    fetch(`${API}/api/customer-links/permanent`).then(r => r.ok ? r.json() : {})
+      .then(d => setPermanentUrl(d.url || '')).catch(() => {});
     loadLinks();
     const t = setInterval(loadLinks, 30000);
     return () => clearInterval(t);
@@ -79,9 +83,33 @@ export default function CustomerLinkPanel({ onCustomerAdded }) {
     <div style={{ background: '#fff', borderRadius: 16, padding: 24, border: '2px solid #fde68a', boxShadow: '0 2px 12px rgba(217,119,6,0.08)' }}>
       <h3 style={{ fontSize: 14, fontWeight: 800, color: '#b45309', margin: '0 0 6px' }}>🔗 קישור ללקוח מזדמן</h3>
       <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 16px' }}>
-        אחרי סגירה טלפונית — שלח ללקוח קישור. הוא ממלא שם, ת.ז, כתובת, איש קשר, טלפון, טווח שעות ואופן תשלום,
+        הלקוח ממלא שם, ת.ז, כתובת, איש קשר, טלפון, טווח שעות ואופן תשלום —
         והמערכת פותחת לקוח מזדמן + הזמנה ושולחת לך התראה בוואטסאפ.
       </p>
+
+      {permanentUrl && (
+        <div style={{ marginBottom: 18, padding: 14, borderRadius: 12, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#166534', marginBottom: 4 }}>⭐ קישור קבוע — אפשר לשלוח מהטלפון בכל פעם</div>
+          <div style={{ fontSize: 11, color: '#4b5563', marginBottom: 8 }}>
+            הלקוח בוחר בעצמו מוצר, כמות ותאריך. שמור אותו בוואטסאפ כהודעה מוכנה (או בפתקים) ושלח מתי שצריך.
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <code dir="ltr" style={{ flex: '1 1 260px', padding: '8px 10px', background: '#fff', borderRadius: 8,
+              border: '1px solid #bbf7d0', fontSize: 12, wordBreak: 'break-all' }}>{permanentUrl}</code>
+            <button onClick={() => copy(permanentUrl)} style={smallBtn('#fff', '#166534', '#86efac')}>
+              {copied === permanentUrl ? '✓ הועתק' : '📋 העתק'}
+            </button>
+            <a href={`https://wa.me/?text=${waText(permanentUrl)}`} target="_blank" rel="noreferrer"
+              style={{ ...smallBtn('#16a34a', '#fff', '#16a34a'), textDecoration: 'none' }}>
+              💬 שלח בוואטסאפ
+            </a>
+          </div>
+        </div>
+      )}
+
+      <div style={{ fontSize: 12, fontWeight: 800, color: '#92400e', marginBottom: 10 }}>
+        קישור חד-פעמי עם מוצר וכמות שכבר סיכמתם
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, alignItems: 'end' }}>
         <div>
